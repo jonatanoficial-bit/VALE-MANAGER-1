@@ -1,0 +1,134 @@
+{
+  "build": "20260630-1600",
+  "version": "0.4.0-alpha",
+  "checks": [
+    {
+      "name": "exists index.html",
+      "ok": true,
+      "detail": "/mnt/data/VALE-AIR-MANAGER_v0.4.0-F1-F4_build-20260630-1600/index.html"
+    },
+    {
+      "name": "exists css/style.css",
+      "ok": true,
+      "detail": "/mnt/data/VALE-AIR-MANAGER_v0.4.0-F1-F4_build-20260630-1600/css/style.css"
+    },
+    {
+      "name": "exists js/app.js",
+      "ok": true,
+      "detail": "/mnt/data/VALE-AIR-MANAGER_v0.4.0-F1-F4_build-20260630-1600/js/app.js"
+    },
+    {
+      "name": "exists manifest.json",
+      "ok": true,
+      "detail": "/mnt/data/VALE-AIR-MANAGER_v0.4.0-F1-F4_build-20260630-1600/manifest.json"
+    },
+    {
+      "name": "exists service-worker.js",
+      "ok": true,
+      "detail": "/mnt/data/VALE-AIR-MANAGER_v0.4.0-F1-F4_build-20260630-1600/service-worker.js"
+    },
+    {
+      "name": "exists BUILD.json",
+      "ok": true,
+      "detail": "/mnt/data/VALE-AIR-MANAGER_v0.4.0-F1-F4_build-20260630-1600/BUILD.json"
+    },
+    {
+      "name": "exists README_AUDITORIA.txt",
+      "ok": true,
+      "detail": "/mnt/data/VALE-AIR-MANAGER_v0.4.0-F1-F4_build-20260630-1600/README_AUDITORIA.txt"
+    },
+    {
+      "name": "exists data/airports.json",
+      "ok": true,
+      "detail": "/mnt/data/VALE-AIR-MANAGER_v0.4.0-F1-F4_build-20260630-1600/data/airports.json"
+    },
+    {
+      "name": "exists data/aircraft.json",
+      "ok": true,
+      "detail": "/mnt/data/VALE-AIR-MANAGER_v0.4.0-F1-F4_build-20260630-1600/data/aircraft.json"
+    },
+    {
+      "name": "exists data/staff.json",
+      "ok": true,
+      "detail": "/mnt/data/VALE-AIR-MANAGER_v0.4.0-F1-F4_build-20260630-1600/data/staff.json"
+    },
+    {
+      "name": "assets/planes svg count",
+      "ok": true,
+      "detail": "6 files"
+    },
+    {
+      "name": "assets/avatars svg count",
+      "ok": true,
+      "detail": "4 files"
+    },
+    {
+      "name": "assets/logos svg count",
+      "ok": true,
+      "detail": "4 files"
+    },
+    {
+      "name": "assets/staff svg count",
+      "ok": true,
+      "detail": "4 files"
+    },
+    {
+      "name": "airport count >= 25",
+      "ok": true,
+      "detail": "28"
+    },
+    {
+      "name": "unique IATA",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "aircraft count >= 10",
+      "ok": true,
+      "detail": "10"
+    },
+    {
+      "name": "app contains safeExecute",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "app contains runIntegrityAudit",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "app contains createCareer",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "app contains createRoute",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "app contains initMap",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "app contains renderFallbackMap",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "app contains BUILD",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "build visible in html",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "passed": 25,
+  "total": 25,
+  "ok": true
+}

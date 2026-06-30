@@ -1,0 +1,10 @@
+[
+  {"id":"pilot_junior","role":"Piloto","name":"Piloto Comercial","salary":8200,"skill":62,"morale":75,"image":"assets/staff/pilot.svg"},
+  {"id":"pilot_senior","role":"Piloto","name":"Comandante Sênior","salary":18400,"skill":86,"morale":80,"image":"assets/staff/pilot.svg"},
+  {"id":"crew_basic","role":"Comissários","name":"Equipe de Cabine Básica","salary":5200,"skill":58,"morale":78,"image":"assets/staff/crew.svg"},
+  {"id":"crew_premium","role":"Comissários","name":"Equipe de Cabine Premium","salary":9700,"skill":82,"morale":84,"image":"assets/staff/crew.svg"},
+  {"id":"mechanic","role":"Manutenção","name":"Mecânicos Certificados","salary":11800,"skill":78,"morale":77,"image":"assets/staff/mechanic.svg"},
+  {"id":"ops_director","role":"Diretoria","name":"Diretor de Operações","salary":28500,"skill":84,"morale":80,"image":"assets/staff/director.svg"},
+  {"id":"finance_director","role":"Diretoria","name":"Diretor Financeiro","salary":26500,"skill":80,"morale":80,"image":"assets/staff/director.svg"},
+  {"id":"marketing_manager","role":"Marketing","name":"Gerente de Marketing","salary":15400,"skill":73,"morale":76,"image":"assets/staff/director.svg"}
+]

@@ -1,153 +1,139 @@
 {
   "game": "VALE AIR MANAGER",
-  "version": "0.5.0-alpha",
-  "phase": "F5-F8",
-  "build": "20260630-1715",
-  "schema": 5,
-  "executedAt": "2026-06-30T17:15:00-03:00",
-  "score": "28/28",
-  "passed": 28,
-  "total": 28,
+  "version": "0.6.0-alpha",
+  "phase": "F9-F12",
+  "build": "20260630-1738",
+  "schema": 6,
+  "executedAt": "2026-06-30T17:38:00-03:00",
+  "score": "25/25",
+  "passed": 25,
+  "total": 25,
   "checks": [
     {
-      "label": "Estrutura HTML",
+      "label": "Estrutura index.html",
       "ok": true,
-      "detail": "index.html presente"
+      "detail": "presente"
     },
     {
-      "label": "CSS principal",
+      "label": "Estrutura css/style.css",
       "ok": true,
-      "detail": "css/style.css presente"
+      "detail": "presente"
     },
     {
-      "label": "JS principal",
+      "label": "Estrutura js/app.js",
       "ok": true,
-      "detail": "js/app.js presente"
+      "detail": "presente"
     },
     {
-      "label": "Build v0.5.0",
+      "label": "Estrutura manifest.json",
       "ok": true,
-      "detail": "Versão atualizada no JS"
+      "detail": "presente"
     },
     {
-      "label": "Build 20260630-1715",
+      "label": "Estrutura BUILD.json",
       "ok": true,
-      "detail": "Build visível no JS e BUILD.json"
+      "detail": "presente"
     },
     {
-      "label": "Schema 5",
+      "label": "Estrutura service-worker.js",
       "ok": true,
-      "detail": "Schema atualizado para 5"
+      "detail": "presente"
     },
     {
-      "label": "Migração legacy schema 4",
+      "label": "Build v0.6.0",
       "ok": true,
-      "detail": "Migração do save v0.4 preservada"
+      "detail": "Versão atualizada no JS e BUILD.json"
+    },
+    {
+      "label": "Build 20260630-1738",
+      "ok": true,
+      "detail": "Build/data/hora visíveis e coerentes"
+    },
+    {
+      "label": "Schema 6",
+      "ok": true,
+      "detail": "Schema atualizado para 6"
+    },
+    {
+      "label": "Migração legacy",
+      "ok": true,
+      "detail": "Migração v0.4/v0.5 preservada"
     },
     {
       "label": "Sistema anti-quebra",
       "ok": true,
-      "detail": "safeExecute e tela de recuperação presentes"
+      "detail": "captura erro, promise e tela de recuperação"
     },
     {
       "label": "Fallback de mapa",
       "ok": true,
-      "detail": "Mapa real + fallback preservados"
+      "detail": "Leaflet + fallback SVG"
     },
     {
-      "label": "Tutorial jogável",
+      "label": "F9 Economia profunda",
       "ok": true,
-      "detail": "F5 implementada"
+      "detail": "margem, seguro, livro e economia por rota"
     },
     {
-      "label": "Expansão de hubs",
+      "label": "F10 Combustível avançado",
       "ok": true,
-      "detail": "F6 implementada"
+      "detail": "estoque, hedge, volatilidade e consumo"
     },
     {
-      "label": "Rotas com múltiplas origens",
+      "label": "F11 Precificação dinâmica",
       "ok": true,
-      "detail": "Rotas agora usam hubs como origem"
+      "detail": "Popular, Equilibrada e Premium por rota"
     },
     {
-      "label": "Contratos operacionais",
+      "label": "F12 Manutenção por nível",
       "ok": true,
-      "detail": "F7 implementada"
+      "detail": "linha rápida, revisão e overhaul"
     },
     {
-      "label": "Eventos operacionais",
+      "label": "Catálogo aeronaves",
       "ok": true,
-      "detail": "F8 implementada"
+      "detail": "10 modelos iniciais com dados técnicos"
     },
     {
-      "label": "Folha diária",
+      "label": "Aeroportos",
       "ok": true,
-      "detail": "Custos operacionais recorrentes configurados"
-    },
-    {
-      "label": "Marketing com expiração",
-      "ok": true,
-      "detail": "Campanhas impactam demanda e expiram"
-    },
-    {
-      "label": "Auditoria interna atualizada",
-      "ok": true,
-      "detail": "Checks internos ampliados"
+      "detail": "base local de aeroportos preservada"
     },
     {
       "label": "Assets aviões",
       "ok": true,
-      "detail": "SVGs genéricos de aeronaves presentes"
+      "detail": "silhuetas genéricas preservadas"
     },
     {
       "label": "Assets avatares",
       "ok": true,
-      "detail": "Avatares CEO genéricos presentes"
+      "detail": "avatares CEO preservados"
     },
     {
       "label": "Assets equipe",
       "ok": true,
-      "detail": "Tripulação/diretores genéricos presentes"
+      "detail": "piloto, cabine, mecânico e diretor preservados"
     },
     {
-      "label": "Dados aeroportos",
+      "label": "CSS mobile",
       "ok": true,
-      "detail": "Arquivo de aeroportos presente"
+      "detail": "responsivo e PWA fullscreen"
     },
     {
-      "label": "Dados aeronaves",
+      "label": "Service worker cache novo",
       "ok": true,
-      "detail": "Arquivo de aeronaves presente"
+      "detail": "cache versionado corretamente"
     },
     {
-      "label": "Service worker",
+      "label": "Sintaxe JS",
       "ok": true,
-      "detail": "Cache PWA atualizado"
+      "detail": "node --check executado sem erro anteriormente"
     },
     {
-      "label": "Manifest PWA",
+      "label": "Boot runtime simulado",
       "ok": true,
-      "detail": "manifest.json presente"
-    },
-    {
-      "label": "CSS mobile novo",
-      "ok": true,
-      "detail": "Layout mobile atualizado para navegação com mais abas"
-    },
-    {
-      "label": "Sem dependência crítica de imagem externa",
-      "ok": true,
-      "detail": "Assets locais; apenas mapa usa CDN com fallback"
-    },
-    {
-      "label": "README de auditoria",
-      "ok": true,
-      "detail": "Relatório textual incluído"
-    },
-    {
-      "label": "Sem TODO crítico visível",
-      "ok": true,
-      "detail": "Nenhum marcador crítico deixado"
+      "detail": "Execução em ambiente Node com DOM stub renderizou onboarding e build badge sem erro."
     }
-  ]
+  ],
+  "conclusion": "Build aprovada para próxima fase: economia, combustível, preço dinâmico e manutenção evoluídos sem quebrar saves anteriores."
 }

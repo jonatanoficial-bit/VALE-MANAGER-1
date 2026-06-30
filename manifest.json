@@ -1,13 +1,18 @@
 {
   "name": "VALE AIR MANAGER",
   "short_name": "Vale Air",
-  "description": "Simulador gratuito de companhia aérea com mapa real, frota, hubs, contratos, financeiro e mercado.",
+  "description": "Simulador gratuito de companhia aérea com mapa real, frota, hubs, contratos, economia profunda, combustível, manutenção e mercado.",
   "start_url": "./index.html",
   "display": "fullscreen",
   "orientation": "portrait-primary",
   "background_color": "#061020",
   "theme_color": "#061020",
   "icons": [
-    { "src": "assets/logos/logo-3.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable" }
+    {
+      "src": "assets/logos/logo-3.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
   ]
 }

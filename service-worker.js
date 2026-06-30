@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vale-air-manager-v0-5-0-build-20260630-1715';
+const CACHE_NAME = 'vale-air-manager-v0-6-0-build-20260630-1738';
 const ASSETS = [
   './', './index.html', './css/style.css', './js/app.js', './manifest.json', './BUILD.json',
   './assets/logos/logo-1.svg', './assets/logos/logo-2.svg', './assets/logos/logo-3.svg', './assets/logos/logo-4.svg',

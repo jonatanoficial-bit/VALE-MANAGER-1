@@ -1,15 +1,15 @@
 
 'use strict';
 
-// VALE AIR MANAGER - v0.5.0-alpha - Build 20260630-1715
-// Fases F5-F8: tutorial guiado, expansão de hubs, contratos operacionais e eventos executivos.
+// VALE AIR MANAGER - v0.6.0-alpha - Build 20260630-1738
+// Fases F9-F12: economia profunda, combustível avançado, preço dinâmico e manutenção por nível.
 
 const BUILD = Object.freeze({
   game: 'VALE AIR MANAGER',
-  version: '0.5.0-alpha',
-  phase: 'F5-F8',
-  build: '20260630-1715',
-  schema: 5,
+  version: '0.6.0-alpha',
+  phase: 'F9-F12',
+  build: '20260630-1738',
+  schema: 6,
   date: '2026-06-30',
   timezone: 'America/Sao_Paulo'
 });
@@ -420,6 +420,9 @@ const AIRCRAFT = [
     "cargoKg": 1450,
     "fuelBurnKgH": 180,
     "maintenanceRate": 0.26,
+    "leaseMonthly": 21500,
+    "turnaroundMin": 32,
+    "fuelEfficiency": 1.08,
     "reliability": 92,
     "image": "assets/planes/plane-regional.svg"
   },
@@ -434,6 +437,9 @@ const AIRCRAFT = [
     "cargoKg": 5200,
     "fuelBurnKgH": 620,
     "maintenanceRate": 0.34,
+    "leaseMonthly": 178000,
+    "turnaroundMin": 44,
+    "fuelEfficiency": 1.03,
     "reliability": 90,
     "image": "assets/planes/plane-turboprop.svg"
   },
@@ -448,6 +454,9 @@ const AIRCRAFT = [
     "cargoKg": 9800,
     "fuelBurnKgH": 1900,
     "maintenanceRate": 0.48,
+    "leaseMonthly": 410000,
+    "turnaroundMin": 52,
+    "fuelEfficiency": 0.98,
     "reliability": 91,
     "image": "assets/planes/plane-narrow.svg"
   },
@@ -462,6 +471,9 @@ const AIRCRAFT = [
     "cargoKg": 18000,
     "fuelBurnKgH": 2450,
     "maintenanceRate": 0.55,
+    "leaseMonthly": 740000,
+    "turnaroundMin": 56,
+    "fuelEfficiency": 0.94,
     "reliability": 94,
     "image": "assets/planes/plane-narrow.svg"
   },
@@ -476,6 +488,9 @@ const AIRCRAFT = [
     "cargoKg": 20500,
     "fuelBurnKgH": 2600,
     "maintenanceRate": 0.58,
+    "leaseMonthly": 690000,
+    "turnaroundMin": 58,
+    "fuelEfficiency": 0.97,
     "reliability": 93,
     "image": "assets/planes/plane-narrow.svg"
   },
@@ -490,6 +505,9 @@ const AIRCRAFT = [
     "cargoKg": 22000,
     "fuelBurnKgH": 2700,
     "maintenanceRate": 0.61,
+    "leaseMonthly": 820000,
+    "turnaroundMin": 60,
+    "fuelEfficiency": 0.93,
     "reliability": 94,
     "image": "assets/planes/plane-narrow.svg"
   },
@@ -504,6 +522,9 @@ const AIRCRAFT = [
     "cargoKg": 43000,
     "fuelBurnKgH": 5600,
     "maintenanceRate": 0.78,
+    "leaseMonthly": 1420000,
+    "turnaroundMin": 86,
+    "fuelEfficiency": 0.88,
     "reliability": 95,
     "image": "assets/planes/plane-wide.svg"
   },
@@ -518,6 +539,9 @@ const AIRCRAFT = [
     "cargoKg": 44000,
     "fuelBurnKgH": 5400,
     "maintenanceRate": 0.8,
+    "leaseMonthly": 1560000,
+    "turnaroundMin": 88,
+    "fuelEfficiency": 0.86,
     "reliability": 96,
     "image": "assets/planes/plane-wide.svg"
   },
@@ -532,6 +556,9 @@ const AIRCRAFT = [
     "cargoKg": 52500,
     "fuelBurnKgH": 7400,
     "maintenanceRate": 0.92,
+    "leaseMonthly": 1710000,
+    "turnaroundMin": 102,
+    "fuelEfficiency": 1.05,
     "reliability": 92,
     "image": "assets/planes/plane-heavy.svg"
   },
@@ -546,6 +573,9 @@ const AIRCRAFT = [
     "cargoKg": 137700,
     "fuelBurnKgH": 10300,
     "maintenanceRate": 1.05,
+    "leaseMonthly": 1960000,
+    "turnaroundMin": 118,
+    "fuelEfficiency": 1.18,
     "reliability": 90,
     "image": "assets/planes/plane-cargo.svg"
   }
@@ -644,9 +674,28 @@ const EVENT_POOL = [
   { id:'crew', title:'Equipe elogiada', text:'Passageiros destacaram atendimento de cabine.', type:'service', cash:0, reputation:0.55, punctuality:0, safety:0 }
 ];
 
+const MAINTENANCE_LEVELS = Object.freeze({
+  line: { label:'Linha rápida', conditionGain:18, maxCondition:92, base:9000, rate:0.00022, safety:0.08, downtime:0, resetCycles:false },
+  standard: { label:'Revisão padrão', conditionGain:55, maxCondition:100, base:18000, rate:0.00072, safety:0.40, downtime:0, resetCycles:false },
+  overhaul: { label:'Overhaul pesado', conditionGain:100, maxCondition:100, base:65000, rate:0.00118, safety:1.10, downtime:0, resetCycles:true }
+});
 
-const STORE_KEY = 'vale_air_manager_schema_5';
-const LEGACY_STORE_KEYS = ['vale_air_manager_schema_4'];
+const FUEL_MARKET = Object.freeze({
+  min: 0.72,
+  max: 1.92,
+  base: 1.02,
+  hedgePacketUsd: 250000
+});
+
+const PRICE_STRATEGIES = Object.freeze({
+  budget: { label:'Popular', multiplier:0.84, demand:1.18, reputation:0.06 },
+  balanced: { label:'Equilibrada', multiplier:1.00, demand:1.00, reputation:0.10 },
+  premium: { label:'Premium', multiplier:1.22, demand:0.82, reputation:0.16 }
+});
+
+
+const STORE_KEY = 'vale_air_manager_schema_6';
+const LEGACY_STORE_KEYS = ['vale_air_manager_schema_5','vale_air_manager_schema_4'];
 const CRASH_KEY = 'vale_air_manager_last_crash';
 const DEFAULT_SPEED = 1;
 
@@ -700,35 +749,46 @@ const utils = {
     const x = Math.sin(dLat/2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon/2) ** 2;
     return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
   },
-  routeDemand(origin, dest, career) {
-    const hubBonus = origin.iata === career.hubIata ? 1.12 : 1;
+  routeDemand(origin, dest, career, route = null) {
+    const hubBonus = origin.iata === career.hubIata ? 1.12 : 1.04;
     const intl = origin.country !== dest.country ? 1.18 : 1;
     const reputation = 0.62 + (career.reputation / 100) * 0.62;
     const airportDemand = (origin.demand + dest.demand) / 200;
     const marketNoise = 0.92 + Math.sin((career.day + dest.lat + dest.lon) / 9) * 0.08;
     const marketingBoost = career.marketing && career.marketing.expiresDay >= career.day ? Number(career.marketing.boost || 1) : 1;
-    return utils.clamp(airportDemand * hubBonus * intl * reputation * marketNoise * marketingBoost, 0.18, 1.46);
+    const strategy = PRICE_STRATEGIES[(route && route.priceStrategy) || 'balanced'] || PRICE_STRATEGIES.balanced;
+    const priceElasticity = strategy.demand || 1;
+    const saturation = Math.max(0.86, 1 - ((route && route.totalFlights || 0) / 900));
+    return utils.clamp(airportDemand * hubBonus * intl * reputation * marketNoise * marketingBoost * priceElasticity * saturation, 0.16, 1.52);
   },
-  routeEstimate(origin, dest, plane, career) {
+  routeEstimate(origin, dest, plane, career, route = null) {
     const distance = Math.round(utils.distanceKm(origin, dest));
     const hours = Math.max(distance / plane.speedKmh, 0.18);
     const intl = origin.country !== dest.country;
-    const demand = utils.routeDemand(origin, dest, career);
+    const strategy = PRICE_STRATEGIES[(route && route.priceStrategy) || 'balanced'] || PRICE_STRATEGIES.balanced;
+    const demand = utils.routeDemand(origin, dest, career, route);
     const staffQuality = getStaffQuality(career);
-    const passengers = plane.capacity > 0 ? Math.floor(plane.capacity * utils.clamp(demand * staffQuality.service, 0.2, 1.08)) : 0;
-    const avgFare = Math.round((45 + distance * 0.132) * (intl ? 1.28 : 1) * (career.businessModel === 'premium' ? 1.18 : career.businessModel === 'lowcost' ? 0.82 : 1));
-    const cargoTons = plane.capacity === 0 ? Math.round((plane.cargoKg / 1000) * utils.clamp(demand, 0.35, 1.12)) : Math.round((plane.cargoKg / 1000) * 0.12 * demand);
-    const cargoRevenue = cargoTons * (intl ? 168 : 96) * Math.max(distance / 100, 1);
-    const revenue = passengers * avgFare + cargoRevenue;
-    const fuelCost = hours * plane.fuelBurnKgH * getFuelPrice(career);
+    const conditionFactor = route && route.planeCondition ? utils.clamp(route.planeCondition / 100, 0.62, 1.02) : 1;
+    const loadFactor = utils.clamp(demand * staffQuality.service * conditionFactor, 0.18, plane.capacity > 0 ? 1.08 : 1.18);
+    const passengers = plane.capacity > 0 ? Math.floor(plane.capacity * loadFactor) : 0;
+    const modelFare = career.businessModel === 'premium' ? 1.18 : career.businessModel === 'lowcost' ? 0.82 : 1;
+    const avgFare = Math.round((45 + distance * 0.132) * (intl ? 1.28 : 1) * modelFare * strategy.multiplier);
+    const cargoTons = plane.capacity === 0 ? Math.round((plane.cargoKg / 1000) * utils.clamp(demand, 0.35, 1.18)) : Math.round((plane.cargoKg / 1000) * 0.12 * demand);
+    const cargoRevenue = cargoTons * (intl ? 168 : 96) * Math.max(distance / 100, 1) * (career.businessModel === 'cargo' ? 1.18 : 1);
+    const ancillaryRevenue = passengers * (career.businessModel === 'lowcost' ? 18 : career.businessModel === 'premium' ? 8 : 11);
+    const revenue = passengers * avgFare + cargoRevenue + ancillaryRevenue;
+    const fuelKg = hours * plane.fuelBurnKgH * Number(plane.fuelEfficiency || 1);
+    const fuelCost = fuelKg * getFuelPrice(career);
     const crewCost = plane.capacity > 0 ? Math.max(220, passengers * 8 + distance * 0.12) : Math.max(420, distance * 0.26);
     const airportFees = (origin.fee + dest.fee) * (plane.capacity > 230 || plane.cargoKg > 50000 ? 1.65 : 1);
     const maintenanceReserve = (plane.price * plane.maintenanceRate / 10000) * Math.max(hours, 0.5);
-    const co2Cost = (plane.fuelBurnKgH * hours * 3.16 / 1000) * (career.sustainability < 50 ? 18 : 9);
-    const totalCost = fuelCost + crewCost + airportFees + maintenanceReserve + co2Cost;
+    const insuranceCost = Math.max(120, plane.price * 0.000006 * Math.max(hours, 0.5));
+    const co2Cost = (fuelKg * 3.16 / 1000) * (career.sustainability < 50 ? 18 : 9);
+    const totalCost = fuelCost + crewCost + airportFees + maintenanceReserve + insuranceCost + co2Cost;
     const profit = revenue - totalCost;
+    const margin = revenue > 0 ? (profit / revenue) * 100 : -100;
     const score = utils.clamp((profit / Math.max(totalCost, 1)) * 100, -80, 180);
-    return { distance, hours, passengers, avgFare, cargoTons, revenue, fuelCost, crewCost, airportFees, maintenanceReserve, co2Cost, totalCost, profit, score };
+    return { distance, hours, passengers, avgFare, cargoTons, revenue, fuelKg, fuelCost, crewCost, airportFees, maintenanceReserve, insuranceCost, co2Cost, totalCost, profit, margin, loadFactor, score, strategy: strategy.label };
   }
 };
 
@@ -832,6 +892,12 @@ function normalizeCareer(career) {
   career.messages = Array.isArray(career.messages) ? career.messages : [];
   career.achievements = Array.isArray(career.achievements) ? career.achievements : [];
   career.fuelPriceKg = Number(career.fuelPriceKg || 1.02);
+  career.fuelStockKg = Number(career.fuelStockKg || 0);
+  career.carbonCredits = Number(career.carbonCredits || 0);
+  career.maintenanceLog = Array.isArray(career.maintenanceLog) ? career.maintenanceLog : [];
+  career.fuelHistory = Array.isArray(career.fuelHistory) ? career.fuelHistory : [{ day: career.day || 1, price: career.fuelPriceKg }];
+  career.routes.forEach(r => { r.priceStrategy = r.priceStrategy || 'balanced'; r.serviceTier = r.serviceTier || 'standard'; });
+  career.fleet.forEach(p => { p.cycles = Number(p.cycles || 0); p.hours = Number(p.hours || 0); p.status = p.status || 'idle'; });
   return career;
 }
 
@@ -901,6 +967,8 @@ function createCareer(form) {
     routes: [],
     staff: { pilots: 1, cabin: 2, mechanics: 1, directors: 0, marketing: 0 },
     marketing: { active: 'none', expiresDay: 0, boost: 1 },
+    maintenanceLog: [],
+    fuelHistory: [{ day: 1, price: 1.02 }],
     contracts: [],
     tutorial: { dismissed: false, completed: [] },
     events: [],
@@ -914,7 +982,25 @@ function createCareer(form) {
 }
 
 function getFuelPrice(career) {
-  return Number(career.fuelPriceKg || 1.02);
+  return Number(career.fuelPriceKg || FUEL_MARKET.base || 1.02);
+}
+
+function getFuelStockValue(career) {
+  return Math.round(Number(career.fuelStockKg || 0) * getFuelPrice(career));
+}
+
+function getFuelCoverageLabel(career) {
+  const dailyBurn = career.routes.reduce((sum, r) => {
+    const plane = career.fleet.find(p => p.id === r.planeId);
+    const model = plane && utils.model(plane.modelId);
+    if (!model) return sum;
+    const o = utils.byIata(r.origin), d = utils.byIata(r.dest);
+    if (!o || !d) return sum;
+    const e = utils.routeEstimate(o, d, model, career, r);
+    return sum + e.fuelKg;
+  }, 0);
+  if (!dailyBurn) return 'sem consumo ativo';
+  return `${utils.num((career.fuelStockKg || 0) / dailyBurn, 1)} ciclos cobertos`;
 }
 
 function getStaffQuality(career) {
@@ -994,10 +1080,13 @@ function completeFlight(career, route, plane, model) {
   const origin = utils.byIata(route.origin);
   const dest = utils.byIata(route.dest);
   if (!origin || !dest) return;
-  const estimate = utils.routeEstimate(origin, dest, model, career);
+  const estimate = utils.routeEstimate(origin, dest, model, career, route);
   const conditionPenalty = plane.condition < 75 ? 0.88 : 1;
   const weatherNoise = 0.94 + Math.random() * 0.12;
-  const profit = estimate.profit * conditionPenalty * weatherNoise;
+  const stockUsedKg = Math.min(Number(career.fuelStockKg || 0), estimate.fuelKg || 0);
+  career.fuelStockKg = Math.max(0, Number(career.fuelStockKg || 0) - stockUsedKg);
+  const prepaidFuelCredit = stockUsedKg * getFuelPrice(career);
+  const profit = (estimate.profit + prepaidFuelCredit) * conditionPenalty * weatherNoise;
   career.cash += Math.round(profit);
   route.totalFlights = (route.totalFlights || 0) + 1;
   career.totalFlights = (career.totalFlights || 0) + 1;
@@ -1006,7 +1095,11 @@ function completeFlight(career, route, plane, model) {
   route.totalProfit = (route.totalProfit || 0) + Math.round(profit);
   route.lastProfit = Math.round(profit);
   route.lastRevenue = Math.round(estimate.revenue);
-  route.lastCost = Math.round(estimate.totalCost);
+  route.lastCost = Math.round(estimate.totalCost - prepaidFuelCredit);
+  route.lastMargin = Math.round(estimate.margin || 0);
+  route.lastLoadFactor = Math.round((estimate.loadFactor || 0) * 100);
+  route.lastFuelKg = Math.round(estimate.fuelKg || 0);
+  route.lastStockFuelKg = Math.round(stockUsedKg || 0);
   updateContractProgress(career, route);
   advanceCompanyDay(career);
   route.progress = 0;
@@ -1066,6 +1159,7 @@ function advanceCompanyDay(career) {
     career.day += 1;
     applyDailyPayroll(career);
     expireMarketing(career);
+    updateFuelMarket(career);
     maybeGenerateEvent(career);
     unlockContracts(career);
   }
@@ -1104,6 +1198,16 @@ function maybeGenerateEvent(career) {
   pushMessage(career, `${event.title}: ${event.text}`, event.type === 'weather' || event.type === 'finance' ? 'warn' : 'success');
 }
 
+
+function updateFuelMarket(career) {
+  const volatility = Math.sin((career.day + career.routes.length * 3 + career.fleet.length) / 5) * 0.026;
+  const pressure = career.routes.length > career.fleet.length ? 0.008 : 0;
+  const sustainabilityDiscount = career.sustainability > 75 ? -0.006 : 0;
+  career.fuelPriceKg = utils.clamp(getFuelPrice(career) + volatility + pressure + sustainabilityDiscount, FUEL_MARKET.min, FUEL_MARKET.max);
+  career.fuelHistory = Array.isArray(career.fuelHistory) ? career.fuelHistory : [];
+  career.fuelHistory.unshift({ day: career.day, price: career.fuelPriceKg, stockKg: Math.round(career.fuelStockKg || 0) });
+  career.fuelHistory = career.fuelHistory.slice(0, 30);
+}
 
 function boot() {
   safeExecute('boot', () => {
@@ -1197,7 +1301,7 @@ function renderOnboarding() {
         <span class="eyebrow">Simulador gratuito de companhia aérea</span>
         <h1>VALE AIR MANAGER</h1>
         <p>Crie sua empresa aérea, escolha hub, avatar, logo, compre aviões, abra rotas reais e acompanhe o mercado financeiro.</p>
-        <div class="build-line">v${BUILD.version} • Build ${BUILD.build} • Fases F5-F8 aceleradas</div>
+        <div class="build-line">v${BUILD.version} • Build ${BUILD.build} • Fases F9-F12 aceleradas</div>
       </div>
       <div class="hero-plane"><img src="assets/planes/plane-wide.svg" alt="Avião"></div>
     </section>
@@ -1212,7 +1316,7 @@ function renderOnboarding() {
       <div class="picker-title">Logo inicial</div>
       <div class="asset-picker logos">${[1,2,3,4].map(i => `<label class="asset-option"><input type="radio" name="logo" value="assets/logos/logo-${i}.svg" ${i===3?'checked':''}><img src="assets/logos/logo-${i}.svg" alt="Logo ${i}"></label>`).join('')}</div>
       <div class="row gap wrap"><button class="btn primary big" data-action="createCareer" type="button">Criar carreira</button><button class="btn ghost big" data-action="go" data-view="slots" type="button">Ver saves</button></div>
-      <p class="hint">Começa com 1 avião regional, hub inicial, contratos iniciais, tutorial guiado e sistema anti-quebra ativo.</p>
+      <p class="hint">Começa com 1 avião regional, hub inicial, contratos, tutorial, combustível avançado, precificação dinâmica e anti-quebra ativo.</p>
     </form>
   </div>`;
 }
@@ -1251,6 +1355,7 @@ function renderDashboard() {
         <button class="action-card" data-action="go" data-view="contracts"><b>Contratos</b><small>Missões pagas por rota</small></button>
         <button class="action-card" data-action="go" data-view="hubs"><b>Expandir hubs</b><small>Novas bases e rotas</small></button>
         <button class="action-card" data-action="go" data-view="fleet"><b>Comprar avião</b><small>Mercado inicial de aeronaves</small></button>
+        <button class="action-card" data-action="go" data-view="finance"><b>Economia profunda</b><small>Preço, margem e combustível</small></button>
         <button class="action-card" data-action="go" data-view="audit"><b>Auditar jogo</b><small>Integridade e anti-quebra</small></button>
       </div>
     </section>
@@ -1261,6 +1366,7 @@ function renderDashboard() {
       <div class="kpi"><small>Sustentável</small><strong>${utils.pct(c.sustainability)}</strong></div>
       <div class="kpi"><small>Voos totais</small><strong>${utils.num(c.totalFlights || 0)}</strong></div>
       <div class="kpi"><small>Contratos</small><strong>${(c.contracts||[]).filter(x=>x.status==='completed').length}/${(c.contracts||[]).length}</strong></div>
+      <div class="kpi"><small>Combustível</small><strong>${utils.num(c.fuelStockKg || 0)} kg</strong></div>
     </div></section>
     <section class="panel glass"><h2>Alertas do assistente</h2>${alerts.length ? `<div class="alert-list">${alerts.map(a => `<div class="alert ${a.type}"><b>${a.title}</b><span>${a.text}</span><button class="btn mini" data-action="go" data-view="${a.view}">Abrir</button></div>`).join('')}</div>` : '<p class="success-text">Nenhum bloqueio crítico. Sistema está pronto para evoluir.</p>'}</section>
     <section class="panel glass"><h2>Eventos operacionais</h2><div class="message-list">${(c.events||[]).slice(0,4).map(e => `<div class="msg ${e.type}"><small>Dia ${e.day} • ${utils.dateLabel(e.time)}</small><p><b>${utils.escape(e.title)}</b><br>${utils.escape(e.text)}</p></div>`).join('') || '<p>Nenhum evento operacional registrado ainda.</p>'}</div></section>
@@ -1287,6 +1393,7 @@ function tutorialSteps(c) {
     { id:'flight', title:'Complete 1 voo', done: (c.totalFlights || 0) >= 1, text:'Deixe a simulação em 2x ou 4x até o avião pousar.', view:'routes' },
     { id:'contract', title:'Aceite um contrato', done: (c.contracts || []).some(x => ['accepted','completed'].includes(x.status)), text:'Contratos aceleram o caixa e dão metas claras.', view:'contracts' },
     { id:'hub', title:'Planeje expansão', done: (c.hubs || []).length > 1, text:'Abra um segundo hub quando tiver caixa suficiente.', view:'hubs' },
+    { id:'finance', title:'Ajuste preço/combustível', done: (c.fuelStockKg || 0) > 0 || c.routes.some(r => r.priceStrategy !== 'balanced'), text:'Use preço dinâmico e hedge de combustível para aumentar margem.', view:'finance' },
     { id:'audit', title:'Rode auditoria', done: true, text:'Sistema anti-quebra está ativo e validado nesta build.', view:'audit' },
     { id:'contractDone', title:'Conclua 1 contrato', done: completedContracts >= 1, text:'Cumpra os voos exigidos para receber bônus.', view:'contracts' }
   ];
@@ -1298,7 +1405,7 @@ function renderTutorial() {
   const done = steps.filter(s => s.done).length;
   return `<div class="tutorial-layout">
     <section class="panel glass command-panel">
-      <span class="eyebrow">F5 Tutorial jogável</span><h2>Primeiros passos da companhia</h2>
+      <span class="eyebrow">Tutorial jogável + F9-F12</span><h2>Primeiros passos da companhia</h2>
       <p class="lead">Objetivo desta fase: ninguém pode ficar perdido. Cada etapa mostra uma ação direta, com botão para a tela certa.</p>
       <div class="audit-score"><strong>${done}/${steps.length}</strong><span>etapas concluídas</span></div>
       <div class="tutorial-steps">${steps.map(s => `<article class="tutorial-step ${s.done?'done':''}"><b>${s.done?'✓':'•'}</b><div><strong>${s.title}</strong><small>${s.text}</small></div><button class="btn mini ${s.done?'ghost':'primary'}" data-action="go" data-view="${s.view}">${s.done?'Rever':'Fazer'}</button></article>`).join('')}</div>
@@ -1385,7 +1492,7 @@ function renderRoutes() {
   const selectedOrigin = hubs[0] || utils.byIata(c.hubIata);
   const dests = AIRPORTS.filter(a => a.iata !== selectedOrigin.iata);
   return `<div class="routes-layout">
-    <section class="panel glass"><div class="section-head"><div><span class="eyebrow">F6 Malha e hubs</span><h2>Criar rota</h2><p>Agora a origem pode ser qualquer hub aberto. Hub principal: <b>${c.hubIata}</b>.</p></div></div>
+    <section class="panel glass"><div class="section-head"><div><span class="eyebrow">F10-F11 Malha, combustível e preço</span><h2>Criar rota</h2><p>Origem por hub aberto, previsão de combustível, ocupação, margem e estratégia de preço.</p></div></div>
       <div class="form-grid">
         <label>Origem / hub<select id="routeOrigin">${hubs.map(a => `<option value="${a.iata}">${a.iata} — ${a.city}, ${a.country}</option>`).join('')}</select></label>
         <label>Aeronave<select id="routePlane">${idlePlanes.map(p => { const m=utils.model(p.modelId); return `<option value="${p.id}" ${p.condition<50?'disabled':''}>${p.name} — ${m.name} — condição ${Math.round(p.condition)}%</option>`; }).join('') || '<option disabled>Sem avião livre</option>'}</select></label>
@@ -1400,8 +1507,10 @@ function renderRoutes() {
 }
 
 function renderRouteCard(r) {
-  const plane = activeCareer().fleet.find(p => p.id === r.planeId);
-  return `<article class="route-card"><div><b>${r.origin} → ${r.dest}</b><small>${plane ? plane.name : 'Avião não encontrado'} • ${utils.num(r.distance)} km</small></div><div class="progress"><span style="width:${utils.clamp(r.progress,0,100)}%"></span></div><div class="route-stats"><span>Voos: ${r.totalFlights || 0}</span><span>Último: ${utils.money(r.lastProfit || 0)}</span><span>Total: ${utils.money(r.totalProfit || 0)}</span></div><div class="row gap"><button class="btn mini ghost" data-action="toggleRoute" data-route="${r.id}">${r.status==='active'?'Pausar':'Ativar'}</button><button class="btn mini danger" data-action="closeRoute" data-route="${r.id}">Fechar</button></div></article>`;
+  const c = activeCareer();
+  const plane = c.fleet.find(p => p.id === r.planeId);
+  const strategy = PRICE_STRATEGIES[r.priceStrategy || 'balanced'] || PRICE_STRATEGIES.balanced;
+  return `<article class="route-card"><div><b>${r.origin} → ${r.dest}</b><small>${plane ? plane.name : 'Avião não encontrado'} • ${utils.num(r.distance)} km • preço ${strategy.label}</small></div><div class="progress"><span style="width:${utils.clamp(r.progress,0,100)}%"></span></div><div class="route-stats"><span>Voos: ${r.totalFlights || 0}</span><span>Último: ${utils.money(r.lastProfit || 0)}</span><span>Margem: ${r.lastMargin ?? 0}%</span><span>Ocupação: ${r.lastLoadFactor ?? 0}%</span><span>Comb.: ${utils.num(r.lastFuelKg || 0)} kg</span><span>Total: ${utils.money(r.totalProfit || 0)}</span></div><div class="row gap wrap"><button class="btn mini ghost" data-action="toggleRoute" data-route="${r.id}">${r.status==='active'?'Pausar':'Ativar'}</button><button class="btn mini" data-action="routePrice" data-route="${r.id}" data-strategy="budget">Popular</button><button class="btn mini" data-action="routePrice" data-route="${r.id}" data-strategy="balanced">Equilibrada</button><button class="btn mini" data-action="routePrice" data-route="${r.id}" data-strategy="premium">Premium</button><button class="btn mini danger" data-action="closeRoute" data-route="${r.id}">Fechar</button></div></article>`;
 }
 
 function updateRoutePreview() {
@@ -1418,9 +1527,9 @@ function updateRoutePreview() {
     const dest = utils.byIata(destSelect.value);
     if (!plane || !model || !origin || !dest) { box.innerHTML = 'Sem dados suficientes.'; return; }
     if (origin.iata === dest.iata) { box.innerHTML = '<p class="bad">Origem e destino não podem ser iguais.</p>'; return; }
-    const e = utils.routeEstimate(origin, dest, model, c);
+    const e = utils.routeEstimate(origin, dest, model, c, { priceStrategy:'balanced', planeCondition: plane.condition });
     const feasible = e.distance <= model.rangeKm;
-    box.innerHTML = `<div class="preview-grid"><div><small>Distância</small><b>${utils.num(e.distance)} km</b></div><div><small>Alcance do avião</small><b class="${feasible?'ok':'bad'}">${utils.num(model.rangeKm)} km</b></div><div><small>Passageiros estimados</small><b>${utils.num(e.passengers)}</b></div><div><small>Receita</small><b>${utils.money(e.revenue)}</b></div><div><small>Custo</small><b>${utils.money(e.totalCost)}</b></div><div><small>Lucro estimado</small><b class="${e.profit>=0?'ok':'bad'}">${utils.money(e.profit)}</b></div></div>${feasible ? '' : '<p class="bad">Rota bloqueada: aeronave não possui alcance suficiente.</p>'}`;
+    box.innerHTML = `<div class="preview-grid"><div><small>Distância</small><b>${utils.num(e.distance)} km</b></div><div><small>Alcance do avião</small><b class="${feasible?'ok':'bad'}">${utils.num(model.rangeKm)} km</b></div><div><small>Passageiros estimados</small><b>${utils.num(e.passengers)}</b></div><div><small>Ocupação</small><b>${utils.pct(e.loadFactor*100)}</b></div><div><small>Receita</small><b>${utils.money(e.revenue)}</b></div><div><small>Custo</small><b>${utils.money(e.totalCost)}</b></div><div><small>Combustível</small><b>${utils.num(e.fuelKg)} kg</b></div><div><small>Margem</small><b class="${e.margin>=0?'ok':'bad'}">${utils.num(e.margin,1)}%</b></div><div><small>Lucro estimado</small><b class="${e.profit>=0?'ok':'bad'}">${utils.money(e.profit)}</b></div></div>${feasible ? '' : '<p class="bad">Rota bloqueada: aeronave não possui alcance suficiente.</p>'}`;
   });
 }
 
@@ -1437,13 +1546,13 @@ function createRoute() {
   if (!(c.hubs || [c.hubIata]).includes(origin.iata)) return showToast('Origem bloqueada: abra este hub primeiro.', 'warn');
   if (origin.iata === dest.iata) return showToast('Origem e destino não podem ser iguais.', 'warn');
   if (plane.condition < 50) return showToast('Aeronave precisa de manutenção antes de abrir rota.', 'warn');
-  const e = utils.routeEstimate(origin, dest, model, c);
+  const e = utils.routeEstimate(origin, dest, model, c, { priceStrategy:'balanced', planeCondition: plane.condition });
   if (e.distance > model.rangeKm) return showToast('Alcance insuficiente para esta rota.', 'warn');
   const routeCost = Math.round(dest.slotCost * 0.18 + origin.fee + dest.fee);
   if (c.cash < routeCost) return showToast(`Caixa insuficiente. Custa ${utils.money(routeCost)} para abrir a rota.`, 'warn');
   c.cash -= routeCost;
   plane.status = 'inFlight';
-  const route = { id: utils.id('route'), origin: origin.iata, dest: dest.iata, planeId: plane.id, status: 'active', distance: e.distance, cycleSeconds: utils.clamp(38 + e.distance / 38, 45, 220), progress: 0, totalFlights: 0, totalProfit: 0, lastProfit: 0, createdAt: Date.now() };
+  const route = { id: utils.id('route'), origin: origin.iata, dest: dest.iata, planeId: plane.id, status: 'active', distance: e.distance, cycleSeconds: utils.clamp(38 + e.distance / 38, 45, 220), progress: 0, totalFlights: 0, totalProfit: 0, lastProfit: 0, lastMargin: Math.round(e.margin || 0), lastLoadFactor: Math.round((e.loadFactor || 0) * 100), lastFuelKg: Math.round(e.fuelKg || 0), priceStrategy:'balanced', serviceTier:'standard', createdAt: Date.now() };
   plane.routeId = route.id;
   c.routes.push(route);
   logFinance(c, `Abertura de rota ${origin.iata}-${dest.iata}`, -routeCost, 'investimento');
@@ -1540,7 +1649,7 @@ function renderFleet() {
 function renderPlaneCard(p) {
   const m = utils.model(p.modelId);
   const route = activeCareer().routes.find(r => r.id === p.routeId);
-  return `<article class="plane-card"><img src="${m.image}" alt="${m.name}"><div class="plane-info"><h3>${utils.escape(p.name)}</h3><small>${m.name} • ${m.category}</small><div class="health"><span style="width:${utils.clamp(p.condition,0,100)}%"></span></div><div class="route-stats"><span>Condição ${Math.round(p.condition)}%</span><span>${p.status || 'idle'}</span><span>${utils.num(p.hours,1)} h</span></div>${route ? `<small>Rota atual: ${route.origin} → ${route.dest}</small>` : '<small>Sem rota ativa</small>'}<div class="row gap wrap"><button class="btn mini" data-action="maintainPlane" data-plane="${p.id}">Manutenção</button><button class="btn mini ghost" data-action="renamePlane" data-plane="${p.id}">Renomear</button><button class="btn mini danger" data-action="sellPlane" data-plane="${p.id}">Vender</button></div></div></article>`;
+  return `<article class="plane-card"><img src="${m.image}" alt="${m.name}"><div class="plane-info"><h3>${utils.escape(p.name)}</h3><small>${m.name} • ${m.category}</small><div class="health"><span style="width:${utils.clamp(p.condition,0,100)}%"></span></div><div class="route-stats"><span>Condição ${Math.round(p.condition)}%</span><span>${p.status || 'idle'}</span><span>${utils.num(p.hours,1)} h</span></div>${route ? `<small>Rota atual: ${route.origin} → ${route.dest}</small>` : '<small>Sem rota ativa</small>'}<div class="row gap wrap"><button class="btn mini" data-action="maintainPlane" data-plane="${p.id}" data-level="line">Linha</button><button class="btn mini primary" data-action="maintainPlane" data-plane="${p.id}" data-level="standard">Revisão</button><button class="btn mini ghost" data-action="maintainPlane" data-plane="${p.id}" data-level="overhaul">Overhaul</button><button class="btn mini ghost" data-action="renamePlane" data-plane="${p.id}">Renomear</button><button class="btn mini danger" data-action="sellPlane" data-plane="${p.id}">Vender</button></div></div></article>`;
 }
 
 function renderAircraftMarket(m) {
@@ -1561,19 +1670,31 @@ function buyPlane(modelId) {
   updateMarket(c); setActiveCareer(c); showToast('Avião comprado.', 'ok'); render();
 }
 
-function maintainPlane(planeId) {
+function maintenanceCost(plane, model, levelKey = 'standard') {
+  const level = MAINTENANCE_LEVELS[levelKey] || MAINTENANCE_LEVELS.standard;
+  const missing = Math.max(0, 100 - Number(plane.condition || 0));
+  const cyclePenalty = Math.min(Number(plane.cycles || 0) * 220, model.price * 0.00014);
+  return Math.round(level.base + missing * model.price * level.rate + cyclePenalty);
+}
+
+function maintainPlane(planeId, levelKey = 'standard') {
   const c = activeCareer(); const p = c.fleet.find(x => x.id === planeId); if (!p) return;
   const m = utils.model(p.modelId); if (!m) return;
-  const cost = Math.round((100 - p.condition) * m.price * 0.00072 + 18000);
-  if (p.condition >= 96) return showToast('Aeronave já está em excelente condição.', 'ok');
-  if (c.cash < cost) return showToast(`Caixa insuficiente. Manutenção custa ${utils.money(cost)}.`, 'warn');
+  const level = MAINTENANCE_LEVELS[levelKey] || MAINTENANCE_LEVELS.standard;
+  const cost = maintenanceCost(p, m, levelKey);
+  if (p.condition >= 98 && levelKey !== 'overhaul') return showToast('Aeronave já está em excelente condição.', 'ok');
+  if (c.cash < cost) return showToast(`Caixa insuficiente. ${level.label} custa ${utils.money(cost)}.`, 'warn');
   c.cash -= cost;
-  p.condition = 100;
+  p.condition = utils.clamp(Math.max(Number(p.condition || 0), Math.min(level.maxCondition, Number(p.condition || 0) + level.conditionGain)), 0, 100);
+  if (level.resetCycles) p.cycles = 0;
   p.status = p.routeId ? 'inFlight' : 'idle';
-  c.safety = utils.clamp(c.safety + 0.4, 0, 100);
-  logFinance(c, `Manutenção ${p.name}`, -cost, 'manutenção');
-  pushMessage(c, `${p.name} passou por manutenção completa.`, 'success');
-  updateMarket(c); setActiveCareer(c); showToast('Manutenção concluída.', 'ok'); render();
+  c.safety = utils.clamp(c.safety + level.safety, 0, 100);
+  c.maintenanceLog = Array.isArray(c.maintenanceLog) ? c.maintenanceLog : [];
+  c.maintenanceLog.unshift({ time: Date.now(), day: c.day, plane: p.name, level: level.label, cost, condition: Math.round(p.condition) });
+  c.maintenanceLog = c.maintenanceLog.slice(0, 30);
+  logFinance(c, `${level.label} ${p.name}`, -cost, 'manutenção');
+  pushMessage(c, `${p.name} concluiu ${level.label}. Condição atual: ${Math.round(p.condition)}%.`, 'success');
+  updateMarket(c); setActiveCareer(c); showToast(`${level.label} concluída.`, 'ok'); render();
 }
 
 function renderStaff() {
@@ -1607,19 +1728,28 @@ function fireStaff(role) {
 
 function renderFinance() {
   const c = activeCareer();
-  const revenue = c.financeLog.filter(f => f.amount > 0).reduce((s,f)=>s+f.amount,0);
-  const expense = c.financeLog.filter(f => f.amount < 0).reduce((s,f)=>s+f.amount,0);
-  return `<div class="finance-layout"><section class="panel glass"><span class="eyebrow">Financeiro</span><h2>Fluxo de caixa</h2><div class="kpi-grid"><div class="kpi"><small>Receitas registradas</small><strong>${utils.money(revenue)}</strong></div><div class="kpi"><small>Despesas registradas</small><strong>${utils.money(expense)}</strong></div><div class="kpi"><small>Resultado</small><strong>${utils.money(revenue+expense)}</strong></div><div class="kpi"><small>Combustível/kg</small><strong>${utils.money(getFuelPrice(c))}</strong></div></div><div class="row gap wrap"><button class="btn primary" data-action="buyFuel">Comprar combustível hedge</button><button class="btn ghost" data-action="marketingCampaign">Campanha marketing</button></div></section><section class="panel glass"><h2>Livro financeiro</h2><div class="finance-list">${c.financeLog.map(f => `<div class="finance-row"><span>${utils.dateLabel(f.time)}<small>${f.type} • Dia ${f.day}</small></span><b class="${f.amount>=0?'ok':'bad'}">${utils.money(f.amount)}</b><em>${utils.escape(f.label)}</em></div>`).join('') || '<p>Sem lançamentos.</p>'}</div></section></div>`;
+  const revenue = c.financeLog.filter(f => f.amount > 0).reduce((sum,f)=>sum+f.amount,0);
+  const expense = c.financeLog.filter(f => f.amount < 0).reduce((sum,f)=>sum+f.amount,0);
+  const routeProfit = c.routes.reduce((sum,r)=>sum+(r.totalProfit||0),0);
+  const bestRoute = [...c.routes].sort((a,b)=>(b.totalProfit||0)-(a.totalProfit||0))[0];
+  const worstRoute = [...c.routes].sort((a,b)=>(a.totalProfit||0)-(b.totalProfit||0))[0];
+  return `<div class="finance-layout"><section class="panel glass"><span class="eyebrow">F9-F12 Economia profunda</span><h2>Fluxo de caixa e margem</h2><div class="kpi-grid"><div class="kpi"><small>Receitas registradas</small><strong>${utils.money(revenue)}</strong></div><div class="kpi"><small>Despesas registradas</small><strong>${utils.money(expense)}</strong></div><div class="kpi"><small>Resultado</small><strong>${utils.money(revenue+expense)}</strong></div><div class="kpi"><small>Lucro das rotas</small><strong>${utils.money(routeProfit)}</strong></div><div class="kpi"><small>Melhor rota</small><strong>${bestRoute ? `${bestRoute.origin}-${bestRoute.dest}` : '-'}</strong></div><div class="kpi"><small>Rota crítica</small><strong>${worstRoute ? `${worstRoute.origin}-${worstRoute.dest}` : '-'}</strong></div></div></section><section class="panel glass"><div class="section-head"><div><span class="eyebrow">F10 Combustível avançado</span><h2>Mesa de combustível</h2></div></div><div class="kpi-grid"><div class="kpi"><small>Preço/kg</small><strong>${utils.money(getFuelPrice(c))}</strong></div><div class="kpi"><small>Estoque</small><strong>${utils.num(c.fuelStockKg || 0)} kg</strong></div><div class="kpi"><small>Valor do estoque</small><strong>${utils.money(getFuelStockValue(c))}</strong></div><div class="kpi"><small>Cobertura</small><strong>${getFuelCoverageLabel(c)}</strong></div></div><div class="row gap wrap"><button class="btn primary" data-action="buyFuel" data-pack="small">Comprar hedge pequeno</button><button class="btn ghost" data-action="buyFuel" data-pack="large">Comprar hedge grande</button><button class="btn ghost" data-action="marketingCampaign">Campanha marketing</button></div><div class="fuel-history">${(c.fuelHistory||[]).slice(0,8).map(h => `<span>Dia ${h.day}: ${utils.money(h.price)} / kg</span>`).join('') || '<span>Sem histórico ainda.</span>'}</div></section><section class="panel glass"><h2>Economia por rota</h2><div class="route-economy-list">${c.routes.map(r => `<article><b>${r.origin} → ${r.dest}</b><small>Estratégia: ${(PRICE_STRATEGIES[r.priceStrategy || 'balanced']||PRICE_STRATEGIES.balanced).label}</small><div class="route-stats"><span>Total ${utils.money(r.totalProfit||0)}</span><span>Último ${utils.money(r.lastProfit||0)}</span><span>Margem ${r.lastMargin ?? 0}%</span><span>Ocupação ${r.lastLoadFactor ?? 0}%</span><span>Combustível ${utils.num(r.lastFuelKg||0)} kg</span></div></article>`).join('') || '<p>Crie rotas para ver análise econômica.</p>'}</div></section><section class="panel glass"><h2>Livro financeiro</h2><div class="finance-list">${c.financeLog.map(f => `<div class="finance-row"><span>${utils.dateLabel(f.time)}<small>${f.type} • Dia ${f.day}</small></span><b class="${f.amount>=0?'ok':'bad'}">${utils.money(f.amount)}</b><em>${utils.escape(f.label)}</em></div>`).join('') || '<p>Sem lançamentos.</p>'}</div></section></div>`;
 }
 
-function buyFuel() {
+function buyFuel(pack = 'small') {
   const c = activeCareer();
-  const cost = 250000;
+  const cost = pack === 'large' ? 650000 : FUEL_MARKET.hedgePacketUsd;
   if (c.cash < cost) return showToast('Caixa insuficiente para compra antecipada de combustível.', 'warn');
-  c.cash -= cost; c.fuelStockKg += 250000 / getFuelPrice(c); c.fuelPriceKg = Math.max(0.86, c.fuelPriceKg - 0.02);
-  logFinance(c, 'Compra antecipada de combustível', -cost, 'combustível');
-  pushMessage(c, 'Hedge de combustível realizado; preço médio reduziu levemente.', 'success');
-  updateMarket(c); setActiveCareer(c); showToast('Combustível comprado.', 'ok'); render();
+  const discount = pack === 'large' ? 0.035 : 0.018;
+  const kg = Math.round(cost / Math.max(getFuelPrice(c) - discount, FUEL_MARKET.min));
+  c.cash -= cost;
+  c.fuelStockKg = Number(c.fuelStockKg || 0) + kg;
+  c.fuelPriceKg = Math.max(FUEL_MARKET.min, c.fuelPriceKg - discount);
+  c.fuelHistory = Array.isArray(c.fuelHistory) ? c.fuelHistory : [];
+  c.fuelHistory.unshift({ day:c.day, price:c.fuelPriceKg, stockKg:Math.round(c.fuelStockKg) });
+  logFinance(c, `Compra antecipada de combustível (${utils.num(kg)} kg)`, -cost, 'combustível');
+  pushMessage(c, `Hedge de combustível realizado: ${utils.num(kg)} kg adicionados ao estoque.`, 'success');
+  updateMarket(c); setActiveCareer(c); showToast('Combustível comprado e estocado.', 'ok'); render();
 }
 
 function marketingCampaign() {
@@ -1634,13 +1764,13 @@ function marketingCampaign() {
 function renderMarket() {
   const c = activeCareer();
   const trend = c.financeLog.slice(0,8).reduce((s,f)=>s+f.amount,0) >= 0 ? 'alta' : 'pressão';
-  return `<div class="market-layout"><section class="panel glass"><span class="eyebrow">Mercado de ações</span><h2>Bolsa da companhia</h2><div class="stock-card"><div><small>Valor por ação</small><strong>$${c.stockPrice.toFixed(2)}</strong><span>tendência: ${trend}</span></div><div><small>Valuation</small><strong>${utils.money(c.valuation)}</strong><span>baseado em frota, caixa, rotas e reputação</span></div></div><div class="stock-line"><i style="height:${utils.clamp(c.reputation,12,100)}%"></i><i style="height:${utils.clamp(c.safety,12,100)}%"></i><i style="height:${utils.clamp(c.punctuality,12,100)}%"></i><i style="height:${utils.clamp((c.cash/10000000)*100,12,100)}%"></i><i style="height:${utils.clamp(c.routes.length*18,12,100)}%"></i></div><p class="hint">Nesta build, o mercado já reage ao caixa, lucro recente, segurança, reputação, frota e malha.</p></section><section class="panel glass"><h2>Próximas evoluções da bolsa</h2><div class="todo-list"><span>IPO e venda de participação</span><span>Investidores e metas trimestrais</span><span>Empréstimos e recuperação judicial</span><span>Compra de companhias menores</span></div></section></div>`;
+  return `<div class="market-layout"><section class="panel glass"><span class="eyebrow">Mercado de ações</span><h2>Bolsa da companhia</h2><div class="stock-card"><div><small>Valor por ação</small><strong>$${c.stockPrice.toFixed(2)}</strong><span>tendência: ${trend}</span></div><div><small>Valuation</small><strong>${utils.money(c.valuation)}</strong><span>baseado em frota, caixa, rotas e reputação</span></div></div><div class="stock-line"><i style="height:${utils.clamp(c.reputation,12,100)}%"></i><i style="height:${utils.clamp(c.safety,12,100)}%"></i><i style="height:${utils.clamp(c.punctuality,12,100)}%"></i><i style="height:${utils.clamp((c.cash/10000000)*100,12,100)}%"></i><i style="height:${utils.clamp(c.routes.length*18,12,100)}%"></i></div><p class="hint">Nesta build, o mercado reage ao caixa, lucro recente, segurança, reputação, frota, malha, margem e risco operacional.</p></section><section class="panel glass"><h2>Próximas evoluções da bolsa</h2><div class="todo-list"><span>IPO e venda de participação</span><span>Investidores e metas trimestrais</span><span>Empréstimos e recuperação judicial</span><span>Compra de companhias menores</span></div></section></div>`;
 }
 
 function renderAudit() {
   const checks = runIntegrityAudit();
   const passed = checks.filter(c => c.ok).length;
-  return `<div class="audit-layout"><section class="panel glass"><div class="section-head"><div><span class="eyebrow">Sistema anti-quebra</span><h2>Auditoria da build</h2><p>Execução obrigatória por fase para garantir integridade e evolução real.</p></div><button class="btn primary" data-action="runAudit">Rodar auditoria</button></div><div class="audit-score"><strong>${passed}/${checks.length}</strong><span>checks aprovados</span></div><div class="audit-list">${checks.map(c => `<div class="audit-row ${c.ok?'ok':'bad'}"><b>${c.ok?'✓':'!'}</b><span>${c.label}</span><small>${c.detail}</small></div>`).join('')}</div></section><section class="panel glass"><h2>Relatório desta entrega</h2><div class="todo-list"><span>F5 Tutorial: OK — passo a passo jogável e assistente executivo.</span><span>F6 Hubs: OK — expansão para múltiplas bases com custo e origem de rota.</span><span>F7 Contratos: OK — contratos aceitos, progresso por voo e pagamento automático.</span><span>F8 Eventos: OK — eventos operacionais, folha diária, marketing com expiração e mercado reagindo.</span><span>Anti-quebra: OK — migração de saves v0.4 para schema 5 e fallback de mapa preservado.</span></div></section></div>`;
+  return `<div class="audit-layout"><section class="panel glass"><div class="section-head"><div><span class="eyebrow">Sistema anti-quebra</span><h2>Auditoria da build</h2><p>Execução obrigatória por fase para garantir integridade e evolução real.</p></div><button class="btn primary" data-action="runAudit">Rodar auditoria</button></div><div class="audit-score"><strong>${passed}/${checks.length}</strong><span>checks aprovados</span></div><div class="audit-list">${checks.map(c => `<div class="audit-row ${c.ok?'ok':'bad'}"><b>${c.ok?'✓':'!'}</b><span>${c.label}</span><small>${c.detail}</small></div>`).join('')}</div></section><section class="panel glass"><h2>Relatório desta entrega</h2><div class="todo-list"><span>F9 Economia: OK — receitas, despesas, margem, melhor/pior rota e livro financeiro reforçado.</span><span>F10 Combustível: OK — preço volátil, estoque, hedge e consumo por voo.</span><span>F11 Preço dinâmico: OK — rotas com estratégia Popular, Equilibrada e Premium afetando demanda e tarifa.</span><span>F12 Manutenção: OK — linha rápida, revisão padrão e overhaul pesado com log.</span><span>Anti-quebra: OK — migração de saves v0.4/v0.5 para schema 6 preservada.</span></div></section></div>`;
 }
 
 function runIntegrityAudit() {
@@ -1651,7 +1781,7 @@ function runIntegrityAudit() {
   const lastCrash = localStorage.getItem(CRASH_KEY);
   return [
     { ok: !!dom.buildBadge && dom.buildBadge.textContent.includes(BUILD.build), label:'Build/data/hora visíveis', detail:`Build ${BUILD.build} renderizado no rodapé.` },
-    { ok: BUILD.schema === 5, label:'Schema da build', detail:`Schema atual ${BUILD.schema}.` },
+    { ok: BUILD.schema === 6, label:'Schema da build', detail:`Schema atual ${BUILD.schema}.` },
     { ok: slotCount === 3, label:'Save slots', detail:`${slotCount} slots detectados.` },
     { ok: AIRPORTS.length >= 25 && !duplicateIata, label:'Banco de aeroportos', detail:`${AIRPORTS.length} aeroportos reais/semi-realistas, IATA único.` },
     { ok: AIRCRAFT.length >= 10, label:'Catálogo inicial de aeronaves', detail:`${AIRCRAFT.length} modelos com alcance, consumo, capacidade e custo.` },
@@ -1663,6 +1793,10 @@ function runIntegrityAudit() {
     { ok: !c || Array.isArray(c.contracts) && c.contracts.length >= 4, label:'Contratos operacionais', detail:c ? `${(c.contracts||[]).length} contratos carregados.` : 'Sem carreira ativa.' },
     { ok: !c || c.tutorial && Array.isArray(tutorialSteps(c)), label:'Tutorial jogável', detail:'Checklist executivo e ações diretas disponíveis.' },
     { ok: Array.isArray(EVENT_POOL) && EVENT_POOL.length >= 5, label:'Eventos operacionais', detail:`${EVENT_POOL.length} eventos possíveis configurados.` },
+    { ok: !!MAINTENANCE_LEVELS.standard && !!MAINTENANCE_LEVELS.overhaul, label:'Manutenção por nível', detail:'Linha rápida, revisão padrão e overhaul pesado disponíveis.' },
+    { ok: !!PRICE_STRATEGIES.premium && !!PRICE_STRATEGIES.budget, label:'Precificação dinâmica', detail:'Estratégias Popular, Equilibrada e Premium disponíveis por rota.' },
+    { ok: !c || typeof c.fuelStockKg === 'number', label:'Combustível avançado', detail:c ? `${utils.num(c.fuelStockKg)} kg em estoque; preço ${utils.money(getFuelPrice(c))}/kg.` : 'Sem carreira ativa.' },
+    { ok: !c || Array.isArray(c.maintenanceLog), label:'Log de manutenção', detail:c ? `${(c.maintenanceLog||[]).length} registros de manutenção.` : 'Sem carreira ativa.' },
     { ok: !!window.L || true, label:'Fallback de mapa', detail: window.L ? 'Leaflet disponível.' : 'Leaflet indisponível; fallback SVG será usado.' },
     { ok: !lastCrash, label:'Última sessão sem crash', detail:lastCrash ? 'Há registro de crash anterior salvo para diagnóstico.' : 'Nenhum crash registrado.' }
   ];
@@ -1697,6 +1831,24 @@ function toggleRoute(id) {
   const p = c.fleet.find(x=>x.id===r.planeId); if (p) p.status = r.status === 'active' ? 'inFlight' : 'idle';
   pushMessage(c, `Rota ${r.origin}-${r.dest} ${r.status==='active'?'reativada':'pausada'}.`, 'info');
   setActiveCareer(c); render();
+}
+
+
+function setRoutePrice(id, strategyKey) {
+  const c = activeCareer(); const r = c.routes.find(x => x.id === id); if (!r) return;
+  const strategy = PRICE_STRATEGIES[strategyKey] || PRICE_STRATEGIES.balanced;
+  r.priceStrategy = strategyKey in PRICE_STRATEGIES ? strategyKey : 'balanced';
+  const plane = c.fleet.find(p => p.id === r.planeId);
+  const model = plane && utils.model(plane.modelId);
+  const origin = utils.byIata(r.origin), dest = utils.byIata(r.dest);
+  if (model && origin && dest) {
+    const e = utils.routeEstimate(origin, dest, model, c, Object.assign({}, r, { planeCondition: plane.condition }));
+    r.lastMargin = Math.round(e.margin || 0);
+    r.lastLoadFactor = Math.round((e.loadFactor || 0) * 100);
+    r.lastFuelKg = Math.round(e.fuelKg || 0);
+  }
+  pushMessage(c, `Preço da rota ${r.origin}-${r.dest} alterado para ${strategy.label}.`, 'info');
+  setActiveCareer(c); showToast(`Estratégia ${strategy.label} aplicada.`, 'ok'); render();
 }
 
 function closeRoute(id) {
@@ -1748,14 +1900,15 @@ function handleAction(target) {
     if (action === 'openHub') return openHub(target.dataset.hub);
     if (action === 'acceptContract') return acceptContract(target.dataset.contract);
     if (action === 'toggleRoute') return toggleRoute(target.dataset.route);
+    if (action === 'routePrice') return setRoutePrice(target.dataset.route, target.dataset.strategy);
     if (action === 'closeRoute') return closeRoute(target.dataset.route);
     if (action === 'buyPlane') return buyPlane(target.dataset.model);
-    if (action === 'maintainPlane') return maintainPlane(target.dataset.plane);
+    if (action === 'maintainPlane') return maintainPlane(target.dataset.plane, target.dataset.level || 'standard');
     if (action === 'renamePlane') return renamePlane(target.dataset.plane);
     if (action === 'sellPlane') return sellPlane(target.dataset.plane);
     if (action === 'hireStaff') return hireStaff(target.dataset.role, target.dataset.salary);
     if (action === 'fireStaff') return fireStaff(target.dataset.role);
-    if (action === 'buyFuel') return buyFuel();
+    if (action === 'buyFuel') return buyFuel(target.dataset.pack || 'small');
     if (action === 'marketingCampaign') return marketingCampaign();
     if (action === 'runAudit') { localStorage.removeItem(CRASH_KEY); showToast('Auditoria executada.', 'ok'); render(); return; }
   });

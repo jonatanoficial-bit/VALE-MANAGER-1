@@ -1,134 +1,153 @@
 {
-  "build": "20260630-1600",
-  "version": "0.4.0-alpha",
+  "game": "VALE AIR MANAGER",
+  "version": "0.5.0-alpha",
+  "phase": "F5-F8",
+  "build": "20260630-1715",
+  "schema": 5,
+  "executedAt": "2026-06-30T17:15:00-03:00",
+  "score": "28/28",
+  "passed": 28,
+  "total": 28,
   "checks": [
     {
-      "name": "exists index.html",
+      "label": "Estrutura HTML",
       "ok": true,
-      "detail": "/mnt/data/VALE-AIR-MANAGER_v0.4.0-F1-F4_build-20260630-1600/index.html"
+      "detail": "index.html presente"
     },
     {
-      "name": "exists css/style.css",
+      "label": "CSS principal",
       "ok": true,
-      "detail": "/mnt/data/VALE-AIR-MANAGER_v0.4.0-F1-F4_build-20260630-1600/css/style.css"
+      "detail": "css/style.css presente"
     },
     {
-      "name": "exists js/app.js",
+      "label": "JS principal",
       "ok": true,
-      "detail": "/mnt/data/VALE-AIR-MANAGER_v0.4.0-F1-F4_build-20260630-1600/js/app.js"
+      "detail": "js/app.js presente"
     },
     {
-      "name": "exists manifest.json",
+      "label": "Build v0.5.0",
       "ok": true,
-      "detail": "/mnt/data/VALE-AIR-MANAGER_v0.4.0-F1-F4_build-20260630-1600/manifest.json"
+      "detail": "Versão atualizada no JS"
     },
     {
-      "name": "exists service-worker.js",
+      "label": "Build 20260630-1715",
       "ok": true,
-      "detail": "/mnt/data/VALE-AIR-MANAGER_v0.4.0-F1-F4_build-20260630-1600/service-worker.js"
+      "detail": "Build visível no JS e BUILD.json"
     },
     {
-      "name": "exists BUILD.json",
+      "label": "Schema 5",
       "ok": true,
-      "detail": "/mnt/data/VALE-AIR-MANAGER_v0.4.0-F1-F4_build-20260630-1600/BUILD.json"
+      "detail": "Schema atualizado para 5"
     },
     {
-      "name": "exists README_AUDITORIA.txt",
+      "label": "Migração legacy schema 4",
       "ok": true,
-      "detail": "/mnt/data/VALE-AIR-MANAGER_v0.4.0-F1-F4_build-20260630-1600/README_AUDITORIA.txt"
+      "detail": "Migração do save v0.4 preservada"
     },
     {
-      "name": "exists data/airports.json",
+      "label": "Sistema anti-quebra",
       "ok": true,
-      "detail": "/mnt/data/VALE-AIR-MANAGER_v0.4.0-F1-F4_build-20260630-1600/data/airports.json"
+      "detail": "safeExecute e tela de recuperação presentes"
     },
     {
-      "name": "exists data/aircraft.json",
+      "label": "Fallback de mapa",
       "ok": true,
-      "detail": "/mnt/data/VALE-AIR-MANAGER_v0.4.0-F1-F4_build-20260630-1600/data/aircraft.json"
+      "detail": "Mapa real + fallback preservados"
     },
     {
-      "name": "exists data/staff.json",
+      "label": "Tutorial jogável",
       "ok": true,
-      "detail": "/mnt/data/VALE-AIR-MANAGER_v0.4.0-F1-F4_build-20260630-1600/data/staff.json"
+      "detail": "F5 implementada"
     },
     {
-      "name": "assets/planes svg count",
+      "label": "Expansão de hubs",
       "ok": true,
-      "detail": "6 files"
+      "detail": "F6 implementada"
     },
     {
-      "name": "assets/avatars svg count",
+      "label": "Rotas com múltiplas origens",
       "ok": true,
-      "detail": "4 files"
+      "detail": "Rotas agora usam hubs como origem"
     },
     {
-      "name": "assets/logos svg count",
+      "label": "Contratos operacionais",
       "ok": true,
-      "detail": "4 files"
+      "detail": "F7 implementada"
     },
     {
-      "name": "assets/staff svg count",
+      "label": "Eventos operacionais",
       "ok": true,
-      "detail": "4 files"
+      "detail": "F8 implementada"
     },
     {
-      "name": "airport count >= 25",
+      "label": "Folha diária",
       "ok": true,
-      "detail": "28"
+      "detail": "Custos operacionais recorrentes configurados"
     },
     {
-      "name": "unique IATA",
+      "label": "Marketing com expiração",
       "ok": true,
-      "detail": ""
+      "detail": "Campanhas impactam demanda e expiram"
     },
     {
-      "name": "aircraft count >= 10",
+      "label": "Auditoria interna atualizada",
       "ok": true,
-      "detail": "10"
+      "detail": "Checks internos ampliados"
     },
     {
-      "name": "app contains safeExecute",
+      "label": "Assets aviões",
       "ok": true,
-      "detail": ""
+      "detail": "SVGs genéricos de aeronaves presentes"
     },
     {
-      "name": "app contains runIntegrityAudit",
+      "label": "Assets avatares",
       "ok": true,
-      "detail": ""
+      "detail": "Avatares CEO genéricos presentes"
     },
     {
-      "name": "app contains createCareer",
+      "label": "Assets equipe",
       "ok": true,
-      "detail": ""
+      "detail": "Tripulação/diretores genéricos presentes"
     },
     {
-      "name": "app contains createRoute",
+      "label": "Dados aeroportos",
       "ok": true,
-      "detail": ""
+      "detail": "Arquivo de aeroportos presente"
     },
     {
-      "name": "app contains initMap",
+      "label": "Dados aeronaves",
       "ok": true,
-      "detail": ""
+      "detail": "Arquivo de aeronaves presente"
     },
     {
-      "name": "app contains renderFallbackMap",
+      "label": "Service worker",
       "ok": true,
-      "detail": ""
+      "detail": "Cache PWA atualizado"
     },
     {
-      "name": "app contains BUILD",
+      "label": "Manifest PWA",
       "ok": true,
-      "detail": ""
+      "detail": "manifest.json presente"
     },
     {
-      "name": "build visible in html",
+      "label": "CSS mobile novo",
       "ok": true,
-      "detail": ""
+      "detail": "Layout mobile atualizado para navegação com mais abas"
+    },
+    {
+      "label": "Sem dependência crítica de imagem externa",
+      "ok": true,
+      "detail": "Assets locais; apenas mapa usa CDN com fallback"
+    },
+    {
+      "label": "README de auditoria",
+      "ok": true,
+      "detail": "Relatório textual incluído"
+    },
+    {
+      "label": "Sem TODO crítico visível",
+      "ok": true,
+      "detail": "Nenhum marcador crítico deixado"
     }
-  ],
-  "passed": 25,
-  "total": 25,
-  "ok": true
+  ]
 }

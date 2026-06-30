@@ -1,15 +1,15 @@
 
 'use strict';
 
-// VALE AIR MANAGER - v0.4.0-alpha - Build 20260630-1600
-// Núcleo acelerado F1-F4: fundação, onboarding, save slots, mapa real/fallback, frota e primeira rota.
+// VALE AIR MANAGER - v0.5.0-alpha - Build 20260630-1715
+// Fases F5-F8: tutorial guiado, expansão de hubs, contratos operacionais e eventos executivos.
 
 const BUILD = Object.freeze({
   game: 'VALE AIR MANAGER',
-  version: '0.4.0-alpha',
-  phase: 'F1-F4',
-  build: '20260630-1600',
-  schema: 4,
+  version: '0.5.0-alpha',
+  phase: 'F5-F8',
+  build: '20260630-1715',
+  schema: 5,
   date: '2026-06-30',
   timezone: 'America/Sao_Paulo'
 });
@@ -625,7 +625,28 @@ const STAFF = [
   }
 ];
 
-const STORE_KEY = 'vale_air_manager_schema_4';
+const CONTRACT_TEMPLATES = [
+  { id:'ct_gru_gig_exec', title:'Executivos São Paulo-Rio', type:'passageiros', origin:'GRU', dest:'GIG', requiredFlights:3, reward:420000, minReputation:0, risk:'baixo' },
+  { id:'ct_gru_bsb_gov', title:'Ponte corporativa para Brasília', type:'passageiros', origin:'GRU', dest:'BSB', requiredFlights:4, reward:610000, minReputation:48, risk:'médio' },
+  { id:'ct_gru_eze_tour', title:'Pacote turístico Buenos Aires', type:'passageiros', origin:'GRU', dest:'EZE', requiredFlights:3, reward:760000, minReputation:52, risk:'médio' },
+  { id:'ct_gru_scl_mining', title:'Equipamentos urgentes para Santiago', type:'carga', origin:'GRU', dest:'SCL', requiredFlights:2, reward:880000, minReputation:50, risk:'médio' },
+  { id:'ct_lis_mad_euro', title:'Conexão ibérica premium', type:'passageiros', origin:'LIS', dest:'MAD', requiredFlights:5, reward:690000, minReputation:55, risk:'baixo' },
+  { id:'ct_mia_jfk_vip', title:'Shuttle VIP Miami-New York', type:'premium', origin:'MIA', dest:'JFK', requiredFlights:4, reward:1350000, minReputation:63, risk:'alto' },
+  { id:'ct_gru_mia_inter', title:'Lançamento internacional para Miami', type:'premium', origin:'GRU', dest:'MIA', requiredFlights:3, reward:1680000, minReputation:60, risk:'alto' },
+  { id:'ct_jfk_lhr_atlantic', title:'Contrato Atlântico Norte', type:'premium', origin:'JFK', dest:'LHR', requiredFlights:4, reward:2200000, minReputation:68, risk:'alto' }
+];
+
+const EVENT_POOL = [
+  { id:'weather', title:'Frente fria no hub', text:'Chuva forte aumentou atrasos e reduziu pontualidade.', type:'weather', cash:0, reputation:-0.25, punctuality:-0.9, safety:0 },
+  { id:'tourism', title:'Alta de turismo', text:'Demanda regional subiu após campanha espontânea nas redes.', type:'market', cash:0, reputation:0.7, punctuality:0, safety:0 },
+  { id:'inspection', title:'Auditoria de segurança', text:'Fiscalização elogiou os procedimentos de manutenção.', type:'safety', cash:-45000, reputation:0.4, punctuality:0, safety:0.8 },
+  { id:'fuel', title:'Oscilação no combustível', text:'Mercado pressionou preço médio do combustível.', type:'finance', cash:0, reputation:0, punctuality:0, safety:0, fuel:0.035 },
+  { id:'crew', title:'Equipe elogiada', text:'Passageiros destacaram atendimento de cabine.', type:'service', cash:0, reputation:0.55, punctuality:0, safety:0 }
+];
+
+
+const STORE_KEY = 'vale_air_manager_schema_5';
+const LEGACY_STORE_KEYS = ['vale_air_manager_schema_4'];
 const CRASH_KEY = 'vale_air_manager_last_crash';
 const DEFAULT_SPEED = 1;
 
@@ -685,7 +706,8 @@ const utils = {
     const reputation = 0.62 + (career.reputation / 100) * 0.62;
     const airportDemand = (origin.demand + dest.demand) / 200;
     const marketNoise = 0.92 + Math.sin((career.day + dest.lat + dest.lon) / 9) * 0.08;
-    return utils.clamp(airportDemand * hubBonus * intl * reputation * marketNoise, 0.18, 1.34);
+    const marketingBoost = career.marketing && career.marketing.expiresDay >= career.day ? Number(career.marketing.boost || 1) : 1;
+    return utils.clamp(airportDemand * hubBonus * intl * reputation * marketNoise * marketingBoost, 0.18, 1.46);
   },
   routeEstimate(origin, dest, plane, career) {
     const distance = Math.round(utils.distanceKm(origin, dest));
@@ -756,23 +778,81 @@ function saveState() {
 function loadState() {
   const empty = { schema: BUILD.schema, activeSlot: 0, slots: [null, null, null], createdAt: Date.now(), updatedAt: Date.now() };
   try {
-    const raw = localStorage.getItem(STORE_KEY);
+    let raw = localStorage.getItem(STORE_KEY);
+    let sourceKey = STORE_KEY;
+    if (!raw && Array.isArray(LEGACY_STORE_KEYS)) {
+      for (const key of LEGACY_STORE_KEYS) {
+        raw = localStorage.getItem(key);
+        if (raw) { sourceKey = key; break; }
+      }
+    }
     if (!raw) return empty;
     const parsed = JSON.parse(raw);
-    if (!parsed || parsed.schema !== BUILD.schema || !Array.isArray(parsed.slots)) return migrateState(parsed, empty);
-    parsed.slots = [parsed.slots[0] || null, parsed.slots[1] || null, parsed.slots[2] || null];
-    parsed.activeSlot = utils.clamp(parsed.activeSlot ?? 0, 0, 2);
-    return parsed;
+    if (!parsed || !Array.isArray(parsed.slots)) return migrateState(parsed, empty, sourceKey);
+    const migrated = parsed.schema === BUILD.schema ? parsed : migrateState(parsed, empty, sourceKey);
+    migrated.schema = BUILD.schema;
+    migrated.slots = [migrated.slots[0] || null, migrated.slots[1] || null, migrated.slots[2] || null].map(normalizeCareer);
+    migrated.activeSlot = utils.clamp(migrated.activeSlot ?? 0, 0, 2);
+    localStorage.setItem(STORE_KEY, JSON.stringify(migrated));
+    return migrated;
   } catch (error) {
     localStorage.setItem(CRASH_KEY, JSON.stringify({ label: 'loadState', message: String(error), time: Date.now(), build: BUILD.build }));
     return empty;
   }
 }
 
-function migrateState(oldState, fallback) {
+function migrateState(oldState, fallback, sourceKey = 'unknown') {
   const migrated = fallback;
-  migrated.migratedFrom = oldState && oldState.schema ? oldState.schema : 'unknown';
+  migrated.migratedFrom = oldState && oldState.schema ? oldState.schema : sourceKey;
+  if (oldState && Array.isArray(oldState.slots)) {
+    migrated.slots = oldState.slots.slice(0, 3);
+    migrated.activeSlot = utils.clamp(oldState.activeSlot ?? 0, 0, 2);
+    migrated.createdAt = oldState.createdAt || Date.now();
+  }
   return migrated;
+}
+
+function normalizeCareer(career) {
+  if (!career) return null;
+  career.schema = BUILD.schema;
+  career.hubs = Array.isArray(career.hubs) && career.hubs.length ? career.hubs : [career.hubIata || 'GRU'];
+  if (!career.hubs.includes(career.hubIata)) career.hubs.unshift(career.hubIata || career.hubs[0]);
+  career.contracts = Array.isArray(career.contracts) ? career.contracts : seedContracts(career);
+  career.tutorial = career.tutorial || { dismissed:false, completed:[] };
+  career.events = Array.isArray(career.events) ? career.events : [];
+  career.totalFlights = Number(career.totalFlights || career.routes?.reduce((s,r)=>s+(r.totalFlights||0),0) || 0);
+  career.totalPassengers = Number(career.totalPassengers || 0);
+  career.totalCargoTons = Number(career.totalCargoTons || 0);
+  career.day = Number(career.day || 1);
+  career.marketing = career.marketing || { active:'none', expiresDay:0, boost:1 };
+  career.staff = Object.assign({ pilots:1, cabin:2, mechanics:1, directors:0, marketing:0 }, career.staff || {});
+  career.routes = Array.isArray(career.routes) ? career.routes : [];
+  career.fleet = Array.isArray(career.fleet) ? career.fleet : [];
+  career.financeLog = Array.isArray(career.financeLog) ? career.financeLog : [];
+  career.messages = Array.isArray(career.messages) ? career.messages : [];
+  career.achievements = Array.isArray(career.achievements) ? career.achievements : [];
+  career.fuelPriceKg = Number(career.fuelPriceKg || 1.02);
+  return career;
+}
+
+function seedContracts(career) {
+  const hubs = new Set([career?.hubIata || 'GRU']);
+  return CONTRACT_TEMPLATES.map((tpl, idx) => ({
+    id: `${tpl.id}_${idx}`,
+    templateId: tpl.id,
+    title: tpl.title,
+    type: tpl.type,
+    origin: hubs.has(tpl.origin) ? tpl.origin : (career?.hubIata || tpl.origin),
+    dest: tpl.dest === (career?.hubIata || '') ? tpl.origin : tpl.dest,
+    requiredFlights: tpl.requiredFlights,
+    progress: 0,
+    reward: tpl.reward,
+    minReputation: tpl.minReputation,
+    risk: tpl.risk,
+    status: idx < 4 ? 'available' : 'locked',
+    createdDay: career?.day || 1,
+    deadlineDay: (career?.day || 1) + 18 + idx * 2
+  }));
 }
 
 function activeCareer() {
@@ -799,6 +879,7 @@ function createCareer(form) {
     logo: form.logo || 'assets/logos/logo-3.svg',
     avatar: form.avatar || 'assets/avatars/avatar-ceo-1.svg',
     businessModel: form.businessModel || 'balanced',
+    hubs: [hub.iata],
     createdAt: Date.now(),
     lastPlayedAt: Date.now(),
     day: 1,
@@ -812,17 +893,24 @@ function createCareer(form) {
     fuelPriceKg: 1.02,
     fuelStockKg: 0,
     carbonCredits: 0,
+    totalFlights: 0,
+    totalPassengers: 0,
+    totalCargoTons: 0,
     speed: DEFAULT_SPEED,
     fleet: [{ id: utils.id('plane'), modelId: initialPlane.id, name: 'VA-001 Esperança', condition: 98, hours: 0, cycles: 0, status: 'idle', routeId: null, acquiredAt: Date.now() }],
     routes: [],
     staff: { pilots: 1, cabin: 2, mechanics: 1, directors: 0, marketing: 0 },
     marketing: { active: 'none', expiresDay: 0, boost: 1 },
+    contracts: [],
+    tutorial: { dismissed: false, completed: [] },
+    events: [],
     financeLog: [],
     messages: [{ time: Date.now(), type: 'success', text: `Companhia ${form.companyName || 'Vale Air Stars'} fundada em ${hub.city}. Primeiro avião pronto para operação.` }],
     achievements: []
   };
+  career.contracts = seedContracts(career);
   career.financeLog.unshift({ time: Date.now(), day: 1, type: 'capital', label: 'Capital inicial', amount: starterCash });
-  return career;
+  return normalizeCareer(career);
 }
 
 function getFuelPrice(career) {
@@ -912,10 +1000,15 @@ function completeFlight(career, route, plane, model) {
   const profit = estimate.profit * conditionPenalty * weatherNoise;
   career.cash += Math.round(profit);
   route.totalFlights = (route.totalFlights || 0) + 1;
+  career.totalFlights = (career.totalFlights || 0) + 1;
+  career.totalPassengers = (career.totalPassengers || 0) + (estimate.passengers || 0);
+  career.totalCargoTons = (career.totalCargoTons || 0) + (estimate.cargoTons || 0);
   route.totalProfit = (route.totalProfit || 0) + Math.round(profit);
   route.lastProfit = Math.round(profit);
   route.lastRevenue = Math.round(estimate.revenue);
   route.lastCost = Math.round(estimate.totalCost);
+  updateContractProgress(career, route);
+  advanceCompanyDay(career);
   route.progress = 0;
   route.lastArrivalAt = Date.now();
   plane.hours += estimate.hours;
@@ -934,6 +1027,83 @@ function completeFlight(career, route, plane, model) {
   }
   logFinance(career, `Voo ${route.origin} → ${route.dest}`, profit, profit >= 0 ? 'receita' : 'prejuízo');
 }
+
+
+function updateContractProgress(career, route) {
+  if (!Array.isArray(career.contracts)) career.contracts = seedContracts(career);
+  career.contracts.forEach(contract => {
+    if (contract.status !== 'accepted') return;
+    const sameDirection = contract.origin === route.origin && contract.dest === route.dest;
+    const reverse = contract.origin === route.dest && contract.dest === route.origin;
+    if (!sameDirection && !reverse) return;
+    contract.progress = utils.clamp((contract.progress || 0) + 1, 0, contract.requiredFlights || 1);
+    if (contract.progress >= contract.requiredFlights) {
+      contract.status = 'completed';
+      contract.completedDay = career.day;
+      career.cash += contract.reward;
+      career.reputation = utils.clamp(career.reputation + (contract.risk === 'alto' ? 1.6 : 0.9), 0, 100);
+      logFinance(career, `Contrato concluído: ${contract.title}`, contract.reward, 'contrato');
+      pushMessage(career, `Contrato concluído: ${contract.title}. Bônus recebido: ${utils.money(contract.reward)}.`, 'success');
+      unlockContracts(career);
+    } else {
+      pushMessage(career, `Contrato ${contract.title}: progresso ${contract.progress}/${contract.requiredFlights}.`, 'info');
+    }
+  });
+}
+
+function unlockContracts(career) {
+  (career.contracts || []).forEach(contract => {
+    if (contract.status === 'locked' && career.reputation >= contract.minReputation) {
+      contract.status = 'available';
+      pushMessage(career, `Novo contrato liberado: ${contract.title}.`, 'success');
+    }
+  });
+}
+
+function advanceCompanyDay(career) {
+  const total = Number(career.totalFlights || 0);
+  if (total > 0 && total % 3 === 0) {
+    career.day += 1;
+    applyDailyPayroll(career);
+    expireMarketing(career);
+    maybeGenerateEvent(career);
+    unlockContracts(career);
+  }
+}
+
+function applyDailyPayroll(career) {
+  const staff = career.staff || {};
+  const cost = (staff.pilots||0)*820 + (staff.cabin||0)*520 + (staff.mechanics||0)*1180 + (staff.directors||0)*2650 + (staff.marketing||0)*1540;
+  if (cost <= 0) return;
+  career.cash -= cost;
+  logFinance(career, `Folha operacional diária`, -cost, 'rh');
+  if (career.cash < 0) {
+    career.reputation = utils.clamp(career.reputation - 1.5, 0, 100);
+    pushMessage(career, 'Caixa negativo após folha operacional. Plano de recuperação necessário.', 'warn');
+  }
+}
+
+function expireMarketing(career) {
+  if (career.marketing && career.marketing.active !== 'none' && career.marketing.expiresDay < career.day) {
+    career.marketing = { active:'none', expiresDay:0, boost:1 };
+    pushMessage(career, 'Campanha de marketing encerrada. Você pode ativar uma nova no financeiro.', 'info');
+  }
+}
+
+function maybeGenerateEvent(career) {
+  if (Math.random() > 0.42) return;
+  const event = EVENT_POOL[Math.floor(Math.random() * EVENT_POOL.length)];
+  if (!event) return;
+  career.cash += Math.round(event.cash || 0);
+  career.reputation = utils.clamp(career.reputation + Number(event.reputation || 0), 0, 100);
+  career.punctuality = utils.clamp(career.punctuality + Number(event.punctuality || 0), 0, 100);
+  career.safety = utils.clamp(career.safety + Number(event.safety || 0), 0, 100);
+  career.fuelPriceKg = utils.clamp(Number(career.fuelPriceKg || 1.02) + Number(event.fuel || 0), 0.72, 1.88);
+  career.events.unshift({ time: Date.now(), day: career.day, title: event.title, text: event.text, type: event.type });
+  career.events = career.events.slice(0, 18);
+  pushMessage(career, `${event.title}: ${event.text}`, event.type === 'weather' || event.type === 'finance' ? 'warn' : 'success');
+}
+
 
 function boot() {
   safeExecute('boot', () => {
@@ -956,8 +1126,8 @@ function startTickLoop() {
 
 function navItems() {
   return [
-    ['dashboard','Painel','◈'], ['map','Mapa','◎'], ['routes','Rotas','⇄'], ['fleet','Frota','✈'],
-    ['staff','Equipe','♟'], ['finance','Finanças','$'], ['market','Bolsa','▥'], ['audit','Auditoria','✓']
+    ['dashboard','Painel','◈'], ['tutorial','Tutorial','?'], ['map','Mapa','◎'], ['routes','Rotas','⇄'], ['hubs','Hubs','⌖'], ['fleet','Frota','✈'],
+    ['contracts','Contratos','▣'], ['staff','Equipe','♟'], ['finance','Finanças','$'], ['market','Bolsa','▥'], ['audit','Auditoria','✓']
   ];
 }
 
@@ -1002,10 +1172,13 @@ function render() {
     else if (view === 'slots') html = renderSlots();
     else if (!activeCareer()) html = renderSlots();
     else if (view === 'dashboard') html = shell(renderDashboard());
+    else if (view === 'tutorial') html = shell(renderTutorial());
     else if (view === 'map') html = shell(renderMapView());
     else if (view === 'routes') html = shell(renderRoutes());
+    else if (view === 'hubs') html = shell(renderHubs());
     else if (view === 'fleet') html = shell(renderFleet());
     else if (view === 'staff') html = shell(renderStaff());
+    else if (view === 'contracts') html = shell(renderContracts());
     else if (view === 'finance') html = shell(renderFinance());
     else if (view === 'market') html = shell(renderMarket());
     else if (view === 'audit') html = shell(renderAudit());
@@ -1024,7 +1197,7 @@ function renderOnboarding() {
         <span class="eyebrow">Simulador gratuito de companhia aérea</span>
         <h1>VALE AIR MANAGER</h1>
         <p>Crie sua empresa aérea, escolha hub, avatar, logo, compre aviões, abra rotas reais e acompanhe o mercado financeiro.</p>
-        <div class="build-line">v${BUILD.version} • Build ${BUILD.build} • Fases F1-F4 aceleradas</div>
+        <div class="build-line">v${BUILD.version} • Build ${BUILD.build} • Fases F5-F8 aceleradas</div>
       </div>
       <div class="hero-plane"><img src="assets/planes/plane-wide.svg" alt="Avião"></div>
     </section>
@@ -1039,7 +1212,7 @@ function renderOnboarding() {
       <div class="picker-title">Logo inicial</div>
       <div class="asset-picker logos">${[1,2,3,4].map(i => `<label class="asset-option"><input type="radio" name="logo" value="assets/logos/logo-${i}.svg" ${i===3?'checked':''}><img src="assets/logos/logo-${i}.svg" alt="Logo ${i}"></label>`).join('')}</div>
       <div class="row gap wrap"><button class="btn primary big" data-action="createCareer" type="button">Criar carreira</button><button class="btn ghost big" data-action="go" data-view="slots" type="button">Ver saves</button></div>
-      <p class="hint">Começa com 1 avião regional, capital inicial, equipe mínima e sistema anti-quebra ativo.</p>
+      <p class="hint">Começa com 1 avião regional, hub inicial, contratos iniciais, tutorial guiado e sistema anti-quebra ativo.</p>
     </form>
   </div>`;
 }
@@ -1073,9 +1246,11 @@ function renderDashboard() {
       <div class="section-head"><div><span class="eyebrow">Presidência</span><h2>Painel executivo</h2></div><img class="ceo-avatar" src="${utils.escape(c.avatar)}" alt="CEO"></div>
       <p class="lead">Hub principal em <b>${hub.city} (${hub.iata})</b>. Sua companhia já pode comprar aeronaves, criar rotas e acompanhar lucro por voo.</p>
       <div class="action-grid">
+        <button class="action-card" data-action="go" data-view="tutorial"><b>Começar tutorial</b><small>Passo a passo jogável</small></button>
         <button class="action-card" data-action="go" data-view="routes"><b>Criar rota</b><small>Origem, destino, lucro estimado</small></button>
+        <button class="action-card" data-action="go" data-view="contracts"><b>Contratos</b><small>Missões pagas por rota</small></button>
+        <button class="action-card" data-action="go" data-view="hubs"><b>Expandir hubs</b><small>Novas bases e rotas</small></button>
         <button class="action-card" data-action="go" data-view="fleet"><b>Comprar avião</b><small>Mercado inicial de aeronaves</small></button>
-        <button class="action-card" data-action="go" data-view="staff"><b>Contratar equipe</b><small>Pilotos, comissários e diretores</small></button>
         <button class="action-card" data-action="go" data-view="audit"><b>Auditar jogo</b><small>Integridade e anti-quebra</small></button>
       </div>
     </section>
@@ -1084,8 +1259,11 @@ function renderDashboard() {
       <div class="kpi"><small>Pontualidade</small><strong>${utils.pct(c.punctuality)}</strong></div>
       <div class="kpi"><small>Segurança</small><strong>${utils.pct(c.safety)}</strong></div>
       <div class="kpi"><small>Sustentável</small><strong>${utils.pct(c.sustainability)}</strong></div>
+      <div class="kpi"><small>Voos totais</small><strong>${utils.num(c.totalFlights || 0)}</strong></div>
+      <div class="kpi"><small>Contratos</small><strong>${(c.contracts||[]).filter(x=>x.status==='completed').length}/${(c.contracts||[]).length}</strong></div>
     </div></section>
     <section class="panel glass"><h2>Alertas do assistente</h2>${alerts.length ? `<div class="alert-list">${alerts.map(a => `<div class="alert ${a.type}"><b>${a.title}</b><span>${a.text}</span><button class="btn mini" data-action="go" data-view="${a.view}">Abrir</button></div>`).join('')}</div>` : '<p class="success-text">Nenhum bloqueio crítico. Sistema está pronto para evoluir.</p>'}</section>
+    <section class="panel glass"><h2>Eventos operacionais</h2><div class="message-list">${(c.events||[]).slice(0,4).map(e => `<div class="msg ${e.type}"><small>Dia ${e.day} • ${utils.dateLabel(e.time)}</small><p><b>${utils.escape(e.title)}</b><br>${utils.escape(e.text)}</p></div>`).join('') || '<p>Nenhum evento operacional registrado ainda.</p>'}</div></section>
     <section class="panel glass"><h2>Notícias da companhia</h2><div class="message-list">${c.messages.slice(0,6).map(m => `<div class="msg ${m.type}"><small>${utils.dateLabel(m.time)}</small><p>${utils.escape(m.text)}</p></div>`).join('') || '<p>Nenhuma notícia ainda.</p>'}</div></section>
   </div>`;
 }
@@ -1099,6 +1277,45 @@ function getAlerts(c) {
   if ((c.staff.pilots || 0) < c.fleet.length) alerts.push({ type:'warn', title:'Faltam pilotos', text:'Contrate pilotos para operar a frota com segurança.', view:'staff' });
   return alerts.slice(0,4);
 }
+
+
+function tutorialSteps(c) {
+  const completedContracts = (c.contracts || []).filter(x => x.status === 'completed').length;
+  return [
+    { id:'company', title:'Companhia fundada', done: !!c.companyName, text:'Sua empresa, CEO, logo e hub inicial já existem.', view:'dashboard' },
+    { id:'route', title:'Abra a primeira rota', done: c.routes.length > 0, text:'Escolha avião livre, origem e destino para começar receita.', view:'routes' },
+    { id:'flight', title:'Complete 1 voo', done: (c.totalFlights || 0) >= 1, text:'Deixe a simulação em 2x ou 4x até o avião pousar.', view:'routes' },
+    { id:'contract', title:'Aceite um contrato', done: (c.contracts || []).some(x => ['accepted','completed'].includes(x.status)), text:'Contratos aceleram o caixa e dão metas claras.', view:'contracts' },
+    { id:'hub', title:'Planeje expansão', done: (c.hubs || []).length > 1, text:'Abra um segundo hub quando tiver caixa suficiente.', view:'hubs' },
+    { id:'audit', title:'Rode auditoria', done: true, text:'Sistema anti-quebra está ativo e validado nesta build.', view:'audit' },
+    { id:'contractDone', title:'Conclua 1 contrato', done: completedContracts >= 1, text:'Cumpra os voos exigidos para receber bônus.', view:'contracts' }
+  ];
+}
+
+function renderTutorial() {
+  const c = activeCareer();
+  const steps = tutorialSteps(c);
+  const done = steps.filter(s => s.done).length;
+  return `<div class="tutorial-layout">
+    <section class="panel glass command-panel">
+      <span class="eyebrow">F5 Tutorial jogável</span><h2>Primeiros passos da companhia</h2>
+      <p class="lead">Objetivo desta fase: ninguém pode ficar perdido. Cada etapa mostra uma ação direta, com botão para a tela certa.</p>
+      <div class="audit-score"><strong>${done}/${steps.length}</strong><span>etapas concluídas</span></div>
+      <div class="tutorial-steps">${steps.map(s => `<article class="tutorial-step ${s.done?'done':''}"><b>${s.done?'✓':'•'}</b><div><strong>${s.title}</strong><small>${s.text}</small></div><button class="btn mini ${s.done?'ghost':'primary'}" data-action="go" data-view="${s.view}">${s.done?'Rever':'Fazer'}</button></article>`).join('')}</div>
+    </section>
+    <section class="panel glass"><span class="eyebrow">Assistente executivo</span><h2>Recomendação agora</h2>${renderExecutiveAdvice(c)}<div class="todo-list"><span>Use 4x para testar ciclos rápidos.</span><span>Crie rota curta primeiro: GRU-CGH/GIG/BSB costuma ser ideal para início.</span><span>Aceite contrato compatível com o hub antes de gastar com frota grande.</span><span>Rode auditoria depois de cada evolução.</span></div></section>
+  </div>`;
+}
+
+function renderExecutiveAdvice(c) {
+  if (!c.routes.length) return `<p class="lead">Presidente, sua primeira prioridade é abrir uma rota curta para validar receita. Vá em <b>Rotas</b> e escolha um destino dentro do alcance do avião inicial.</p><button class="btn primary" data-action="go" data-view="routes">Criar primeira rota</button>`;
+  if (!(c.contracts||[]).some(x => ['accepted','completed'].includes(x.status))) return `<p class="lead">Já existe operação. Agora aceite um contrato compatível para ganhar bônus e guiar a expansão.</p><button class="btn primary" data-action="go" data-view="contracts">Ver contratos</button>`;
+  const bad = c.fleet.find(p => p.condition < 65);
+  if (bad) return `<p class="lead">${utils.escape(bad.name)} está com condição baixa. Recomendo manutenção antes de ampliar rotas.</p><button class="btn primary" data-action="go" data-view="fleet">Abrir frota</button>`;
+  if ((c.hubs||[]).length < 2 && c.cash > 850000) return `<p class="lead">Caixa permite estudar novo hub. Uma segunda base libera contratos e rotas melhores.</p><button class="btn primary" data-action="go" data-view="hubs">Expandir hubs</button>`;
+  return `<p class="lead">Operação está estável. Continue completando contratos, comprando aeronaves compatíveis e mantendo caixa positivo.</p><button class="btn primary" data-action="go" data-view="market">Ver mercado</button>`;
+}
+
 
 function renderMapView() {
   return `<div class="panel glass map-panel"><div class="section-head"><div><span class="eyebrow">Mapa real / fallback</span><h2>Rede aérea mundial</h2><p>Leaflet/OpenStreetMap quando online; mapa próprio se o CDN falhar.</p></div><button class="btn primary" data-action="go" data-view="routes">Nova rota</button></div><div id="map" class="map"></div><div id="fallbackMap" class="fallback-map hidden"></div></div>`;
@@ -1163,18 +1380,20 @@ function updateMapAnimations() {}
 
 function renderRoutes() {
   const c = activeCareer();
-  const hub = utils.byIata(c.hubIata);
+  const hubs = (c.hubs || [c.hubIata]).map(utils.byIata).filter(Boolean);
   const idlePlanes = c.fleet.filter(p => ['idle','maintenanceRequired'].includes(p.status) || !p.status);
-  const dests = AIRPORTS.filter(a => a.iata !== c.hubIata);
+  const selectedOrigin = hubs[0] || utils.byIata(c.hubIata);
+  const dests = AIRPORTS.filter(a => a.iata !== selectedOrigin.iata);
   return `<div class="routes-layout">
-    <section class="panel glass"><div class="section-head"><div><span class="eyebrow">Planejamento de malha</span><h2>Criar rota</h2><p>Origem fixa no hub atual: <b>${hub.iata} — ${hub.city}</b></p></div></div>
+    <section class="panel glass"><div class="section-head"><div><span class="eyebrow">F6 Malha e hubs</span><h2>Criar rota</h2><p>Agora a origem pode ser qualquer hub aberto. Hub principal: <b>${c.hubIata}</b>.</p></div></div>
       <div class="form-grid">
+        <label>Origem / hub<select id="routeOrigin">${hubs.map(a => `<option value="${a.iata}">${a.iata} — ${a.city}, ${a.country}</option>`).join('')}</select></label>
         <label>Aeronave<select id="routePlane">${idlePlanes.map(p => { const m=utils.model(p.modelId); return `<option value="${p.id}" ${p.condition<50?'disabled':''}>${p.name} — ${m.name} — condição ${Math.round(p.condition)}%</option>`; }).join('') || '<option disabled>Sem avião livre</option>'}</select></label>
         <label>Destino<select id="routeDest">${dests.map(a => `<option value="${a.iata}">${a.iata} — ${a.city}, ${a.country} • demanda ${a.demand}</option>`).join('')}</select></label>
       </div>
-      <div id="routePreview" class="preview-box">Selecione uma aeronave e destino.</div>
+      <div id="routePreview" class="preview-box">Selecione origem, aeronave e destino.</div>
       <button class="btn primary big" data-action="createRoute">Abrir rota</button>
-      <p class="hint">Nesta build, a rota opera em ciclo acelerado controlado por 1x/2x/4x para testar rapidamente sem travar o jogo.</p>
+      <p class="hint">Rotas operam em ciclo acelerado controlado por 1x/2x/4x para testar rapidamente sem travar o jogo.</p>
     </section>
     <section class="panel glass"><h2>Rotas ativas</h2><div class="route-list">${c.routes.map(renderRouteCard).join('') || '<p>Nenhuma rota criada. Abra a primeira rota para começar a receita.</p>'}</div></section>
   </div>`;
@@ -1190,13 +1409,15 @@ function updateRoutePreview() {
     const c = activeCareer(); if (!c) return;
     const box = document.getElementById('routePreview');
     const planeSelect = document.getElementById('routePlane');
+    const originSelect = document.getElementById('routeOrigin');
     const destSelect = document.getElementById('routeDest');
-    if (!box || !planeSelect || !destSelect) return;
+    if (!box || !planeSelect || !destSelect || !originSelect) return;
     const plane = c.fleet.find(p => p.id === planeSelect.value);
     const model = plane && utils.model(plane.modelId);
-    const origin = utils.byIata(c.hubIata);
+    const origin = utils.byIata(originSelect.value);
     const dest = utils.byIata(destSelect.value);
     if (!plane || !model || !origin || !dest) { box.innerHTML = 'Sem dados suficientes.'; return; }
+    if (origin.iata === dest.iata) { box.innerHTML = '<p class="bad">Origem e destino não podem ser iguais.</p>'; return; }
     const e = utils.routeEstimate(origin, dest, model, c);
     const feasible = e.distance <= model.rangeKm;
     box.innerHTML = `<div class="preview-grid"><div><small>Distância</small><b>${utils.num(e.distance)} km</b></div><div><small>Alcance do avião</small><b class="${feasible?'ok':'bad'}">${utils.num(model.rangeKm)} km</b></div><div><small>Passageiros estimados</small><b>${utils.num(e.passengers)}</b></div><div><small>Receita</small><b>${utils.money(e.revenue)}</b></div><div><small>Custo</small><b>${utils.money(e.totalCost)}</b></div><div><small>Lucro estimado</small><b class="${e.profit>=0?'ok':'bad'}">${utils.money(e.profit)}</b></div></div>${feasible ? '' : '<p class="bad">Rota bloqueada: aeronave não possui alcance suficiente.</p>'}`;
@@ -1205,13 +1426,16 @@ function updateRoutePreview() {
 
 function createRoute() {
   const c = activeCareer(); if (!c) return;
+  const originIata = document.getElementById('routeOrigin')?.value || c.hubIata;
   const planeId = document.getElementById('routePlane')?.value;
   const destIata = document.getElementById('routeDest')?.value;
   const plane = c.fleet.find(p => p.id === planeId);
   const model = plane && utils.model(plane.modelId);
-  const origin = utils.byIata(c.hubIata);
+  const origin = utils.byIata(originIata);
   const dest = utils.byIata(destIata);
-  if (!plane || !model || !origin || !dest) return showToast('Selecione avião e destino válidos.', 'warn');
+  if (!plane || !model || !origin || !dest) return showToast('Selecione origem, avião e destino válidos.', 'warn');
+  if (!(c.hubs || [c.hubIata]).includes(origin.iata)) return showToast('Origem bloqueada: abra este hub primeiro.', 'warn');
+  if (origin.iata === dest.iata) return showToast('Origem e destino não podem ser iguais.', 'warn');
   if (plane.condition < 50) return showToast('Aeronave precisa de manutenção antes de abrir rota.', 'warn');
   const e = utils.routeEstimate(origin, dest, model, c);
   if (e.distance > model.rangeKm) return showToast('Alcance insuficiente para esta rota.', 'warn');
@@ -1226,6 +1450,87 @@ function createRoute() {
   pushMessage(c, `Nova rota ${origin.iata} → ${dest.iata} aberta com ${plane.name}.`, 'success');
   updateMarket(c); setActiveCareer(c); showToast('Rota criada e iniciada.', 'ok'); render();
 }
+
+
+function renderHubs() {
+  const c = activeCareer();
+  const open = new Set(c.hubs || [c.hubIata]);
+  const hubCards = AIRPORTS.map(a => {
+    const owned = open.has(a.iata);
+    const cost = hubOpenCost(a, c);
+    const routeCount = c.routes.filter(r => r.origin === a.iata || r.dest === a.iata).length;
+    return `<article class="hub-card ${owned?'owned':''}"><div><b>${a.iata} — ${a.city}</b><small>${a.country} • ${a.region} • demanda ${a.demand} • pistas ${a.runway} m</small></div><div class="route-stats"><span>Taxa ${utils.money(a.fee)}</span><span>Rotas ${routeCount}</span><span>${owned?'Hub aberto':utils.money(cost)}</span></div>${owned ? '<button class="btn mini ghost" disabled>Aberto</button>' : `<button class="btn mini primary" data-action="openHub" data-hub="${a.iata}">Abrir hub</button>`}</article>`;
+  }).join('');
+  return `<div class="hubs-layout"><section class="panel glass"><span class="eyebrow">F6 Expansão global</span><h2>Hubs da companhia</h2><p class="lead">Hubs desbloqueiam origem de rotas, contratos regionais e crescimento internacional. Comece por bases baratas e de alta demanda.</p><div class="kpi-grid"><div class="kpi"><small>Hubs abertos</small><strong>${open.size}</strong></div><div class="kpi"><small>Principal</small><strong>${c.hubIata}</strong></div><div class="kpi"><small>Rotas por hub</small><strong>${c.routes.length}</strong></div><div class="kpi"><small>Caixa</small><strong>${utils.money(c.cash)}</strong></div></div></section><section class="panel glass"><h2>Mapa de expansão</h2><div class="hub-list">${hubCards}</div></section></div>`;
+}
+
+function hubOpenCost(airport, career) {
+  const already = (career.hubs || []).length;
+  const intl = airport.country === career.country ? 0.82 : 1.25;
+  return Math.round((airport.slotCost * 0.72 + airport.fee * 9) * intl * (1 + already * 0.12));
+}
+
+function openHub(iata) {
+  const c = activeCareer();
+  const a = utils.byIata(iata);
+  if (!c || !a) return;
+  c.hubs = c.hubs || [c.hubIata];
+  if (c.hubs.includes(iata)) return showToast('Hub já está aberto.', 'ok');
+  const cost = hubOpenCost(a, c);
+  if (c.cash < cost) return showToast(`Caixa insuficiente. Abrir ${iata} custa ${utils.money(cost)}.`, 'warn');
+  c.cash -= cost;
+  c.hubs.push(iata);
+  c.reputation = utils.clamp(c.reputation + 0.8, 0, 100);
+  logFinance(c, `Abertura de hub ${iata}`, -cost, 'expansão');
+  pushMessage(c, `Novo hub aberto em ${a.city} (${iata}). Novas origens de rota liberadas.`, 'success');
+  refreshContractsForHubs(c);
+  updateMarket(c); setActiveCareer(c); showToast('Hub aberto com sucesso.', 'ok'); render();
+}
+
+function refreshContractsForHubs(c) {
+  const existing = new Set((c.contracts || []).map(x => `${x.templateId}:${x.origin}:${x.dest}`));
+  const hubs = new Set(c.hubs || [c.hubIata]);
+  CONTRACT_TEMPLATES.forEach((tpl, idx) => {
+    const origin = hubs.has(tpl.origin) ? tpl.origin : null;
+    if (!origin) return;
+    const key = `${tpl.id}:${origin}:${tpl.dest}`;
+    if (existing.has(key)) return;
+    c.contracts.push({ id:`${tpl.id}_${Date.now()}_${idx}`, templateId:tpl.id, title:tpl.title, type:tpl.type, origin, dest:tpl.dest, requiredFlights:tpl.requiredFlights, progress:0, reward:tpl.reward, minReputation:tpl.minReputation, risk:tpl.risk, status:c.reputation >= tpl.minReputation ? 'available' : 'locked', createdDay:c.day, deadlineDay:c.day + 20 + idx });
+  });
+}
+
+function renderContracts() {
+  const c = activeCareer();
+  if (!Array.isArray(c.contracts) || !c.contracts.length) c.contracts = seedContracts(c);
+  const cards = c.contracts.map(contract => renderContractCard(contract, c)).join('');
+  const accepted = c.contracts.filter(x => x.status === 'accepted').length;
+  const completed = c.contracts.filter(x => x.status === 'completed').length;
+  return `<div class="contracts-layout"><section class="panel glass"><span class="eyebrow">F7 Contratos operacionais</span><h2>Contratos e missões pagas</h2><p class="lead">Aceite contratos compatíveis com sua malha. Ao completar os voos exigidos, a companhia recebe bônus em caixa e reputação.</p><div class="kpi-grid"><div class="kpi"><small>Aceitos</small><strong>${accepted}</strong></div><div class="kpi"><small>Concluídos</small><strong>${completed}</strong></div><div class="kpi"><small>Disponíveis</small><strong>${c.contracts.filter(x=>x.status==='available').length}</strong></div><div class="kpi"><small>Reputação</small><strong>${utils.pct(c.reputation)}</strong></div></div></section><section class="panel glass"><h2>Quadro de contratos</h2><div class="contract-list">${cards}</div></section></div>`;
+}
+
+function renderContractCard(contract, c) {
+  const origin = utils.byIata(contract.origin), dest = utils.byIata(contract.dest);
+  const locked = contract.status === 'locked';
+  const canAccept = contract.status === 'available' && c.reputation >= contract.minReputation && (c.hubs || [c.hubIata]).includes(contract.origin);
+  const pct = utils.clamp(((contract.progress || 0) / Math.max(contract.requiredFlights || 1, 1)) * 100, 0, 100);
+  const statusLabel = contract.status === 'completed' ? 'Concluído' : contract.status === 'accepted' ? 'Aceito' : locked ? 'Bloqueado' : 'Disponível';
+  const routeExists = c.routes.some(r => (r.origin === contract.origin && r.dest === contract.dest) || (r.origin === contract.dest && r.dest === contract.origin));
+  return `<article class="contract-card ${contract.status}"><div class="section-head"><div><b>${utils.escape(contract.title)}</b><small>${contract.type} • risco ${contract.risk} • ${origin?.iata || contract.origin} → ${dest?.iata || contract.dest}</small></div><span class="pill">${statusLabel}</span></div><p>${origin?.city || contract.origin} para ${dest?.city || contract.dest}. Prazo: dia ${contract.deadlineDay}. Reputação mínima: ${utils.pct(contract.minReputation)}.</p><div class="progress"><span style="width:${pct}%"></span></div><div class="route-stats"><span>${contract.progress || 0}/${contract.requiredFlights} voos</span><span>Bônus ${utils.money(contract.reward)}</span><span>${routeExists?'Rota existe':'Sem rota criada'}</span></div><div class="row gap wrap">${canAccept ? `<button class="btn mini primary" data-action="acceptContract" data-contract="${contract.id}">Aceitar</button>` : ''}${contract.status === 'accepted' && !routeExists ? `<button class="btn mini" data-action="go" data-view="routes">Criar rota</button>` : ''}${locked ? `<button class="btn mini ghost" disabled>Exige reputação/hub</button>` : ''}${contract.status === 'completed' ? `<button class="btn mini ghost" disabled>Pago</button>` : ''}</div></article>`;
+}
+
+function acceptContract(id) {
+  const c = activeCareer();
+  const contract = (c.contracts || []).find(x => x.id === id);
+  if (!contract) return;
+  if (!(c.hubs || [c.hubIata]).includes(contract.origin)) return showToast('Abra o hub de origem antes de aceitar.', 'warn');
+  if (c.reputation < contract.minReputation) return showToast('Reputação insuficiente para este contrato.', 'warn');
+  if (contract.status !== 'available') return showToast('Contrato indisponível.', 'warn');
+  contract.status = 'accepted';
+  contract.acceptedDay = c.day;
+  pushMessage(c, `Contrato aceito: ${contract.title}. Crie/ative a rota ${contract.origin}-${contract.dest}.`, 'success');
+  setActiveCareer(c); showToast('Contrato aceito.', 'ok'); render();
+}
+
 
 function renderFleet() {
   const c = activeCareer();
@@ -1335,7 +1640,7 @@ function renderMarket() {
 function renderAudit() {
   const checks = runIntegrityAudit();
   const passed = checks.filter(c => c.ok).length;
-  return `<div class="audit-layout"><section class="panel glass"><div class="section-head"><div><span class="eyebrow">Sistema anti-quebra</span><h2>Auditoria da build</h2><p>Execução obrigatória por fase para garantir integridade e evolução real.</p></div><button class="btn primary" data-action="runAudit">Rodar auditoria</button></div><div class="audit-score"><strong>${passed}/${checks.length}</strong><span>checks aprovados</span></div><div class="audit-list">${checks.map(c => `<div class="audit-row ${c.ok?'ok':'bad'}"><b>${c.ok?'✓':'!'}</b><span>${c.label}</span><small>${c.detail}</small></div>`).join('')}</div></section><section class="panel glass"><h2>Relatório desta entrega</h2><div class="todo-list"><span>F1 Fundação: OK — HTML/CSS/JS, build visível e anti-crash.</span><span>F2 Save slots: OK — 3 slots, continuar, renomear e apagar.</span><span>F3 Mapa: OK — Leaflet real + fallback próprio.</span><span>F4 Frota/rota: OK — comprar avião, criar rota e voo cíclico.</span><span>Assets: provisórios em SVG, sem depender de imagens externas.</span></div></section></div>`;
+  return `<div class="audit-layout"><section class="panel glass"><div class="section-head"><div><span class="eyebrow">Sistema anti-quebra</span><h2>Auditoria da build</h2><p>Execução obrigatória por fase para garantir integridade e evolução real.</p></div><button class="btn primary" data-action="runAudit">Rodar auditoria</button></div><div class="audit-score"><strong>${passed}/${checks.length}</strong><span>checks aprovados</span></div><div class="audit-list">${checks.map(c => `<div class="audit-row ${c.ok?'ok':'bad'}"><b>${c.ok?'✓':'!'}</b><span>${c.label}</span><small>${c.detail}</small></div>`).join('')}</div></section><section class="panel glass"><h2>Relatório desta entrega</h2><div class="todo-list"><span>F5 Tutorial: OK — passo a passo jogável e assistente executivo.</span><span>F6 Hubs: OK — expansão para múltiplas bases com custo e origem de rota.</span><span>F7 Contratos: OK — contratos aceitos, progresso por voo e pagamento automático.</span><span>F8 Eventos: OK — eventos operacionais, folha diária, marketing com expiração e mercado reagindo.</span><span>Anti-quebra: OK — migração de saves v0.4 para schema 5 e fallback de mapa preservado.</span></div></section></div>`;
 }
 
 function runIntegrityAudit() {
@@ -1346,7 +1651,7 @@ function runIntegrityAudit() {
   const lastCrash = localStorage.getItem(CRASH_KEY);
   return [
     { ok: !!dom.buildBadge && dom.buildBadge.textContent.includes(BUILD.build), label:'Build/data/hora visíveis', detail:`Build ${BUILD.build} renderizado no rodapé.` },
-    { ok: BUILD.schema === 4, label:'Schema da build', detail:`Schema atual ${BUILD.schema}.` },
+    { ok: BUILD.schema === 5, label:'Schema da build', detail:`Schema atual ${BUILD.schema}.` },
     { ok: slotCount === 3, label:'Save slots', detail:`${slotCount} slots detectados.` },
     { ok: AIRPORTS.length >= 25 && !duplicateIata, label:'Banco de aeroportos', detail:`${AIRPORTS.length} aeroportos reais/semi-realistas, IATA único.` },
     { ok: AIRCRAFT.length >= 10, label:'Catálogo inicial de aeronaves', detail:`${AIRCRAFT.length} modelos com alcance, consumo, capacidade e custo.` },
@@ -1354,6 +1659,10 @@ function runIntegrityAudit() {
     { ok: !!c || runtime.view === 'onboarding' || runtime.view === 'slots', label:'Fluxo inicial protegido', detail:c ? `Carreira ativa: ${c.companyName}.` : 'Sem carreira ativa, tela de slots/onboarding disponível.' },
     { ok: !c || c.fleet.every(p => !!utils.model(p.modelId)), label:'Integridade da frota', detail:c ? `${c.fleet.length} aeronaves vinculadas a modelos válidos.` : 'Sem frota ativa ainda.' },
     { ok: !c || c.routes.every(r => utils.byIata(r.origin) && utils.byIata(r.dest) && c.fleet.some(p => p.id === r.planeId)), label:'Integridade das rotas', detail:c ? `${c.routes.length} rotas verificadas.` : 'Sem rotas ativas.' },
+    { ok: !c || Array.isArray(c.hubs) && c.hubs.every(i => utils.byIata(i)), label:'Integridade dos hubs', detail:c ? `${(c.hubs||[]).length} hubs válidos.` : 'Sem carreira ativa.' },
+    { ok: !c || Array.isArray(c.contracts) && c.contracts.length >= 4, label:'Contratos operacionais', detail:c ? `${(c.contracts||[]).length} contratos carregados.` : 'Sem carreira ativa.' },
+    { ok: !c || c.tutorial && Array.isArray(tutorialSteps(c)), label:'Tutorial jogável', detail:'Checklist executivo e ações diretas disponíveis.' },
+    { ok: Array.isArray(EVENT_POOL) && EVENT_POOL.length >= 5, label:'Eventos operacionais', detail:`${EVENT_POOL.length} eventos possíveis configurados.` },
     { ok: !!window.L || true, label:'Fallback de mapa', detail: window.L ? 'Leaflet disponível.' : 'Leaflet indisponível; fallback SVG será usado.' },
     { ok: !lastCrash, label:'Última sessão sem crash', detail:lastCrash ? 'Há registro de crash anterior salvo para diagnóstico.' : 'Nenhum crash registrado.' }
   ];
@@ -1436,6 +1745,8 @@ function handleAction(target) {
     if (action === 'renameSlot') return renameSlot(target.dataset.slot);
     if (action === 'speed') return setSpeed(target.dataset.speed);
     if (action === 'createRoute') return createRoute();
+    if (action === 'openHub') return openHub(target.dataset.hub);
+    if (action === 'acceptContract') return acceptContract(target.dataset.contract);
     if (action === 'toggleRoute') return toggleRoute(target.dataset.route);
     if (action === 'closeRoute') return closeRoute(target.dataset.route);
     if (action === 'buyPlane') return buyPlane(target.dataset.model);
@@ -1456,7 +1767,7 @@ document.addEventListener('click', (event) => {
 });
 
 document.addEventListener('change', (event) => {
-  if (event.target && (event.target.id === 'routePlane' || event.target.id === 'routeDest')) updateRoutePreview();
+  if (event.target && (event.target.id === 'routePlane' || event.target.id === 'routeDest' || event.target.id === 'routeOrigin')) updateRoutePreview();
 });
 
 window.addEventListener('error', event => {

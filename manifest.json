@@ -1,7 +1,7 @@
 {
   "name": "VALE AIR MANAGER",
   "short_name": "Vale Air",
-  "description": "Simulador gratuito de companhia aérea com mapa real, frota, rotas, financeiro e mercado.",
+  "description": "Simulador gratuito de companhia aérea com mapa real, frota, hubs, contratos, financeiro e mercado.",
   "start_url": "./index.html",
   "display": "fullscreen",
   "orientation": "portrait-primary",

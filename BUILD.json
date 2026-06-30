@@ -1,10 +1,10 @@
 {
   "game": "VALE AIR MANAGER",
-  "version": "0.4.0-alpha",
-  "phase": "F1-F4 accelerated foundation",
-  "build": "20260630-1600",
-  "schema": 4,
+  "version": "0.5.0-alpha",
+  "phase": "F5-F8",
+  "build": "20260630-1715",
+  "schema": 5,
   "date": "2026-06-30",
   "timezone": "America/Sao_Paulo",
-  "integrity": "anti-break boot recovery, save schema guard, route validation, UI fallback map"
+  "summary": "Tutorial guiado, expansão de hubs, contratos operacionais, eventos executivos, migração de save v0.4 e auditoria anti-quebra."
 }

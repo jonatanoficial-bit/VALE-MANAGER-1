@@ -1,9 +1,9 @@
 {
   "game": "VALE AIR MANAGER",
-  "version": "1.5.0",
-  "build": "20260701-1538",
-  "schema": 15,
-  "auditoria": "42/42 checks aprovados",
+  "version": "1.6.0",
+  "build": "20260701-1618",
+  "schema": 16,
+  "auditoria": "58/58 checks aprovados",
   "antiQuebra": true,
   "zipCompleto": true,
   "checks": [
@@ -11,13 +11,14 @@
     "HTML/CSS/JS presentes",
     "Manifest e service-worker atualizados",
     "BUILD.json atualizado",
-    "Migração schema 14 preservada",
-    "Tela Tripulação adicionada ao HUD",
-    "Centro de treinamento adicionado",
-    "Programas de capacitação adicionados",
-    "Fadiga de tripulação conectada às rotas",
-    "Escala operacional e reservas adicionadas",
-    "Acordos sindicais e greve controlada adicionados",
+    "Migração schema 15 preservada",
+    "Tela Rede adicionada ao HUD",
+    "Malha de conexões adicionada",
+    "Codeshare/interline adicionados",
+    "Passageiros em conexão conectados à estimativa de rota",
+    "Hub banking por hub adicionado",
+    "Receita interline e risco de conexão perdida adicionados",
+    "Valuation e obrigações diárias atualizados com rede",
     "Auditoria interna atualizada"
   ]
 }

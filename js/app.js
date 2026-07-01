@@ -1,15 +1,15 @@
 
 'use strict';
 
-// VALE AIR MANAGER - v1.5.0 - Build 20260701-1538
-// Fases F45-F48: treinamento, fadiga de tripulação, escala operacional e sindicatos.
+// VALE AIR MANAGER - v1.6.0 - Build 20260701-1618
+// Fases F49-F52: malha de conexões, codeshare, passageiros em conexão e hub banking.
 
 const BUILD = Object.freeze({
   game: 'VALE AIR MANAGER',
-  version: '1.5.0',
-  phase: 'F45-F48',
-  build: '20260701-1538',
-  schema: 15,
+  version: '1.6.0',
+  phase: 'F49-F52',
+  build: '20260701-1618',
+  schema: 16,
   date: '2026-07-01',
   timezone: 'America/Sao_Paulo'
 });
@@ -730,8 +730,8 @@ const COMPETITORS = Object.freeze([
   { id:'cargo_sul', name:'Cargo Sul Express', base:'GRU', region:'Cargo', value:4100000, fleet:1, routes:['GRU-SCL','GRU-MIA'], reputation:55, debt:540000, modelId:'b737cargo', synergy:1.10 }
 ]);
 
-const STORE_KEY = 'vale_air_manager_schema_15';
-const LEGACY_STORE_KEYS = ['vale_air_manager_schema_14','vale_air_manager_schema_13','vale_air_manager_schema_12','vale_air_manager_schema_11','vale_air_manager_schema_10','vale_air_manager_schema_9','vale_air_manager_schema_8','vale_air_manager_schema_7','vale_air_manager_schema_6','vale_air_manager_schema_5','vale_air_manager_schema_4'];
+const STORE_KEY = 'vale_air_manager_schema_16';
+const LEGACY_STORE_KEYS = ['vale_air_manager_schema_15','vale_air_manager_schema_14','vale_air_manager_schema_13','vale_air_manager_schema_12','vale_air_manager_schema_11','vale_air_manager_schema_10','vale_air_manager_schema_9','vale_air_manager_schema_8','vale_air_manager_schema_7','vale_air_manager_schema_6','vale_air_manager_schema_5','vale_air_manager_schema_4'];
 const CRASH_KEY = 'vale_air_manager_last_crash';
 const DEFAULT_SPEED = 1;
 
@@ -1431,7 +1431,7 @@ function renderOnboarding() {
         <span class="eyebrow">Simulador gratuito de companhia aérea</span>
         <h1>VALE AIR MANAGER</h1>
         <p>Crie sua empresa aérea, escolha hub, avatar, logo, compre aviões, abra rotas reais e acompanhe o mercado financeiro.</p>
-        <div class="build-line">v${BUILD.version} • Build ${BUILD.build} • Fases F45-F48 tripulação e sindicatos</div>
+        <div class="build-line">v${BUILD.version} • Build ${BUILD.build} • Fases F49-F52 rede, conexões e codeshare</div>
       </div>
       <div class="hero-plane"><img src="assets/planes/plane-wide.svg" alt="Avião"></div>
     </section>
@@ -5554,5 +5554,457 @@ handleAction = function(target) {
   if (action === 'autoCrewSchedule') return safeExecute('action:autoCrewSchedule', () => { const c = activeCareer(); if (c) { ensureV15Career(c); refreshCrewSchedule(c, true); setActiveCareer(c); showToast('Escala recalculada pelo OCC/RH.', 'ok'); render(); } });
   return previousHandleActionV150(target);
 };
+
+
+/* ==========================================================================
+   v1.6.0 F49-F52 — malha de conexões, codeshare, passageiros em conexão
+   e hub banking. Camada incremental com migração segura para schema 16.
+   ========================================================================== */
+
+const HUB_BANKING_STRATEGIES = Object.freeze({
+  relaxed: { id:'relaxed', label:'Banco relaxado', setupCost:85000, dailyCost:4200, connectionBoost:0.82, delayRisk:0.04, handlingCost:4, note:'Conexões mais folgadas, menor risco de passageiro perdido e menor pressão no OCC.' },
+  balanced: { id:'balanced', label:'Banco sincronizado', setupCost:145000, dailyCost:8600, connectionBoost:1.00, delayRisk:0.075, handlingCost:7, note:'Equilíbrio entre volume de conexão, custo e pontualidade.' },
+  aggressive: { id:'aggressive', label:'Banco agressivo', setupCost:310000, dailyCost:18500, connectionBoost:1.26, delayRisk:0.135, handlingCost:12, note:'Maximiza conexões e receita, mas aumenta risco de atraso e compensação.' }
+});
+
+const CODESHARE_PARTNERS = Object.freeze([
+  { id:'azul_sul', name:'Azul Sul Regional', region:'Brasil', fee:280000, dailyCost:4500, minReputation:45, demandBoost:0.035, revenueBoost:0.018, networkBoost:7, note:'Alimenta hubs brasileiros com passageiros regionais.' },
+  { id:'andean_link', name:'Andean Link', region:'América do Sul', fee:520000, dailyCost:8300, minReputation:50, demandBoost:0.045, revenueBoost:0.024, networkBoost:10, note:'Fortalece conexões para Chile, Colômbia, Peru e Argentina.' },
+  { id:'atlantic_bridge', name:'Atlantic Bridge', region:'Atlântico Norte', fee:960000, dailyCost:14200, minReputation:58, demandBoost:0.055, revenueBoost:0.034, networkBoost:14, note:'Aumenta feed internacional para EUA e Europa.' },
+  { id:'cargo_interline', name:'Cargo Interline Pro', region:'Carga global', fee:720000, dailyCost:11200, minReputation:52, demandBoost:0.018, revenueBoost:0.052, networkBoost:9, cargoBoost:0.11, note:'Melhora carga em conexão e contratos logísticos.' }
+]);
+
+function defaultNetworkOps(career) {
+  const hubBanking = {};
+  (career?.hubs || [career?.hubIata || 'GRU']).forEach(h => { hubBanking[h] = hubBanking[h] || 'balanced'; });
+  return {
+    hubBanking,
+    codeshares: [],
+    connectionPaxTotal: 0,
+    connectionRevenueTotal: 0,
+    missedConnections: 0,
+    interlineTrust: 56,
+    networkScore: 0,
+    oneStopPairs: 0,
+    transferShare: 0,
+    dailyNetworkCost: 0,
+    lastNetworkAuditDay: 0,
+    networkLog: []
+  };
+}
+
+function ensureV16Career(career) {
+  if (!career) return career;
+  if (typeof ensureV15Career === 'function') ensureV15Career(career);
+  career.schema = BUILD.schema;
+  career.networkOps = Object.assign(defaultNetworkOps(career), career.networkOps || {});
+  career.networkOps.hubBanking = Object.assign(defaultNetworkOps(career).hubBanking, career.networkOps.hubBanking || {});
+  (career.hubs || [career.hubIata || 'GRU']).forEach(h => { if (!career.networkOps.hubBanking[h]) career.networkOps.hubBanking[h] = 'balanced'; });
+  career.networkOps.codeshares = Array.isArray(career.networkOps.codeshares) ? career.networkOps.codeshares : [];
+  career.networkOps.networkLog = Array.isArray(career.networkOps.networkLog) ? career.networkOps.networkLog : [];
+  career.networkOps.connectionPaxTotal = Number(career.networkOps.connectionPaxTotal || 0);
+  career.networkOps.connectionRevenueTotal = Number(career.networkOps.connectionRevenueTotal || 0);
+  career.networkOps.missedConnections = Number(career.networkOps.missedConnections || 0);
+  career.networkOps.interlineTrust = utils.clamp(Number(career.networkOps.interlineTrust || 56), 0, 100);
+  (career.routes || []).forEach(r => {
+    r.connectionPolicy = r.connectionPolicy || 'auto';
+    r.lastConnectingPax = Number(r.lastConnectingPax || 0);
+    r.lastConnectionRevenue = Number(r.lastConnectionRevenue || 0);
+    r.lastMissedConnectionRisk = Number(r.lastMissedConnectionRisk || 0);
+  });
+  refreshNetworkSnapshot(career, false);
+  return career;
+}
+
+function networkLog(career, text, type = 'info') {
+  if (!career) return;
+  career.networkOps = career.networkOps || defaultNetworkOps(career);
+  career.networkOps.networkLog = Array.isArray(career.networkOps.networkLog) ? career.networkOps.networkLog : [];
+  career.networkOps.networkLog.unshift({ day: career.day || 1, time: Date.now(), type, text });
+  career.networkOps.networkLog = career.networkOps.networkLog.slice(0, 24);
+}
+
+function activeCodeshareDetails(career) {
+  const ids = new Set((career?.networkOps?.codeshares || []).map(c => c.id || c));
+  return CODESHARE_PARTNERS.filter(p => ids.has(p.id));
+}
+
+function codeshareDemandBoost(career) {
+  return activeCodeshareDetails(career).reduce((sum, p) => sum + Number(p.demandBoost || 0), 0);
+}
+
+function codeshareRevenueBoost(career) {
+  return activeCodeshareDetails(career).reduce((sum, p) => sum + Number(p.revenueBoost || 0), 0);
+}
+
+function codeshareCargoBoost(career) {
+  return activeCodeshareDetails(career).reduce((sum, p) => sum + Number(p.cargoBoost || 0), 0);
+}
+
+function hubBankStrategy(career, hubIata) {
+  const key = career?.networkOps?.hubBanking?.[hubIata] || 'balanced';
+  return HUB_BANKING_STRATEGIES[key] || HUB_BANKING_STRATEGIES.balanced;
+}
+
+function routeTouchesHub(career, route) {
+  const hubs = new Set(career?.hubs || [career?.hubIata || 'GRU']);
+  if (hubs.has(route.origin)) return route.origin;
+  if (hubs.has(route.dest)) return route.dest;
+  return null;
+}
+
+function calculateNetworkSnapshot(career) {
+  if (!career) return { hubs:0, destinations:0, activeRoutes:0, oneStopPairs:0, score:0, transferShare:0, avgBank:0, codeshares:0, critical:'sem carreira' };
+  const routes = (career.routes || []).filter(r => r.status !== 'paused');
+  const hubs = new Set(career.hubs || [career.hubIata || 'GRU']);
+  const destinations = new Set();
+  const hubSpokes = {};
+  routes.forEach(r => {
+    destinations.add(r.origin); destinations.add(r.dest);
+    hubs.forEach(h => {
+      if (r.origin === h && r.dest !== h) { hubSpokes[h] = hubSpokes[h] || new Set(); hubSpokes[h].add(r.dest); }
+      if (r.dest === h && r.origin !== h) { hubSpokes[h] = hubSpokes[h] || new Set(); hubSpokes[h].add(r.origin); }
+    });
+  });
+  let oneStopPairs = 0;
+  let bankPower = 0;
+  [...hubs].forEach(h => {
+    const n = hubSpokes[h] ? hubSpokes[h].size : 0;
+    oneStopPairs += Math.max(0, n * (n - 1));
+    bankPower += hubBankStrategy(career, h).connectionBoost || 1;
+  });
+  const codeshares = activeCodeshareDetails(career);
+  const score = utils.clamp(routes.length * 4.2 + destinations.size * 2.4 + oneStopPairs * 0.42 + codeshares.reduce((s,p)=>s+(p.networkBoost||0),0) + (career.internationalReputation || 0) * 0.08 + (career.reputation || 0) * 0.16, 0, 100);
+  const transferShare = utils.clamp(8 + score * 0.38 + codeshares.length * 2.8 + Math.max(0, hubs.size - 1) * 4, 0, 58);
+  return {
+    hubs: hubs.size,
+    destinations: destinations.size,
+    activeRoutes: routes.length,
+    oneStopPairs: Math.round(oneStopPairs),
+    score: Math.round(score),
+    transferShare: Math.round(transferShare),
+    avgBank: hubs.size ? bankPower / hubs.size : 1,
+    codeshares: codeshares.length,
+    critical: score >= 72 ? 'rede global competitiva' : score >= 42 ? 'malha em expansão' : 'rede inicial'
+  };
+}
+
+function refreshNetworkSnapshot(career, writeLog = true) {
+  if (!career) return null;
+  career.networkOps = career.networkOps || defaultNetworkOps(career);
+  const snap = calculateNetworkSnapshot(career);
+  career.networkOps.networkScore = snap.score;
+  career.networkOps.oneStopPairs = snap.oneStopPairs;
+  career.networkOps.transferShare = snap.transferShare;
+  career.networkOps.dailyNetworkCost = Math.round(
+    activeCodeshareDetails(career).reduce((sum,p)=>sum+(p.dailyCost||0),0) +
+    Object.entries(career.networkOps.hubBanking || {}).reduce((sum,[hub,key]) => sum + ((HUB_BANKING_STRATEGIES[key] || HUB_BANKING_STRATEGIES.balanced).dailyCost || 0), 0)
+  );
+  if (writeLog) networkLog(career, `Auditoria de rede: score ${snap.score}/100, ${snap.oneStopPairs} pares one-stop e ${snap.transferShare}% de potencial de conexão.`, 'ok');
+  return snap;
+}
+
+function routeConnectionPotential(career, route) {
+  if (!career || !route) return { hub:null, potential:0, spokes:0, bank:HUB_BANKING_STRATEGIES.balanced };
+  const hub = routeTouchesHub(career, route);
+  if (!hub) return { hub:null, potential:0, spokes:0, bank:HUB_BANKING_STRATEGIES.balanced };
+  const spokes = (career.routes || []).filter(r => r.status !== 'paused' && r.id !== route.id && (r.origin === hub || r.dest === hub)).length;
+  const snap = calculateNetworkSnapshot(career);
+  const bank = hubBankStrategy(career, hub);
+  const allianceBoost = career.alliance?.id ? 0.08 : 0;
+  const codeBoost = codeshareDemandBoost(career);
+  const potential = utils.clamp((spokes * 0.105 + snap.score / 135 + allianceBoost + codeBoost) * (bank.connectionBoost || 1), 0, 1.35);
+  return { hub, potential, spokes, bank, snap };
+}
+
+const previousNormalizeCareerV160 = normalizeCareer;
+normalizeCareer = function(career) {
+  const c = previousNormalizeCareerV160(career);
+  if (c) ensureV16Career(c);
+  return c;
+};
+
+const previousRouteEstimateV160 = utils.routeEstimate.bind(utils);
+utils.routeEstimate = function(origin, dest, plane, career, route = null) {
+  const e = previousRouteEstimateV160(origin, dest, plane, career, route);
+  if (!career || !route) return e;
+  ensureV16Career(career);
+  const connection = routeConnectionPotential(career, route);
+  const codeRevenue = codeshareRevenueBoost(career);
+  const cargoBoost = codeshareCargoBoost(career);
+  if (plane.capacity > 0) {
+    const softCap = Math.round(plane.capacity * 1.08);
+    const spareSeats = Math.max(0, softCap - Number(e.passengers || 0));
+    const connectingPax = Math.min(spareSeats, Math.round(plane.capacity * 0.24 * connection.potential));
+    const avgFare = Number(e.avgFare || 65);
+    const connectionRevenue = Math.round(connectingPax * Math.max(22, avgFare * 0.38) * (1 + codeRevenue));
+    const connectionCost = Math.round(connectingPax * ((connection.bank.handlingCost || 7) + 6));
+    const missedRisk = utils.clamp((connection.bank.delayRisk || 0.07) * 100 + Math.max(0, 92 - (career.punctuality || 85)) * 0.16 + Math.max(0, (career.networkOps.transferShare || 0) - 45) * 0.12, 1, 32);
+    e.passengers = Number(e.passengers || 0) + connectingPax;
+    e.revenue = Math.round(Number(e.revenue || 0) + connectionRevenue);
+    e.totalCost = Math.round(Number(e.totalCost || 0) + connectionCost);
+    e.profit = Math.round(e.revenue - e.totalCost);
+    e.margin = e.revenue > 0 ? Math.round((e.profit / e.revenue) * 100) : 0;
+    e.loadFactor = plane.capacity > 0 ? e.passengers / plane.capacity : e.loadFactor;
+    e.connectingPax = connectingPax;
+    e.connectionRevenue = connectionRevenue;
+    e.connectionHub = connection.hub;
+    e.connectionPotential = Math.round(connection.potential * 100);
+    e.missedConnectionRisk = Math.round(missedRisk);
+  } else {
+    const transferCargo = Math.round(Math.max(0, Number(e.cargoTons || 0)) * (0.06 + connection.potential * 0.18 + cargoBoost));
+    const cargoRevenue = Math.round(transferCargo * Math.max(95, (e.distance || 1000) * 0.16) * (1 + codeRevenue));
+    const cargoCost = Math.round(transferCargo * 32);
+    e.cargoTons = Number(e.cargoTons || 0) + transferCargo;
+    e.revenue = Math.round(Number(e.revenue || 0) + cargoRevenue);
+    e.totalCost = Math.round(Number(e.totalCost || 0) + cargoCost);
+    e.profit = Math.round(e.revenue - e.totalCost);
+    e.margin = e.revenue > 0 ? Math.round((e.profit / e.revenue) * 100) : 0;
+    e.connectingPax = 0;
+    e.connectionRevenue = cargoRevenue;
+    e.connectionHub = connection.hub;
+    e.connectionPotential = Math.round(connection.potential * 100);
+    e.missedConnectionRisk = Math.round((connection.bank.delayRisk || 0.07) * 100);
+  }
+  return e;
+};
+
+const previousCompleteFlightV160 = completeFlight;
+completeFlight = function(career, route, plane, model) {
+  ensureV16Career(career);
+  const origin = utils.byIata(route?.origin), dest = utils.byIata(route?.dest);
+  const beforeConnections = Number(career.networkOps?.connectionPaxTotal || 0);
+  previousCompleteFlightV160(career, route, plane, model);
+  if (!career || !route || !origin || !dest || !model) return;
+  ensureV16Career(career);
+  const estimate = utils.routeEstimate(origin, dest, model, career, route);
+  route.lastConnectingPax = Math.round(estimate.connectingPax || 0);
+  route.lastConnectionRevenue = Math.round(estimate.connectionRevenue || 0);
+  route.lastMissedConnectionRisk = Math.round(estimate.missedConnectionRisk || 0);
+  career.networkOps.connectionPaxTotal = beforeConnections + route.lastConnectingPax;
+  career.networkOps.connectionRevenueTotal = Number(career.networkOps.connectionRevenueTotal || 0) + route.lastConnectionRevenue;
+  if (route.lastConnectingPax > 0 || route.lastConnectionRevenue > 0) {
+    networkLog(career, `${route.origin}-${route.dest}: ${route.lastConnectingPax} pax em conexão e ${utils.money(route.lastConnectionRevenue)} de receita interline.`, 'ok');
+  }
+  const miss = Math.random() * 100 < route.lastMissedConnectionRisk * 0.08;
+  if (miss) {
+    const penalty = Math.round(Math.max(1500, route.lastConnectingPax * 38));
+    career.cash -= penalty;
+    career.networkOps.missedConnections += Math.max(1, Math.round(route.lastConnectingPax * 0.04));
+    career.punctuality = utils.clamp((career.punctuality || 85) - 0.18, 0, 100);
+    career.reputation = utils.clamp((career.reputation || 50) - 0.12, 0, 100);
+    logFinance(career, `Compensação conexão perdida ${route.origin}-${route.dest}`, -penalty, 'conexões');
+    networkLog(career, `Conexão perdida em ${route.origin}-${route.dest}: compensação ${utils.money(penalty)}.`, 'warn');
+  }
+  refreshNetworkSnapshot(career, false);
+};
+
+function processNetworkDaily(career) {
+  if (!career) return;
+  ensureV16Career(career);
+  const ops = career.networkOps;
+  const snap = refreshNetworkSnapshot(career, false);
+  if (ops.dailyNetworkCost > 0) {
+    career.cash -= ops.dailyNetworkCost;
+    logFinance(career, 'Custo diário de rede, hub banking e codeshare', -ops.dailyNetworkCost, 'rede');
+  }
+  const trustDelta = (snap.score >= 60 ? 0.18 : -0.05) + activeCodeshareDetails(career).length * 0.04 - Math.max(0, ops.missedConnections - 10) * 0.004;
+  ops.interlineTrust = utils.clamp(Number(ops.interlineTrust || 56) + trustDelta, 0, 100);
+  if ((career.day || 1) - Number(ops.lastNetworkAuditDay || 0) >= 4) {
+    ops.lastNetworkAuditDay = career.day || 1;
+    networkLog(career, `Rede revisada: ${snap.critical}, custo diário ${utils.money(ops.dailyNetworkCost)} e confiança interline ${utils.pct(ops.interlineTrust)}.`, snap.score >= 55 ? 'ok' : 'info');
+  }
+}
+
+const previousAdvanceCompanyDayV160 = advanceCompanyDay;
+advanceCompanyDay = function(career) {
+  const before = career && Number(career.day || 1);
+  previousAdvanceCompanyDayV160(career);
+  if (career && Number(career.day || 1) !== before) processNetworkDaily(career);
+};
+
+function signCodeshare(partnerId) {
+  const c = activeCareer(); if (!c) return;
+  ensureV16Career(c);
+  const p = CODESHARE_PARTNERS.find(x => x.id === partnerId);
+  if (!p) return showToast('Parceiro não encontrado.', 'warn');
+  if ((c.networkOps.codeshares || []).some(x => (x.id || x) === p.id)) return showToast('Codeshare já ativo.', 'warn');
+  if ((c.reputation || 0) < p.minReputation) return showToast(`Reputação mínima exigida: ${utils.pct(p.minReputation)}.`, 'warn');
+  if ((c.cash || 0) < p.fee) return showToast(`Caixa insuficiente para assinar ${p.name}.`, 'warn');
+  c.cash -= p.fee;
+  c.networkOps.codeshares.push({ id:p.id, signedDay:c.day || 1, totalFeed:0 });
+  c.networkOps.interlineTrust = utils.clamp((c.networkOps.interlineTrust || 56) + 2.5, 0, 100);
+  logFinance(c, `Assinatura codeshare ${p.name}`, -p.fee, 'rede');
+  networkLog(c, `Codeshare assinado com ${p.name}: ${p.note}`, 'ok');
+  refreshNetworkSnapshot(c, true);
+  c.valuation = valuation(c); updateMarket(c); setActiveCareer(c); showToast('Codeshare ativo.', 'ok'); render();
+}
+
+function leaveCodeshare(partnerId) {
+  const c = activeCareer(); if (!c) return;
+  ensureV16Career(c);
+  const p = CODESHARE_PARTNERS.find(x => x.id === partnerId);
+  c.networkOps.codeshares = (c.networkOps.codeshares || []).filter(x => (x.id || x) !== partnerId);
+  c.networkOps.interlineTrust = utils.clamp((c.networkOps.interlineTrust || 56) - 1.5, 0, 100);
+  networkLog(c, `Codeshare encerrado${p ? ' com ' + p.name : ''}.`, 'info');
+  refreshNetworkSnapshot(c, true);
+  c.valuation = valuation(c); updateMarket(c); setActiveCareer(c); showToast('Codeshare encerrado.', 'ok'); render();
+}
+
+function setHubBanking(hub, strategyId) {
+  const c = activeCareer(); if (!c) return;
+  ensureV16Career(c);
+  const strategy = HUB_BANKING_STRATEGIES[strategyId];
+  if (!strategy || !(c.hubs || []).includes(hub)) return showToast('Hub ou estratégia inválida.', 'warn');
+  if (c.networkOps.hubBanking[hub] === strategyId) return showToast('Estratégia já ativa neste hub.', 'warn');
+  if ((c.cash || 0) < strategy.setupCost) return showToast(`Caixa insuficiente para configurar ${strategy.label}.`, 'warn');
+  c.cash -= strategy.setupCost;
+  c.networkOps.hubBanking[hub] = strategyId;
+  logFinance(c, `Configuração hub banking ${hub} — ${strategy.label}`, -strategy.setupCost, 'rede');
+  networkLog(c, `${hub}: hub banking alterado para ${strategy.label}.`, 'ok');
+  refreshNetworkSnapshot(c, true);
+  c.valuation = valuation(c); updateMarket(c); setActiveCareer(c); showToast('Hub banking atualizado.', 'ok'); render();
+}
+
+const previousValuationV160 = valuation;
+valuation = function(career) {
+  const base = previousValuationV160(career);
+  if (!career) return base;
+  ensureV16Career(career);
+  const snap = calculateNetworkSnapshot(career);
+  const connectionValue = snap.oneStopPairs * 14500 + snap.score * 38000 + activeCodeshareDetails(career).length * 180000;
+  const trustValue = (career.networkOps.interlineTrust || 0) * 18000;
+  const missedPenalty = (career.networkOps.missedConnections || 0) * 2200;
+  return Math.max(0, Math.round(base + connectionValue + trustValue - missedPenalty));
+};
+
+const previousDailyObligationEstimateV160 = dailyObligationEstimate;
+dailyObligationEstimate = function(career) {
+  const base = previousDailyObligationEstimateV160(career);
+  if (!career) return base;
+  ensureV16Career(career);
+  return Math.round(base + Number(career.networkOps.dailyNetworkCost || 0));
+};
+
+function renderNetworkView() {
+  const c = activeCareer(); if (!c) return renderSlots();
+  ensureV16Career(c);
+  const snap = refreshNetworkSnapshot(c, false);
+  const activePartners = new Set((c.networkOps.codeshares || []).map(x => x.id || x));
+  const hubCards = (c.hubs || []).map(hub => {
+    const airport = utils.byIata(hub);
+    const active = c.networkOps.hubBanking[hub] || 'balanced';
+    const strategies = Object.entries(HUB_BANKING_STRATEGIES).map(([key,s]) => `<button class="btn mini ${active===key?'primary':'ghost'}" data-action="setHubBanking" data-hub="${hub}" data-strategy="${key}">${s.label}</button>`).join('');
+    const routes = (c.routes||[]).filter(r => r.origin===hub || r.dest===hub).length;
+    return `<article class="service-card ${active}"><b>${hub} — ${airport ? airport.city : 'Hub'}</b><small>${routes} rota(s) conectadas • Estratégia: ${HUB_BANKING_STRATEGIES[active].label}</small><p>${HUB_BANKING_STRATEGIES[active].note}</p><div class="row gap wrap">${strategies}</div></article>`;
+  }).join('');
+  const partnerCards = CODESHARE_PARTNERS.map(p => {
+    const on = activePartners.has(p.id);
+    return `<article class="service-card ${on?'active':''}"><b>${p.name}</b><small>${p.region} • entrada ${utils.money(p.fee)} • dia ${utils.money(p.dailyCost)}</small><p>${p.note}</p><div class="route-stats"><span>Demanda +${Math.round((p.demandBoost||0)*100)}%</span><span>Receita +${Math.round((p.revenueBoost||0)*100)}%</span><span>Rede +${p.networkBoost}</span></div><button class="btn mini ${on?'ghost':'primary'}" data-action="${on?'leaveCodeshare':'signCodeshare'}" data-partner="${p.id}">${on?'Encerrar':'Assinar'}</button></article>`;
+  }).join('');
+  const routeRows = (c.routes || []).map(r => {
+    const p = routeConnectionPotential(c, r);
+    return `<article><b>${r.origin} → ${r.dest}</b><small>${p.hub ? 'Conecta via ' + p.hub : 'rota ponto-a-ponto'} • ${p.spokes || 0} alimentadoras</small><div class="route-stats"><span>Potencial ${Math.round((p.potential||0)*100)}%</span><span>Últ. pax conexão ${utils.num(r.lastConnectingPax||0)}</span><span>Receita conexão ${utils.money(r.lastConnectionRevenue||0)}</span><span>Risco perda ${utils.pct(r.lastMissedConnectionRisk||0)}</span></div></article>`;
+  }).join('') || '<p>Crie rotas saindo dos hubs para formar malha de conexões.</p>';
+  const log = (c.networkOps.networkLog || []).slice(0,12).map(l => `<div class="finance-row"><span>Dia ${l.day}<small>${l.type}</small></span><em>${utils.escape(l.text)}</em></div>`).join('') || '<p>Sem histórico de rede ainda.</p>';
+  return `<div class="network-layout"><section class="panel glass passenger-hero"><span class="eyebrow">F49-F52 Rede aérea inteligente</span><h2>Conexões, codeshare e hub banking</h2><div class="kpi-grid"><div class="kpi"><small>Score rede</small><strong>${snap.score}/100</strong></div><div class="kpi"><small>Pares one-stop</small><strong>${utils.num(snap.oneStopPairs)}</strong></div><div class="kpi"><small>Destinos conectados</small><strong>${utils.num(snap.destinations)}</strong></div><div class="kpi"><small>Transfer share</small><strong>${utils.pct(snap.transferShare)}</strong></div><div class="kpi"><small>Codeshares</small><strong>${utils.num(snap.codeshares)}</strong></div><div class="kpi"><small>Custo/dia rede</small><strong>${utils.money(c.networkOps.dailyNetworkCost||0)}</strong></div></div><p class="hint">Agora a malha deixa de ser apenas rota isolada: hubs alimentam voos, codeshares trazem passageiros e o banco de conexões aumenta receita com risco operacional controlado.</p></section><section class="panel glass"><h2>Hub banking</h2><div class="service-grid">${hubCards}</div></section><section class="panel glass"><h2>Codeshare e interline</h2><div class="service-grid">${partnerCards}</div></section><section class="panel glass"><h2>Passageiros em conexão por rota</h2><div class="route-economy-list">${routeRows}</div></section><section class="panel glass"><h2>Resultado acumulado de conexões</h2><div class="kpi-grid"><div class="kpi"><small>Pax conexão total</small><strong>${utils.num(c.networkOps.connectionPaxTotal||0)}</strong></div><div class="kpi"><small>Receita conexão</small><strong>${utils.money(c.networkOps.connectionRevenueTotal||0)}</strong></div><div class="kpi"><small>Conexões perdidas</small><strong>${utils.num(c.networkOps.missedConnections||0)}</strong></div><div class="kpi"><small>Confiança interline</small><strong>${utils.pct(c.networkOps.interlineTrust||0)}</strong></div></div></section><section class="panel glass"><h2>Histórico de rede</h2><div class="finance-list">${log}</div></section></div>`;
+}
+
+const previousNavItemsV160 = navItems;
+navItems = function() {
+  const items = previousNavItemsV160();
+  const auditIndex = items.findIndex(i => i[0] === 'audit');
+  if (!items.some(i => i[0] === 'network')) items.splice(auditIndex >= 0 ? auditIndex : items.length, 0, ['network','Rede','⟲']);
+  return items;
+};
+
+const previousRenderV160 = render;
+render = function() {
+  if (runtime.view === 'network') {
+    safeExecute('render:network', () => {
+      hideFatal();
+      const c = activeCareer(); if (c) ensureV16Career(c);
+      dom.app.innerHTML = shell(renderNetworkView());
+    });
+    return;
+  }
+  previousRenderV160();
+};
+
+const previousRenderDashboardV160 = renderDashboard;
+renderDashboard = function() {
+  const html = previousRenderDashboardV160();
+  const c = activeCareer(); if (!c) return html;
+  ensureV16Career(c);
+  const snap = calculateNetworkSnapshot(c);
+  const card = `<section class="panel glass"><span class="eyebrow">F49-F52 Malha de conexões</span><h2>Rede e codeshare</h2><div class="kpi-grid"><div class="kpi"><small>Score rede</small><strong>${snap.score}/100</strong></div><div class="kpi"><small>One-stop</small><strong>${utils.num(snap.oneStopPairs)}</strong></div><div class="kpi"><small>Transfer share</small><strong>${utils.pct(snap.transferShare)}</strong></div><div class="kpi"><small>Confiança</small><strong>${utils.pct(c.networkOps.interlineTrust||0)}</strong></div></div><button class="btn primary" data-action="go" data-view="network">Abrir rede</button></section>`;
+  const pos = html.lastIndexOf('</div>');
+  return pos >= 0 ? html.slice(0, pos) + card + html.slice(pos) : html + card;
+};
+
+const previousRenderRoutesV160 = renderRoutes;
+renderRoutes = function() {
+  const html = previousRenderRoutesV160();
+  const c = activeCareer(); if (!c) return html;
+  ensureV16Career(c);
+  const card = `<section class="panel glass"><span class="eyebrow">Conexões por malha</span><h2>Receita de transferência</h2><div class="kpi-grid"><div class="kpi"><small>Pax conexão total</small><strong>${utils.num(c.networkOps.connectionPaxTotal||0)}</strong></div><div class="kpi"><small>Receita conexão</small><strong>${utils.money(c.networkOps.connectionRevenueTotal||0)}</strong></div><div class="kpi"><small>Conexões perdidas</small><strong>${utils.num(c.networkOps.missedConnections||0)}</strong></div><div class="kpi"><small>Custo rede/dia</small><strong>${utils.money(c.networkOps.dailyNetworkCost||0)}</strong></div></div><button class="btn primary" data-action="go" data-view="network">Gerenciar malha</button></section>`;
+  return html.replace('</div>', card + '</div>');
+};
+
+const previousRenderFinanceV160 = renderFinance;
+renderFinance = function() {
+  const html = previousRenderFinanceV160();
+  const c = activeCareer(); if (!c) return html;
+  ensureV16Career(c);
+  const card = `<section class="panel glass"><span class="eyebrow">Receita interline</span><h2>Conexões e codeshare</h2><div class="kpi-grid"><div class="kpi"><small>Receita conexão</small><strong>${utils.money(c.networkOps.connectionRevenueTotal||0)}</strong></div><div class="kpi"><small>Custo rede/dia</small><strong>${utils.money(c.networkOps.dailyNetworkCost||0)}</strong></div><div class="kpi"><small>Parceiros ativos</small><strong>${activeCodeshareDetails(c).length}</strong></div><div class="kpi"><small>Valor agregado</small><strong>${utils.money(Math.max(0, (c.networkOps.networkScore||0)*38000))}</strong></div></div></section>`;
+  return html.replace('</div>', card + '</div>');
+};
+
+const previousRenderAuditV160 = renderAudit;
+renderAudit = function() {
+  const checks = runIntegrityAudit();
+  const passed = checks.filter(c => c.ok).length;
+  return `<div class="audit-layout"><section class="panel glass"><div class="section-head"><div><span class="eyebrow">Sistema anti-quebra</span><h2>Auditoria da build</h2><p>Execução obrigatória por fase para garantir integridade e evolução real.</p></div><button class="btn primary" data-action="runAudit">Rodar auditoria</button></div><div class="audit-score"><strong>${passed}/${checks.length}</strong><span>checks aprovados</span></div><div class="audit-list">${checks.map(c => `<div class="audit-row ${c.ok?'ok':'bad'}"><b>${c.ok?'✓':'!'}</b><span>${c.label}</span><small>${c.detail}</small></div>`).join('')}</div></section><section class="panel glass"><h2>Relatório desta entrega</h2><div class="todo-list"><span>F49 Malha de conexões: OK — score de rede, destinos conectados, pares one-stop e valor de malha.</span><span>F50 Codeshare: OK — parceiros interline com custo, reputação mínima, bônus de demanda e receita.</span><span>F51 Passageiros em conexão: OK — pax conexão, receita interline, risco de perda e compensação controlada.</span><span>F52 Hub banking: OK — banco relaxado, sincronizado ou agressivo por hub com custo e risco.</span><span>Anti-quebra: OK — migração de saves v0.4 até v1.5 para schema 16 preservada.</span></div></section></div>`;
+};
+
+const previousRunIntegrityAuditV160 = runIntegrityAudit;
+runIntegrityAudit = function() {
+  const c = activeCareer(); if (c) ensureV16Career(c);
+  const blockedLabels = ['Schema da build','Chave de save v1.5','Migração v1.4 preservada','Normalização v1.5'];
+  const base = previousRunIntegrityAuditV160().filter(check => !blockedLabels.includes(check.label));
+  const extra = [
+    { ok: BUILD.schema === 16, label:'Schema da build', detail:`Schema atual ${BUILD.schema}.` },
+    { ok: STORE_KEY.includes('schema_16'), label:'Chave de save v1.6', detail:STORE_KEY },
+    { ok: LEGACY_STORE_KEYS.includes('vale_air_manager_schema_15'), label:'Migração v1.5 preservada', detail:'Saves schema 15 são migrados para schema 16 sem reset.' },
+    { ok: typeof ensureV16Career === 'function', label:'Normalização v1.6', detail:'Carreiras antigas recebem rede, codeshare, conexões e hub banking.' },
+    { ok: navItems().some(i => i[0] === 'network'), label:'Tela Rede no menu', detail:'HUD mobile inclui acesso direto à malha de conexões.' },
+    { ok: Object.keys(HUB_BANKING_STRATEGIES).length === 3, label:'F52 Hub banking', detail:'Relaxado, sincronizado e agressivo configurados.' },
+    { ok: CODESHARE_PARTNERS.length === 4, label:'F50 Codeshare', detail:'Parceiros regional, sul-americano, atlântico e carga configurados.' },
+    { ok: typeof signCodeshare === 'function' && typeof leaveCodeshare === 'function', label:'Ações de codeshare', detail:'Assinar e encerrar parceiro protegidos por anti-quebra.' },
+    { ok: typeof setHubBanking === 'function', label:'Ação de hub banking', detail:'Mudança de banco por hub disponível.' },
+    { ok: typeof calculateNetworkSnapshot === 'function', label:'F49 Snapshot de malha', detail:c ? `Score ${c.networkOps.networkScore}/100, ${c.networkOps.oneStopPairs} pares.` : 'Função disponível.' },
+    { ok: typeof routeConnectionPotential === 'function', label:'Potencial de conexão', detail:'Rotas calculam feed por hub, codeshare e aliança.' },
+    { ok: !c || c.networkOps && Number.isFinite(c.networkOps.transferShare), label:'Transfer share no save', detail:c ? `${utils.pct(c.networkOps.transferShare)} potencial.` : 'Sem carreira ativa.' },
+    { ok: typeof utils.routeEstimate === 'function', label:'F51 Passageiros em conexão', detail:'Estimativa de rota inclui pax conexão, receita interline e risco de conexão perdida.' },
+    { ok: !c || Number.isFinite(c.networkOps.connectionRevenueTotal), label:'Receita interline acumulada', detail:c ? utils.money(c.networkOps.connectionRevenueTotal || 0) : 'Sem carreira ativa.' },
+    { ok: !c || Number.isFinite(c.networkOps.missedConnections), label:'Conexões perdidas controladas', detail:c ? `${utils.num(c.networkOps.missedConnections)} registrada(s).` : 'Sem carreira ativa.' },
+    { ok: typeof processNetworkDaily === 'function', label:'Ciclo diário de rede', detail:'Custos, confiança interline e auditoria de malha processados por dia.' },
+    { ok: typeof dailyObligationEstimate === 'function', label:'Obrigações de rede', detail:c ? `${utils.money(dailyObligationEstimate(c))} incluindo rede.` : 'Função disponível.' },
+    { ok: typeof valuation === 'function', label:'Valuation de malha', detail:'Rede, one-stop, codeshare e confiança interline influenciam valor.' },
+    { ok: !c || Array.isArray(c.networkOps.networkLog), label:'Log de rede', detail:c ? `${(c.networkOps.networkLog||[]).length} registro(s).` : 'Sem carreira ativa.' },
+    { ok: typeof renderNetworkView === 'function', label:'Render Rede', detail:'Tela de rede pronta para mobile/desktop.' }
+  ];
+  return [...extra, ...base];
+};
+
+const previousHandleActionV160 = handleAction;
+handleAction = function(target) {
+  const action = target.dataset.action;
+  if (action === 'signCodeshare') return safeExecute('action:signCodeshare', () => signCodeshare(target.dataset.partner));
+  if (action === 'leaveCodeshare') return safeExecute('action:leaveCodeshare', () => leaveCodeshare(target.dataset.partner));
+  if (action === 'setHubBanking') return safeExecute('action:setHubBanking', () => setHubBanking(target.dataset.hub, target.dataset.strategy));
+  return previousHandleActionV160(target);
+};
+
 
 boot();

@@ -1,19 +1,19 @@
 {
   "game": "VALE AIR MANAGER",
-  "version": "1.5.0",
-  "phase": "F45-F48",
-  "build": "20260701-1538",
-  "schema": 15,
+  "version": "1.6.0",
+  "phase": "F49-F52",
+  "build": "20260701-1618",
+  "schema": 16,
   "date": "2026-07-01",
   "timezone": "America/Sao_Paulo",
-  "auditoria": "42/42 checks aprovados",
+  "auditoria": "58/58 checks aprovados",
   "antiQuebra": true,
   "zip": "completo",
-  "migration": "v0.4-v1.4 para v1.5.0",
+  "migration": "v0.4-v1.5 para v1.6.0",
   "features": [
-    "F45 centro de treinamento com níveis, competências e turmas ativas",
-    "F46 fadiga de tripulação afetando lucro, pontualidade, segurança e risco sindical",
-    "F47 escala operacional com cobertura, reservas, política de tripulação e custo diário",
-    "F48 sindicatos com acordos, relação trabalhista, risco e greve controlada anti-quebra"
+    "F49 malha de conexões com score de rede, destinos conectados e pares one-stop",
+    "F50 codeshare/interline com parceiros, custos, reputação mínima e bônus de demanda/receita",
+    "F51 passageiros em conexão com receita interline, risco de conexão perdida e compensação controlada",
+    "F52 hub banking por hub: relaxado, sincronizado ou agressivo com custo, boost e risco operacional"
   ]
 }

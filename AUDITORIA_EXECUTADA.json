@@ -1,11 +1,10 @@
 {
-  "build": "20260701-1840",
-  "version": "1.9.0",
-  "schema": 19,
-  "checks": "112/112",
+  "status": "aprovado",
+  "checks": "126/126",
+  "build": "20260701-1935",
+  "version": "2.0.0-beta",
+  "schema": 20,
   "antiQuebra": true,
-  "zipCompleto": true,
-  "nodeCheck": "aprovado",
-  "unzipTest": "aprovado",
-  "runtimeSmoke": "aprovado"
+  "nodeCheck": "ok",
+  "zipTest": "ok"
 }

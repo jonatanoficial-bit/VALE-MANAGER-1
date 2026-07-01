@@ -1,7 +1,7 @@
 {
-  "name": "VALE AIR MANAGER v1.9.0",
+  "name": "VALE AIR MANAGER v2.0.0-beta",
   "short_name": "VALE AIR",
-  "description": "Simulador gratuito de companhia aérea com mapa real, frota, finanças, bolsa, mundo vivo, passageiros, serviços premium, OCC, manutenção, rede, carga, charter VIP, cockpit CEO, identidade beta e visual cinematográfico.",
+  "description": "Simulador gratuito de companhia aérea com mapa real, frota, finanças, bolsa, mundo vivo, passageiros, serviços premium, OCC, manutenção, rede, carga, charter VIP, cockpit CEO, identidade beta, visual cinematográfico, conquistas, ranking, metas de CEO e beta público.",
   "start_url": "./index.html",
   "display": "fullscreen",
   "orientation": "portrait-primary",

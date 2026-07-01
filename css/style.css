@@ -87,3 +87,71 @@ body[data-theme-v19="sunrise"]{--v19-accent:#f59e0b;--v19-soft:rgba(245,158,11,.
 body[data-ui-density="touch"] .btn,body[data-ui-density="touch"] .bottom-nav button{min-height:48px}body[data-ui-density="touch"] .screen{padding-bottom:104px}body[data-ui-density="compact"] .panel{padding:14px}body[data-ui-density="compact"] .kpi-grid{gap:8px}
 .v19-ceo,.ceo-layout{display:grid;gap:16px}.ceo-hero{position:relative;overflow:hidden;border:1px solid var(--v19-line);box-shadow:0 20px 80px rgba(0,0,0,.35),0 0 0 1px var(--v19-soft) inset}.ceo-hero-bg{position:absolute;inset:-40% -10% auto auto;width:68%;height:140%;background:radial-gradient(circle,var(--v19-soft),transparent 62%);filter:blur(4px);transform:rotate(-14deg)}.ceo-profile{position:relative;display:flex;align-items:center;gap:16px}.ceo-profile.compact{margin:10px 0}.ceo-profile img{width:86px;height:86px;object-fit:cover;border-radius:24px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);box-shadow:0 14px 40px rgba(0,0,0,.25),0 0 24px var(--v19-soft)}.ceo-profile.compact img{width:58px;height:58px;border-radius:18px}.ceo-profile h2{margin:.1rem 0}.identity-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(72px,1fr));gap:10px;margin:10px 0 18px}.identity-asset{border:1px solid rgba(255,255,255,.12);border-radius:18px;background:rgba(255,255,255,.06);padding:8px;min-height:78px;cursor:pointer}.identity-asset img{width:100%;height:58px;object-fit:contain}.identity-asset.logo img{height:52px}.identity-asset.active{border-color:var(--v19-accent);box-shadow:0 0 0 2px var(--v19-soft) inset,0 12px 30px rgba(0,0,0,.25)}.exec-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.exec-card{display:flex;gap:12px;align-items:center;padding:12px;border:1px solid rgba(255,255,255,.11);border-radius:18px;background:linear-gradient(135deg,rgba(255,255,255,.07),rgba(255,255,255,.025))}.exec-card img{width:54px;height:54px;object-fit:contain;border-radius:16px;background:rgba(255,255,255,.06)}.exec-card div{display:grid;gap:2px}.exec-card strong{font-size:14px}.checklist-v19 span.ok{border-color:rgba(52,211,153,.32)}.checklist-v19 span.warn{border-color:rgba(245,158,11,.34)}.ceo-mini{border-color:var(--v19-line)}.hero-card{box-shadow:0 30px 100px rgba(0,0,0,.44),0 0 0 1px var(--v19-soft) inset}.hero-card:after{content:"";position:absolute;inset:auto -10% -40% 38%;height:260px;background:radial-gradient(circle,var(--v19-soft),transparent 65%);pointer-events:none}.build-badge{border-color:var(--v19-line);box-shadow:0 0 22px var(--v19-soft)}
 @media (max-width:720px){.ceo-profile{align-items:flex-start}.ceo-profile img{width:72px;height:72px}.identity-grid{grid-template-columns:repeat(3,1fr)}.exec-grid{grid-template-columns:1fr}.ceo-hero .kpi-grid{grid-template-columns:repeat(2,1fr)}}
+
+/* v2.0.0-beta F65-F68 — progressão, ranking e beta público */
+.v20-beta .beta-hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(125, 211, 252, .28);
+}
+.v20-beta .beta-hero::before {
+  content: "";
+  position: absolute;
+  inset: -40% -20% auto auto;
+  width: 360px;
+  height: 360px;
+  background: radial-gradient(circle, rgba(56,189,248,.20), transparent 62%);
+  pointer-events: none;
+}
+.beta-meter {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(148,163,184,.20);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
+  margin: 10px 0 14px;
+}
+.beta-meter.large { height: 16px; margin: 18px 0; }
+.beta-meter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #38bdf8, #22c55e, #facc15);
+  box-shadow: 0 0 18px rgba(56,189,248,.38);
+}
+.achievement-grid, .goal-grid, .milestone-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+.achievement-card, .goal-card, .milestone {
+  border: 1px solid rgba(148,163,184,.18);
+  border-radius: 18px;
+  padding: 14px;
+  background: rgba(15,23,42,.58);
+  display: grid;
+  gap: 8px;
+  text-align: left;
+  color: inherit;
+}
+.achievement-card.unlocked, .goal-card.done, .milestone.on {
+  border-color: rgba(34,197,94,.42);
+  background: linear-gradient(145deg, rgba(34,197,94,.12), rgba(15,23,42,.70));
+}
+.achievement-card.locked, .milestone.off { opacity: .72; }
+.achievement-card b, .goal-card h3, .milestone b { display: block; }
+.achievement-card small, .goal-card p, .goal-card small, .milestone small { color: rgba(226,232,240,.70); }
+.table-wrap { overflow-x: auto; border-radius: 16px; border: 1px solid rgba(148,163,184,.16); }
+table { width: 100%; border-collapse: collapse; min-width: 620px; }
+th, td { padding: 12px; border-bottom: 1px solid rgba(148,163,184,.14); text-align: left; }
+th { color: rgba(226,232,240,.75); font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; }
+tr.player td { background: rgba(56,189,248,.10); }
+td small { display: block; color: rgba(226,232,240,.58); margin-top: 2px; }
+.beta-mini { border-color: rgba(250,204,21,.24); }
+.milestone { cursor: pointer; }
+@media (max-width: 760px) {
+  .achievement-grid, .goal-grid, .milestone-grid { grid-template-columns: 1fr; }
+  .v20-beta .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  th, td { padding: 10px; }
+}

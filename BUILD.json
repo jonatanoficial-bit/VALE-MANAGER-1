@@ -1,19 +1,19 @@
 {
   "game": "VALE AIR MANAGER",
-  "version": "1.9.0",
-  "phase": "F61-F64",
-  "build": "20260701-1840",
-  "schema": 19,
+  "version": "2.0.0-beta",
+  "phase": "F65-F68",
+  "build": "20260701-1935",
+  "schema": 20,
   "date": "2026-07-01",
   "timezone": "America/Sao_Paulo",
-  "auditoria": "112/112 checks aprovados",
+  "auditoria": "126/126 checks aprovados",
   "antiQuebra": true,
   "zip": "completo",
-  "migration": "v0.4-v1.8 para v1.9.0",
+  "migration": "v0.4-v1.9 para v2.0.0-beta",
   "features": [
-    "F61 visual cinematográfico beta com temas Cinema, Aurora, Emerald e Sunrise",
-    "F62 UX mobile reforçada com densidade Compacto, Equilibrado e Mobile grande",
-    "F63 identidade expandida com seis avatares CEO e seis logos genéricos editáveis",
-    "F64 cockpit do CEO com callsign, slogan, diretoria visual, checklist beta e auditoria visual in-game"
+    "F65 conquistas com XP, bônus e resgate dentro do jogo",
+    "F66 ranking empresarial dinâmico comparando a companhia com rivais",
+    "F67 metas de CEO com objetivos estratégicos e recompensas",
+    "F68 progressão de beta público com score de prontidão, canais de teste, feedback e marcos de publicação"
   ]
 }

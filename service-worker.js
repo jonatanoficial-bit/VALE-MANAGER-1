@@ -1,9 +1,9 @@
-const CACHE_NAME = 'vale-air-manager-v1-6-0-build-20260701-1618';
+const CACHE_NAME = 'vale-air-manager-v1-8-0-build-20260701-1750';
 const ASSETS = [
   './', './index.html', './css/style.css', './js/app.js', './manifest.json', './BUILD.json',
   './assets/logos/logo-1.svg', './assets/logos/logo-2.svg', './assets/logos/logo-3.svg', './assets/logos/logo-4.svg',
   './assets/avatars/avatar-ceo-1.svg', './assets/avatars/avatar-ceo-2.svg', './assets/avatars/avatar-ceo-3.svg', './assets/avatars/avatar-ceo-4.svg',
-  './assets/planes/plane-regional.svg', './assets/planes/plane-turboprop.svg', './assets/planes/plane-narrow.svg', './assets/planes/plane-wide.svg', './assets/planes/plane-heavy.svg', './assets/planes/plane-cargo.svg',
+  './assets/planes/plane-regional.svg', './assets/planes/plane-turboprop.svg', './assets/planes/plane-narrow.svg', './assets/planes/plane-wide.svg', './assets/planes/plane-heavy.svg', './assets/planes/plane-cargo.svg', './assets/planes/plane-business.svg',
   './assets/staff/pilot.svg', './assets/staff/crew.svg', './assets/staff/mechanic.svg', './assets/staff/director.svg',
   './data/airports.json', './data/aircraft.json', './data/staff.json'
 ];

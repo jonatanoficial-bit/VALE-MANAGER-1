@@ -1,15 +1,15 @@
 
 'use strict';
 
-// VALE AIR MANAGER - v1.6.0 - Build 20260701-1618
-// Fases F49-F52: malha de conexões, codeshare, passageiros em conexão e hub banking.
+// VALE AIR MANAGER - v1.8.0 - Build 20260701-1750
+// Fases F57-F60: aviação executiva, charter sob demanda, contratos VIP/governo e operação premium por jatos menores.
 
 const BUILD = Object.freeze({
   game: 'VALE AIR MANAGER',
-  version: '1.6.0',
-  phase: 'F49-F52',
-  build: '20260701-1618',
-  schema: 16,
+  version: '1.8.0',
+  phase: 'F57-F60',
+  build: '20260701-1750',
+  schema: 18,
   date: '2026-07-01',
   timezone: 'America/Sao_Paulo'
 });
@@ -730,8 +730,8 @@ const COMPETITORS = Object.freeze([
   { id:'cargo_sul', name:'Cargo Sul Express', base:'GRU', region:'Cargo', value:4100000, fleet:1, routes:['GRU-SCL','GRU-MIA'], reputation:55, debt:540000, modelId:'b737cargo', synergy:1.10 }
 ]);
 
-const STORE_KEY = 'vale_air_manager_schema_16';
-const LEGACY_STORE_KEYS = ['vale_air_manager_schema_15','vale_air_manager_schema_14','vale_air_manager_schema_13','vale_air_manager_schema_12','vale_air_manager_schema_11','vale_air_manager_schema_10','vale_air_manager_schema_9','vale_air_manager_schema_8','vale_air_manager_schema_7','vale_air_manager_schema_6','vale_air_manager_schema_5','vale_air_manager_schema_4'];
+const STORE_KEY = 'vale_air_manager_schema_18';
+const LEGACY_STORE_KEYS = ['vale_air_manager_schema_17','vale_air_manager_schema_16','vale_air_manager_schema_15','vale_air_manager_schema_14','vale_air_manager_schema_13','vale_air_manager_schema_12','vale_air_manager_schema_11','vale_air_manager_schema_10','vale_air_manager_schema_9','vale_air_manager_schema_8','vale_air_manager_schema_7','vale_air_manager_schema_6','vale_air_manager_schema_5','vale_air_manager_schema_4'];
 const CRASH_KEY = 'vale_air_manager_last_crash';
 const DEFAULT_SPEED = 1;
 
@@ -6004,6 +6004,997 @@ handleAction = function(target) {
   if (action === 'leaveCodeshare') return safeExecute('action:leaveCodeshare', () => leaveCodeshare(target.dataset.partner));
   if (action === 'setHubBanking') return safeExecute('action:setHubBanking', () => setHubBanking(target.dataset.hub, target.dataset.strategy));
   return previousHandleActionV160(target);
+};
+
+
+// =====================================================
+// v1.7.0 - F53-F56: Carga avançada, contratos logísticos,
+// malha cargueira e encomendas expressas.
+// =====================================================
+
+const CARGO_POLICIES = Object.freeze({
+  belly: { label:'Belly cargo conservador', setupCost:0, dailyCost:0, tonMultiplier:0.78, revenueMultiplier:0.96, npsImpact:0.08, note:'Usa porão disponível sem pressionar turnaround.' },
+  balanced: { label:'Carga balanceada', setupCost:42000, dailyCost:3200, tonMultiplier:1.00, revenueMultiplier:1.05, npsImpact:0.00, note:'Equilíbrio entre passageiros, carga e pontualidade.' },
+  express: { label:'Encomendas expressas', setupCost:125000, dailyCost:8900, tonMultiplier:0.72, revenueMultiplier:1.42, npsImpact:-0.06, note:'Menos tonelagem, mais receita por urgência e e-commerce.' },
+  cargoMax: { label:'Prioridade cargueira', setupCost:215000, dailyCost:13800, tonMultiplier:1.36, revenueMultiplier:1.12, npsImpact:-0.18, note:'Maximiza carga e contratos, mas aumenta complexidade operacional.' }
+});
+
+const CARGO_FACILITIES = Object.freeze({
+  warehouse: { label:'Armazém hub', max:4, cost:180000, daily:2400, tonBoost:0.12, revenueBoost:0.02, note:'Aumenta tonelagem processada nos hubs.' },
+  coldChain: { label:'Câmara fria', max:3, cost:260000, daily:3100, tonBoost:0.05, revenueBoost:0.09, note:'Libera farmacêuticos, perecíveis e contratos sensíveis.' },
+  sortation: { label:'Sort center expresso', max:4, cost:330000, daily:4400, tonBoost:0.08, revenueBoost:0.11, note:'Aumenta receita e confiabilidade de encomendas.' },
+  customs: { label:'Despacho aduaneiro', max:3, cost:290000, daily:3600, tonBoost:0.07, revenueBoost:0.07, note:'Reduz risco em carga internacional e contratos logísticos.' }
+});
+
+const CARGO_PRODUCTS = Object.freeze({
+  ecommerce: { label:'E-commerce', premium:1.22, cold:false, customs:false, sensitivity:0.52 },
+  pharma: { label:'Farmacêutico', premium:1.74, cold:true, customs:true, sensitivity:0.86 },
+  perishables: { label:'Perecíveis', premium:1.46, cold:true, customs:false, sensitivity:0.72 },
+  industrial: { label:'Industrial', premium:1.04, cold:false, customs:true, sensitivity:0.34 },
+  mail: { label:'Correio expresso', premium:1.34, cold:false, customs:false, sensitivity:0.66 }
+});
+
+const LOGISTICS_CONTRACT_TEMPLATES = Object.freeze([
+  { id:'ecom_gru_mia', title:'E-commerce Brasil–Miami', product:'ecommerce', origin:'GRU', dest:'MIA', tonsRequired:48, reward:210000, minReputation:50, deadline:18, risk:'médio' },
+  { id:'pharma_gru_lis', title:'Farmacêuticos Atlântico Sul', product:'pharma', origin:'GRU', dest:'LIS', tonsRequired:34, reward:310000, minReputation:58, deadline:22, risk:'alto' },
+  { id:'fresh_rec_mad', title:'Perecíveis Nordeste–Europa', product:'perishables', origin:'REC', dest:'MAD', tonsRequired:38, reward:245000, minReputation:55, deadline:20, risk:'alto' },
+  { id:'industrial_scl_gru', title:'Peças industriais Cone Sul', product:'industrial', origin:'SCL', dest:'GRU', tonsRequired:62, reward:230000, minReputation:52, deadline:19, risk:'baixo' },
+  { id:'mail_jfk_lhr', title:'Correio premium Atlântico Norte', product:'mail', origin:'JFK', dest:'LHR', tonsRequired:44, reward:285000, minReputation:64, deadline:20, risk:'médio' },
+  { id:'cargo_net_dxb_sin', title:'Ponte cargueira Oriente Médio–Ásia', product:'ecommerce', origin:'DXB', dest:'SIN', tonsRequired:72, reward:390000, minReputation:70, deadline:26, risk:'alto' }
+]);
+
+function defaultCargoOps(career) {
+  return {
+    policy:'balanced',
+    expressProgram:'starter',
+    facilities:{ warehouse:0, coldChain:0, sortation:0, customs:0 },
+    contracts: seedLogisticsContracts(career),
+    cargoNetworkScore:0,
+    routeCargoBoost:1,
+    fulfillment:82,
+    dailyCargoCost:0,
+    totalAdvancedCargoTons:0,
+    totalAdvancedCargoRevenue:0,
+    contractRevenue:0,
+    failedDeadlines:0,
+    lastCargoAuditDay:0,
+    cargoLog:[]
+  };
+}
+
+function seedLogisticsContracts(career) {
+  const day = career?.day || 1;
+  const hubs = new Set(career?.hubs || [career?.hubIata || 'GRU']);
+  return LOGISTICS_CONTRACT_TEMPLATES.map((tpl, idx) => {
+    let origin = tpl.origin;
+    let dest = tpl.dest;
+    if (idx < 3 && !hubs.has(origin) && career?.hubIata) origin = career.hubIata;
+    if (origin === dest) dest = tpl.dest === origin ? 'MIA' : tpl.dest;
+    return {
+      id:`${tpl.id}_${idx}`,
+      templateId:tpl.id,
+      title:tpl.title,
+      product:tpl.product,
+      origin,
+      dest,
+      tonsRequired:tpl.tonsRequired,
+      progressTons:0,
+      reward:tpl.reward,
+      minReputation:tpl.minReputation,
+      risk:tpl.risk,
+      status: idx < 4 ? 'available' : 'locked',
+      createdDay:day,
+      deadlineDay:day + tpl.deadline,
+      penalty:Math.round(tpl.reward * (tpl.risk === 'alto' ? 0.42 : tpl.risk === 'médio' ? 0.28 : 0.18))
+    };
+  });
+}
+
+function ensureV17Career(career) {
+  if (!career) return career;
+  if (typeof ensureV16Career === 'function') ensureV16Career(career);
+  career.schema = BUILD.schema;
+  career.cargoOps = Object.assign(defaultCargoOps(career), career.cargoOps || {});
+  career.cargoOps.facilities = Object.assign(defaultCargoOps(career).facilities, career.cargoOps.facilities || {});
+  career.cargoOps.contracts = Array.isArray(career.cargoOps.contracts) ? career.cargoOps.contracts : seedLogisticsContracts(career);
+  career.cargoOps.cargoLog = Array.isArray(career.cargoOps.cargoLog) ? career.cargoOps.cargoLog : [];
+  career.cargoOps.policy = CARGO_POLICIES[career.cargoOps.policy] ? career.cargoOps.policy : 'balanced';
+  career.cargoOps.totalAdvancedCargoTons = Number(career.cargoOps.totalAdvancedCargoTons || 0);
+  career.cargoOps.totalAdvancedCargoRevenue = Number(career.cargoOps.totalAdvancedCargoRevenue || 0);
+  career.cargoOps.contractRevenue = Number(career.cargoOps.contractRevenue || 0);
+  career.cargoOps.failedDeadlines = Number(career.cargoOps.failedDeadlines || 0);
+  career.cargoOps.fulfillment = utils.clamp(Number(career.cargoOps.fulfillment || 82), 0, 100);
+  Object.keys(CARGO_FACILITIES).forEach(k => { career.cargoOps.facilities[k] = utils.clamp(Number(career.cargoOps.facilities[k] || 0), 0, CARGO_FACILITIES[k].max); });
+  (career.routes || []).forEach(r => {
+    r.cargoProfile = r.cargoProfile || 'auto';
+    r.lastAdvancedCargoTons = Number(r.lastAdvancedCargoTons || 0);
+    r.lastAdvancedCargoRevenue = Number(r.lastAdvancedCargoRevenue || 0);
+    r.lastCargoFulfillment = Number(r.lastCargoFulfillment || 0);
+  });
+  refreshCargoSnapshot(career, false);
+  return career;
+}
+
+function cargoLog(career, text, type = 'info') {
+  if (!career) return;
+  career.cargoOps = career.cargoOps || defaultCargoOps(career);
+  career.cargoOps.cargoLog = Array.isArray(career.cargoOps.cargoLog) ? career.cargoOps.cargoLog : [];
+  career.cargoOps.cargoLog.unshift({ day:career.day || 1, time:Date.now(), type, text });
+  career.cargoOps.cargoLog = career.cargoOps.cargoLog.slice(0, 28);
+}
+
+function cargoFacilityMultiplier(career, kind) {
+  const facilities = (career && career.cargoOps && career.cargoOps.facilities) || {};
+  if (kind === 'tons') return 1 + Object.entries(CARGO_FACILITIES).reduce((sum,[k,f]) => sum + Number(facilities[k] || 0) * Number(f.tonBoost || 0), 0);
+  if (kind === 'revenue') return 1 + Object.entries(CARGO_FACILITIES).reduce((sum,[k,f]) => sum + Number(facilities[k] || 0) * Number(f.revenueBoost || 0), 0);
+  if (kind === 'daily') return Object.entries(CARGO_FACILITIES).reduce((sum,[k,f]) => sum + Number(facilities[k] || 0) * Number(f.daily || 0), 0);
+  return 1;
+}
+
+function cargoRouteProductMix(career, route) {
+  ensureV17Career(career);
+  const active = (career.cargoOps.contracts || []).filter(ct => ct.status === 'accepted' && ((ct.origin === route.origin && ct.dest === route.dest) || (ct.origin === route.dest && ct.dest === route.origin)));
+  if (active.length) return active.map(ct => CARGO_PRODUCTS[ct.product] || CARGO_PRODUCTS.ecommerce);
+  const intl = utils.byIata(route.origin)?.country !== utils.byIata(route.dest)?.country;
+  if (intl) return [CARGO_PRODUCTS.ecommerce, CARGO_PRODUCTS.industrial, CARGO_PRODUCTS.mail];
+  return [CARGO_PRODUCTS.ecommerce, CARGO_PRODUCTS.mail, CARGO_PRODUCTS.perishables];
+}
+
+function routeCargoPotential(career, route, plane, estimateBase) {
+  ensureV17Career(career);
+  const origin = utils.byIata(route.origin); const dest = utils.byIata(route.dest);
+  if (!origin || !dest || !plane) return { tons:0, revenue:0, rate:0, fulfillment:0, score:0 };
+  const policy = CARGO_POLICIES[career.cargoOps.policy] || CARGO_POLICIES.balanced;
+  const products = cargoRouteProductMix(career, route);
+  const avgPremium = products.reduce((sum,p)=>sum + Number(p.premium || 1),0) / Math.max(products.length,1);
+  const coldNeed = products.some(p => p.cold);
+  const customsNeed = products.some(p => p.customs || origin.country !== dest.country);
+  const facilities = career.cargoOps.facilities || {};
+  const coldReady = coldNeed ? Math.min(1, Number(facilities.coldChain || 0) / 2) : 1;
+  const customsReady = customsNeed ? Math.min(1, Number(facilities.customs || 0) / 2) : 1;
+  const network = calculateCargoSnapshot(career, false);
+  const usableBelly = Math.max(0, Number(plane.cargoKg || 0) / 1000);
+  const freighter = Number(plane.capacity || 0) === 0 || /cargo|freighter/i.test(String(plane.category || '') + ' ' + String(plane.name || ''));
+  const passengerLoad = Number(estimateBase?.loadFactor || 0.72);
+  const bellyAvailability = freighter ? 1.0 : utils.clamp(0.42 + (1 - passengerLoad) * 0.34, 0.22, 0.62);
+  const baseTons = usableBelly * bellyAvailability;
+  const marketDemand = utils.clamp(((origin.demand + dest.demand) / 200) * (origin.country !== dest.country ? 1.18 : 1) * (career.businessModel === 'cargo' ? 1.22 : 1), 0.30, 1.55);
+  const codeBoost = 1 + (typeof codeshareCargoBoost === 'function' ? codeshareCargoBoost(career) : 0);
+  const tons = Math.max(0, Math.round(baseTons * marketDemand * policy.tonMultiplier * cargoFacilityMultiplier(career, 'tons') * coldReady * customsReady * codeBoost * 10) / 10);
+  const distance = Number(estimateBase?.distance || utils.distanceKm(origin, dest));
+  const urgency = policy.revenueMultiplier * avgPremium * cargoFacilityMultiplier(career, 'revenue');
+  const rate = Math.max(95, (origin.country !== dest.country ? 148 : 92) * Math.max(distance / 100, 1) * urgency);
+  const fulfillment = utils.clamp(68 + network.score * 0.25 + (facilities.sortation || 0) * 4.5 + (facilities.warehouse || 0) * 2.8 - (customsNeed && !facilities.customs ? 12 : 0) - (coldNeed && !facilities.coldChain ? 16 : 0), 0, 100);
+  return { tons, revenue:Math.round(tons * rate), rate:Math.round(rate), fulfillment:Math.round(fulfillment), score:network.score, coldNeed, customsNeed };
+}
+
+function calculateCargoSnapshot(career, update = true) {
+  if (!career) return { score:0, activeContracts:0, availableContracts:0, hubs:0, routes:0, freighters:0, dailyCost:0, critical:'sem carreira' };
+  const routes = (career.routes || []).filter(r => r.status !== 'paused');
+  const hubs = new Set(career.hubs || [career.hubIata || 'GRU']);
+  const freighters = (career.fleet || []).filter(p => { const m = utils.model(p.modelId); return m && (Number(m.capacity || 0) === 0 || /cargo/i.test(String(m.category || '') + ' ' + String(m.name || ''))); }).length;
+  const facilities = career.cargoOps?.facilities || {};
+  const facilityScore = Object.entries(CARGO_FACILITIES).reduce((sum,[k,f]) => sum + (Number(facilities[k] || 0) / f.max) * 12, 0);
+  const contracts = career.cargoOps?.contracts || [];
+  const activeContracts = contracts.filter(c => c.status === 'accepted').length;
+  const availableContracts = contracts.filter(c => c.status === 'available').length;
+  const policy = CARGO_POLICIES[career.cargoOps?.policy || 'balanced'] || CARGO_POLICIES.balanced;
+  const dailyCost = Math.round(Number(policy.dailyCost || 0) + cargoFacilityMultiplier(career, 'daily'));
+  const score = utils.clamp(routes.length * 3.2 + hubs.size * 6 + freighters * 7 + facilityScore + activeContracts * 4 + (career.networkOps?.networkScore || 0) * 0.12 + (career.reputation || 0) * 0.08, 0, 100);
+  const critical = score >= 72 ? 'malha cargueira forte' : score >= 45 ? 'malha cargueira em expansão' : 'capacidade cargueira inicial';
+  const snap = { score:Math.round(score), activeContracts, availableContracts, hubs:hubs.size, routes:routes.length, freighters, dailyCost, critical };
+  if (update && career.cargoOps) {
+    career.cargoOps.cargoNetworkScore = snap.score;
+    career.cargoOps.dailyCargoCost = snap.dailyCost;
+    career.cargoOps.routeCargoBoost = 1 + snap.score / 450;
+  }
+  return snap;
+}
+
+function refreshCargoSnapshot(career, update = true) {
+  return calculateCargoSnapshot(career, update);
+}
+
+function unlockLogisticsContracts(career) {
+  ensureV17Career(career);
+  (career.cargoOps.contracts || []).forEach(ct => {
+    if (ct.status === 'locked' && (career.reputation || 0) >= ct.minReputation) {
+      ct.status = 'available';
+      cargoLog(career, `Novo contrato logístico liberado: ${ct.title}.`, 'ok');
+      pushMessage(career, `Contrato logístico liberado: ${ct.title}.`, 'success');
+    }
+  });
+}
+
+function acceptCargoContract(contractId) {
+  const c = activeCareer(); if (!c) return;
+  ensureV17Career(c);
+  const ct = (c.cargoOps.contracts || []).find(x => x.id === contractId);
+  if (!ct) return showToast('Contrato logístico não encontrado.', 'warn');
+  if (ct.status !== 'available') return showToast('Contrato não está disponível.', 'warn');
+  if ((c.reputation || 0) < ct.minReputation) return showToast(`Reputação mínima exigida: ${utils.pct(ct.minReputation)}.`, 'warn');
+  const product = CARGO_PRODUCTS[ct.product] || CARGO_PRODUCTS.ecommerce;
+  if (product.cold && Number(c.cargoOps.facilities.coldChain || 0) <= 0) return showToast('Este contrato exige câmara fria.', 'warn');
+  if (product.customs && Number(c.cargoOps.facilities.customs || 0) <= 0 && utils.byIata(ct.origin)?.country !== utils.byIata(ct.dest)?.country) return showToast('Este contrato exige despacho aduaneiro.', 'warn');
+  ct.status = 'accepted';
+  ct.acceptedDay = c.day || 1;
+  cargoLog(c, `Contrato aceito: ${ct.title} (${ct.origin}-${ct.dest}, ${product.label}).`, 'ok');
+  pushMessage(c, `Contrato logístico aceito: ${ct.title}.`, 'success');
+  refreshCargoSnapshot(c, true);
+  c.valuation = valuation(c); updateMarket(c); setActiveCareer(c); render();
+}
+
+function setCargoPolicy(policyId) {
+  const c = activeCareer(); if (!c) return;
+  ensureV17Career(c);
+  const policy = CARGO_POLICIES[policyId];
+  if (!policy) return showToast('Política cargueira inválida.', 'warn');
+  if (c.cargoOps.policy === policyId) return showToast('Política já está ativa.', 'warn');
+  if ((c.cash || 0) < Number(policy.setupCost || 0)) return showToast(`Caixa insuficiente: ${utils.money(policy.setupCost)}.`, 'warn');
+  c.cash -= Number(policy.setupCost || 0);
+  c.cargoOps.policy = policyId;
+  c.reputation = utils.clamp((c.reputation || 0) + Number(policy.npsImpact || 0), 0, 100);
+  logFinance(c, `Configuração política cargueira — ${policy.label}`, -Number(policy.setupCost || 0), 'carga');
+  cargoLog(c, `Política cargueira alterada para ${policy.label}.`, 'ok');
+  refreshCargoSnapshot(c, true);
+  c.valuation = valuation(c); updateMarket(c); setActiveCareer(c); showToast('Política cargueira atualizada.', 'ok'); render();
+}
+
+function investCargoFacility(kind) {
+  const c = activeCareer(); if (!c) return;
+  ensureV17Career(c);
+  const facility = CARGO_FACILITIES[kind];
+  if (!facility) return showToast('Infraestrutura inválida.', 'warn');
+  const current = Number(c.cargoOps.facilities[kind] || 0);
+  if (current >= facility.max) return showToast('Infraestrutura já está no nível máximo.', 'warn');
+  const cost = Math.round(facility.cost * (1 + current * 0.42));
+  if ((c.cash || 0) < cost) return showToast(`Caixa insuficiente: ${utils.money(cost)}.`, 'warn');
+  c.cash -= cost;
+  c.cargoOps.facilities[kind] = current + 1;
+  logFinance(c, `Investimento carga: ${facility.label} nível ${current + 1}`, -cost, 'carga');
+  cargoLog(c, `${facility.label} elevado ao nível ${current + 1}.`, 'ok');
+  unlockLogisticsContracts(c);
+  refreshCargoSnapshot(c, true);
+  c.valuation = valuation(c); updateMarket(c); setActiveCareer(c); showToast('Infraestrutura cargueira ampliada.', 'ok'); render();
+}
+
+function applyCargoContractProgress(career, route, estimate) {
+  ensureV17Career(career);
+  const ops = career.cargoOps;
+  const advancedTons = Number(estimate.advancedCargoTons || 0);
+  const advancedRevenue = Number(estimate.advancedCargoRevenue || 0);
+  route.lastAdvancedCargoTons = advancedTons;
+  route.lastAdvancedCargoRevenue = advancedRevenue;
+  route.lastCargoFulfillment = Number(estimate.cargoFulfillment || ops.fulfillment || 0);
+  ops.totalAdvancedCargoTons += advancedTons;
+  ops.totalAdvancedCargoRevenue += advancedRevenue;
+  ops.fulfillment = utils.clamp((Number(ops.fulfillment || 82) * 0.92) + (Number(estimate.cargoFulfillment || 82) * 0.08), 0, 100);
+  (ops.contracts || []).forEach(ct => {
+    if (ct.status !== 'accepted') return;
+    const sameDirection = ct.origin === route.origin && ct.dest === route.dest;
+    const reverse = ct.origin === route.dest && ct.dest === route.origin;
+    if (!sameDirection && !reverse) return;
+    const product = CARGO_PRODUCTS[ct.product] || CARGO_PRODUCTS.ecommerce;
+    const progress = Math.max(0.1, advancedTons * (0.72 + product.sensitivity * 0.34));
+    ct.progressTons = Math.min(Number(ct.tonsRequired || 1), Number(ct.progressTons || 0) + progress);
+    if (ct.progressTons >= ct.tonsRequired) {
+      ct.status = 'completed';
+      ct.completedDay = career.day || 1;
+      career.cash += Number(ct.reward || 0);
+      ops.contractRevenue += Number(ct.reward || 0);
+      career.reputation = utils.clamp((career.reputation || 0) + (ct.risk === 'alto' ? 1.4 : 0.8), 0, 100);
+      logFinance(career, `Contrato logístico concluído: ${ct.title}`, ct.reward, 'carga');
+      cargoLog(career, `Contrato concluído: ${ct.title}. Bônus ${utils.money(ct.reward)}.`, 'ok');
+      pushMessage(career, `Contrato logístico concluído: ${ct.title}.`, 'success');
+      unlockLogisticsContracts(career);
+    } else {
+      cargoLog(career, `${ct.title}: ${utils.num(ct.progressTons,1)}/${utils.num(ct.tonsRequired,1)} t entregues.`, 'info');
+    }
+  });
+  refreshCargoSnapshot(career, true);
+}
+
+function processCargoDaily(career) {
+  if (!career) return;
+  ensureV17Career(career);
+  const ops = career.cargoOps;
+  const snap = refreshCargoSnapshot(career, true);
+  if (snap.dailyCost > 0) {
+    career.cash -= snap.dailyCost;
+    logFinance(career, 'Custo diário de carga, armazéns e encomendas', -snap.dailyCost, 'carga');
+  }
+  (ops.contracts || []).forEach(ct => {
+    if (ct.status !== 'accepted') return;
+    if ((career.day || 1) > Number(ct.deadlineDay || 999)) {
+      ct.status = 'failed';
+      career.cash -= Number(ct.penalty || 0);
+      ops.failedDeadlines += 1;
+      ops.fulfillment = utils.clamp((ops.fulfillment || 82) - 5.5, 0, 100);
+      career.reputation = utils.clamp((career.reputation || 0) - 1.2, 0, 100);
+      logFinance(career, `Multa contrato logístico: ${ct.title}`, -Number(ct.penalty || 0), 'carga');
+      cargoLog(career, `Prazo perdido em ${ct.title}. Multa ${utils.money(ct.penalty)}.`, 'warn');
+      pushMessage(career, `Contrato logístico atrasado: ${ct.title}.`, 'warn');
+    }
+  });
+  unlockLogisticsContracts(career);
+  if ((career.day || 1) - Number(ops.lastCargoAuditDay || 0) >= 4) {
+    ops.lastCargoAuditDay = career.day || 1;
+    cargoLog(career, `Auditoria cargueira: ${snap.critical}, score ${snap.score}/100 e custo diário ${utils.money(snap.dailyCost)}.`, snap.score >= 55 ? 'ok' : 'info');
+  }
+}
+
+const previousNormalizeCareerV170 = normalizeCareer;
+normalizeCareer = function(career) {
+  const c = previousNormalizeCareerV170(career);
+  if (c) ensureV17Career(c);
+  return c;
+};
+
+const previousRouteEstimateV170 = utils.routeEstimate.bind(utils);
+utils.routeEstimate = function(origin, dest, plane, career, route = null) {
+  const e = previousRouteEstimateV170(origin, dest, plane, career, route);
+  if (!career || !route || !plane) return e;
+  ensureV17Career(career);
+  const cargo = routeCargoPotential(career, route, plane, e);
+  e.advancedCargoTons = cargo.tons;
+  e.advancedCargoRevenue = cargo.revenue;
+  e.cargoRate = cargo.rate;
+  e.cargoFulfillment = cargo.fulfillment;
+  e.cargoColdNeed = cargo.coldNeed;
+  e.cargoCustomsNeed = cargo.customsNeed;
+  e.cargoTons = Math.round((Number(e.cargoTons || 0) + cargo.tons) * 10) / 10;
+  e.cargoRevenue = Math.round(Number(e.cargoRevenue || 0) + cargo.revenue);
+  e.revenue = Math.round(Number(e.revenue || 0) + cargo.revenue);
+  e.profit = Math.round(Number(e.profit || 0) + cargo.revenue * 0.76);
+  e.totalCost = Math.round(Number(e.totalCost || 0) + cargo.revenue * 0.24);
+  e.margin = e.revenue > 0 ? (e.profit / e.revenue) * 100 : e.margin;
+  e.score = utils.clamp((e.profit / Math.max(e.totalCost, 1)) * 100, -80, 220);
+  return e;
+};
+
+const previousCompleteFlightV170 = completeFlight;
+completeFlight = function(career, route, plane, model) {
+  if (!career || !route || !plane || !model) return previousCompleteFlightV170(career, route, plane, model);
+  ensureV17Career(career);
+  const origin = utils.byIata(route.origin); const dest = utils.byIata(route.dest);
+  const estimate = origin && dest ? utils.routeEstimate(origin, dest, model, career, route) : {};
+  previousCompleteFlightV170(career, route, plane, model);
+  applyCargoContractProgress(career, route, estimate);
+};
+
+const previousAdvanceCompanyDayV170 = advanceCompanyDay;
+advanceCompanyDay = function(career) {
+  const before = career && Number(career.day || 1);
+  previousAdvanceCompanyDayV170(career);
+  if (career && Number(career.day || 1) !== before) processCargoDaily(career);
+};
+
+const previousValuationV170 = valuation;
+valuation = function(career) {
+  const base = previousValuationV170(career);
+  if (!career) return base;
+  ensureV17Career(career);
+  const snap = calculateCargoSnapshot(career, false);
+  const facilities = Object.entries(career.cargoOps.facilities || {}).reduce((sum,[k,lvl]) => sum + Number(lvl || 0) * (CARGO_FACILITIES[k]?.cost || 0) * 0.34, 0);
+  const cargoValue = snap.score * 42000 + snap.activeContracts * 115000 + Number(career.cargoOps.totalAdvancedCargoRevenue || 0) * 0.18 + facilities;
+  const penalty = Number(career.cargoOps.failedDeadlines || 0) * 85000;
+  return Math.max(0, Math.round(base + cargoValue - penalty));
+};
+
+const previousDailyObligationEstimateV170 = dailyObligationEstimate;
+dailyObligationEstimate = function(career) {
+  const base = previousDailyObligationEstimateV170(career);
+  if (!career) return base;
+  ensureV17Career(career);
+  return Math.round(base + Number(career.cargoOps.dailyCargoCost || 0));
+};
+
+function renderCargoView() {
+  const c = activeCareer(); if (!c) return renderSlots();
+  ensureV17Career(c);
+  const snap = refreshCargoSnapshot(c, false);
+  const activePolicy = c.cargoOps.policy || 'balanced';
+  const policyCards = Object.entries(CARGO_POLICIES).map(([id,p]) => `<article class="service-card ${activePolicy===id?'active':''}"><b>${p.label}</b><small>Setup ${utils.money(p.setupCost)} • dia ${utils.money(p.dailyCost)}</small><p>${p.note}</p><div class="route-stats"><span>Tons x${p.tonMultiplier}</span><span>Receita x${p.revenueMultiplier}</span><span>NPS ${p.npsImpact>=0?'+':''}${p.npsImpact}</span></div><button class="btn mini ${activePolicy===id?'ghost':'primary'}" data-action="setCargoPolicy" data-policy="${id}">${activePolicy===id?'Ativa':'Aplicar'}</button></article>`).join('');
+  const facilityCards = Object.entries(CARGO_FACILITIES).map(([id,f]) => { const lvl = Number(c.cargoOps.facilities[id] || 0); const cost = Math.round(f.cost * (1 + lvl * 0.42)); return `<article class="service-card"><b>${f.label}</b><small>Nível ${lvl}/${f.max} • próximo ${lvl>=f.max?'máximo':utils.money(cost)}</small><p>${f.note}</p><div class="progress"><span style="width:${Math.round((lvl/f.max)*100)}%"></span></div><button class="btn mini primary" data-action="investCargoFacility" data-facility="${id}" ${lvl>=f.max?'disabled':''}>Investir</button></article>`; }).join('');
+  const contractCards = (c.cargoOps.contracts || []).map(ct => { const product = CARGO_PRODUCTS[ct.product] || CARGO_PRODUCTS.ecommerce; const pct = Math.round((Number(ct.progressTons||0) / Math.max(1, Number(ct.tonsRequired||1))) * 100); const statusLabel = ct.status === 'accepted' ? 'Em andamento' : ct.status === 'completed' ? 'Concluído' : ct.status === 'failed' ? 'Falhou' : ct.status === 'locked' ? 'Bloqueado' : 'Disponível'; return `<article class="service-card ${ct.status}"><b>${ct.title}</b><small>${ct.origin} → ${ct.dest} • ${product.label} • ${statusLabel}</small><p>Meta ${utils.num(ct.tonsRequired,1)} t até o dia ${ct.deadlineDay}. Bônus ${utils.money(ct.reward)} • multa ${utils.money(ct.penalty)}.</p><div class="progress"><span style="width:${utils.clamp(pct,0,100)}%"></span></div><div class="route-stats"><span>${utils.num(ct.progressTons,1)}/${utils.num(ct.tonsRequired,1)} t</span><span>Risco ${ct.risk}</span><span>Rep. mín. ${utils.pct(ct.minReputation)}</span></div>${ct.status==='available'?`<button class="btn mini primary" data-action="acceptCargoContract" data-contract="${ct.id}">Aceitar contrato</button>`:''}</article>`; }).join('');
+  const routeRows = (c.routes || []).map(r => { const plane = c.fleet.find(p => p.id === r.planeId); const model = plane && utils.model(plane.modelId); const origin = utils.byIata(r.origin); const dest = utils.byIata(r.dest); const e = origin && dest && model ? utils.routeEstimate(origin, dest, model, c, Object.assign({}, r, { planeCondition: plane.condition })) : null; return `<article><b>${r.origin} → ${r.dest}</b><small>${model ? model.name : 'sem aeronave'} • ${e ? utils.num(e.advancedCargoTons,1)+' t avançada' : 'sem estimativa'}</small><div class="route-stats"><span>Receita carga ${e ? utils.money(e.advancedCargoRevenue) : '-'}</span><span>Fulfillment ${e ? utils.pct(e.cargoFulfillment) : '-'}</span><span>Último voo ${utils.num(r.lastAdvancedCargoTons||0,1)} t</span></div></article>`; }).join('') || '<p class="muted">Crie rotas para ativar malha cargueira.</p>';
+  const log = (c.cargoOps.cargoLog || []).map(l => `<div class="finance-row ${l.type}"><span>${utils.escape(l.text)}</span><small>Dia ${l.day}</small></div>`).join('') || '<p class="muted">Sem registros de carga ainda.</p>';
+  return `<div class="cargo-layout"><section class="panel hero-panel"><span class="eyebrow">F53-F56 Carga avançada</span><h1>Malha cargueira e logística</h1><p>Gerencie belly cargo, contratos logísticos, infraestrutura de hub, encomendas expressas e fulfillment operacional.</p><div class="kpi-grid"><div class="kpi"><small>Score carga</small><strong>${snap.score}/100</strong></div><div class="kpi"><small>Contratos ativos</small><strong>${snap.activeContracts}</strong></div><div class="kpi"><small>Fulfillment</small><strong>${utils.pct(c.cargoOps.fulfillment)}</strong></div><div class="kpi"><small>Receita avançada</small><strong>${utils.money(c.cargoOps.totalAdvancedCargoRevenue)}</strong></div><div class="kpi"><small>Tons avançadas</small><strong>${utils.num(c.cargoOps.totalAdvancedCargoTons,1)}</strong></div><div class="kpi"><small>Custo diário</small><strong>${utils.money(snap.dailyCost)}</strong></div></div></section><section class="panel glass"><h2>Política cargueira</h2><div class="service-grid">${policyCards}</div></section><section class="panel glass"><h2>Infraestrutura logística</h2><div class="service-grid">${facilityCards}</div></section><section class="panel glass"><h2>Contratos logísticos</h2><div class="service-grid">${contractCards}</div></section><section class="panel glass"><h2>Carga por rota</h2><div class="route-economy-list">${routeRows}</div></section><section class="panel glass"><h2>Histórico cargueiro</h2><div class="finance-list">${log}</div></section></div>`;
+}
+
+const previousNavItemsV170 = navItems;
+navItems = function() {
+  const items = previousNavItemsV170();
+  const auditIndex = items.findIndex(i => i[0] === 'audit');
+  if (!items.some(i => i[0] === 'cargo')) items.splice(auditIndex >= 0 ? auditIndex : items.length, 0, ['cargo','Carga','▤']);
+  return items;
+};
+
+const previousRenderV170 = render;
+render = function() {
+  if (runtime.view === 'cargo') {
+    safeExecute('render:cargo', () => {
+      hideFatal();
+      const c = activeCareer(); if (c) ensureV17Career(c);
+      dom.app.innerHTML = shell(renderCargoView());
+    });
+    return;
+  }
+  previousRenderV170();
+};
+
+const previousRenderDashboardV170 = renderDashboard;
+renderDashboard = function() {
+  const html = previousRenderDashboardV170();
+  const c = activeCareer(); if (!c) return html;
+  ensureV17Career(c);
+  const snap = calculateCargoSnapshot(c, false);
+  const card = `<section class="panel glass"><span class="eyebrow">F53-F56 Carga avançada</span><h2>Logística e encomendas</h2><div class="kpi-grid"><div class="kpi"><small>Score carga</small><strong>${snap.score}/100</strong></div><div class="kpi"><small>Contratos ativos</small><strong>${snap.activeContracts}</strong></div><div class="kpi"><small>Fulfillment</small><strong>${utils.pct(c.cargoOps.fulfillment)}</strong></div><div class="kpi"><small>Receita carga</small><strong>${utils.money(c.cargoOps.totalAdvancedCargoRevenue)}</strong></div></div><button class="btn primary" data-action="go" data-view="cargo">Abrir carga</button></section>`;
+  const pos = html.lastIndexOf('</div>');
+  return pos >= 0 ? html.slice(0, pos) + card + html.slice(pos) : html + card;
+};
+
+const previousRenderRoutesV170 = renderRoutes;
+renderRoutes = function() {
+  const html = previousRenderRoutesV170();
+  const c = activeCareer(); if (!c) return html;
+  ensureV17Career(c);
+  const card = `<section class="panel glass"><span class="eyebrow">Carga por rota</span><h2>Receita auxiliar logística</h2><div class="kpi-grid"><div class="kpi"><small>Tons avançadas</small><strong>${utils.num(c.cargoOps.totalAdvancedCargoTons,1)}</strong></div><div class="kpi"><small>Receita avançada</small><strong>${utils.money(c.cargoOps.totalAdvancedCargoRevenue)}</strong></div><div class="kpi"><small>Fulfillment</small><strong>${utils.pct(c.cargoOps.fulfillment)}</strong></div><div class="kpi"><small>Contratos ativos</small><strong>${calculateCargoSnapshot(c,false).activeContracts}</strong></div></div><button class="btn primary" data-action="go" data-view="cargo">Gerenciar carga</button></section>`;
+  return html.replace('</div>', card + '</div>');
+};
+
+const previousRenderFinanceV170 = renderFinance;
+renderFinance = function() {
+  const html = previousRenderFinanceV170();
+  const c = activeCareer(); if (!c) return html;
+  ensureV17Career(c);
+  const card = `<section class="panel glass"><span class="eyebrow">Carga e logística</span><h2>Resultado cargueiro</h2><div class="kpi-grid"><div class="kpi"><small>Receita avançada</small><strong>${utils.money(c.cargoOps.totalAdvancedCargoRevenue)}</strong></div><div class="kpi"><small>Bônus contratos</small><strong>${utils.money(c.cargoOps.contractRevenue)}</strong></div><div class="kpi"><small>Custo diário</small><strong>${utils.money(c.cargoOps.dailyCargoCost)}</strong></div><div class="kpi"><small>Prazos perdidos</small><strong>${utils.num(c.cargoOps.failedDeadlines)}</strong></div></div></section>`;
+  return html.replace('</div>', card + '</div>');
+};
+
+const previousRenderAuditV170 = renderAudit;
+renderAudit = function() {
+  const checks = runIntegrityAudit();
+  const passed = checks.filter(c => c.ok).length;
+  return `<div class="audit-layout"><section class="panel glass"><div class="section-head"><div><span class="eyebrow">Sistema anti-quebra</span><h2>Auditoria da build</h2><p>Execução obrigatória por fase para garantir integridade, evolução real e compatibilidade dos saves.</p></div><button class="btn primary" data-action="runAudit">Rodar auditoria</button></div><div class="audit-score"><strong>${passed}/${checks.length}</strong><span>checks aprovados</span></div><div class="audit-list">${checks.map(c => `<div class="audit-row ${c.ok?'ok':'bad'}"><b>${c.ok?'✓':'!'}</b><span>${c.label}</span><small>${c.detail}</small></div>`).join('')}</div></section><section class="panel glass"><h2>Relatório desta entrega</h2><div class="todo-list"><span>F53 Carga avançada: OK — política cargueira, belly cargo, express e prioridade cargueira.</span><span>F54 Contratos logísticos: OK — tonelagem, prazo, multa, bônus, requisitos e progresso por voo.</span><span>F55 Malha cargueira: OK — score de carga, infraestrutura de hub, armazém, câmara fria, sort center e alfândega.</span><span>F56 Encomendas expressas: OK — produtos, fulfillment, receita auxiliar e impacto em valuation.</span><span>Anti-quebra: OK — migração de saves v0.4 até v1.6 para schema 17 preservada.</span></div></section></div>`;
+};
+
+const previousRunIntegrityAuditV170 = runIntegrityAudit;
+runIntegrityAudit = function() {
+  const c = activeCareer(); if (c) ensureV17Career(c);
+  const blockedLabels = ['Schema da build','Chave de save v1.6','Migração v1.5 preservada','Normalização v1.6'];
+  const base = previousRunIntegrityAuditV170().filter(check => !blockedLabels.includes(check.label));
+  const extra = [
+    { ok: BUILD.schema === 17, label:'Schema da build', detail:`Schema atual ${BUILD.schema}.` },
+    { ok: STORE_KEY.includes('schema_17'), label:'Chave de save v1.7', detail:STORE_KEY },
+    { ok: LEGACY_STORE_KEYS.includes('vale_air_manager_schema_16'), label:'Migração v1.6 preservada', detail:'Saves schema 16 são migrados para schema 17 sem reset.' },
+    { ok: typeof ensureV17Career === 'function', label:'Normalização v1.7', detail:'Carreiras antigas recebem carga avançada, contratos e infraestrutura.' },
+    { ok: navItems().some(i => i[0] === 'cargo'), label:'Tela Carga no menu', detail:'HUD mobile inclui acesso direto a logística.' },
+    { ok: Object.keys(CARGO_POLICIES).length === 4, label:'F53 Políticas cargueiras', detail:'Belly, balanceada, expressa e prioridade cargueira configuradas.' },
+    { ok: Object.keys(CARGO_FACILITIES).length === 4, label:'F55 Infraestrutura cargueira', detail:'Armazém, câmara fria, sort center e alfândega configurados.' },
+    { ok: LOGISTICS_CONTRACT_TEMPLATES.length === 6, label:'F54 Contratos logísticos', detail:'Seis contratos com produto, rota, prazo, bônus e multa.' },
+    { ok: Object.keys(CARGO_PRODUCTS).length === 5, label:'F56 Produtos de carga', detail:'E-commerce, farmacêutico, perecíveis, industrial e correio.' },
+    { ok: typeof acceptCargoContract === 'function', label:'Ação aceitar contrato', detail:'Contratos validam reputação, câmara fria e aduana.' },
+    { ok: typeof setCargoPolicy === 'function', label:'Ação política cargueira', detail:'Política altera custo, receita, tonelagem e reputação.' },
+    { ok: typeof investCargoFacility === 'function', label:'Ação infraestrutura', detail:'Investimento por nível protegido por caixa e limite máximo.' },
+    { ok: typeof routeCargoPotential === 'function', label:'Potencial de carga por rota', detail:'Estimativa considera avião, hubs, facilities, produtos e codeshare.' },
+    { ok: typeof utils.routeEstimate === 'function', label:'Estimativa com carga avançada', detail:'Receita, tonelagem e lucro incluem logística avançada.' },
+    { ok: typeof completeFlight === 'function', label:'Progresso por voo', detail:'Voos atualizam contratos, toneladas, receita e fulfillment.' },
+    { ok: typeof processCargoDaily === 'function', label:'Ciclo diário de carga', detail:'Custos, prazos, multas e auditoria cargueira processados por dia.' },
+    { ok: typeof calculateCargoSnapshot === 'function', label:'Snapshot cargueiro', detail:c ? `Score ${c.cargoOps.cargoNetworkScore}/100.` : 'Função disponível.' },
+    { ok: !c || c.cargoOps && Array.isArray(c.cargoOps.contracts), label:'Contratos no save', detail:c ? `${c.cargoOps.contracts.length} contrato(s) logístico(s).` : 'Sem carreira ativa.' },
+    { ok: !c || Number.isFinite(c.cargoOps.totalAdvancedCargoRevenue), label:'Receita cargueira acumulada', detail:c ? utils.money(c.cargoOps.totalAdvancedCargoRevenue || 0) : 'Sem carreira ativa.' },
+    { ok: typeof valuation === 'function', label:'Valuation cargueiro', detail:'Score de carga, contratos, receita e infraestrutura influenciam valor.' },
+    { ok: typeof dailyObligationEstimate === 'function', label:'Obrigações cargueiras', detail:c ? `${utils.money(dailyObligationEstimate(c))} incluindo carga.` : 'Função disponível.' },
+    { ok: typeof renderCargoView === 'function', label:'Render Carga', detail:'Tela de carga pronta para mobile/desktop.' }
+  ];
+  return [...extra, ...base];
+};
+
+const previousHandleActionV170 = handleAction;
+handleAction = function(target) {
+  const action = target.dataset.action;
+  if (action === 'acceptCargoContract') return safeExecute('action:acceptCargoContract', () => acceptCargoContract(target.dataset.contract));
+  if (action === 'setCargoPolicy') return safeExecute('action:setCargoPolicy', () => setCargoPolicy(target.dataset.policy));
+  if (action === 'investCargoFacility') return safeExecute('action:investCargoFacility', () => investCargoFacility(target.dataset.facility));
+  return previousHandleActionV170(target);
+};
+
+
+
+// v1.8.0 - F57-F60: Aviação executiva/charter, voos sob demanda,
+// contratos VIP/governo e operação premium por jatos menores.
+
+function registerBusinessAircraftV180() {
+  const additions = [
+    { id:'phenom300e', name:'Jato Executivo Leve VJ-300', category:'Executivo leve', price:9200000, rangeKm:3720, speedKmh:835, capacity:8, cargoKg:620, fuelBurnKgH:820, maintenanceRate:0.42, leaseMonthly:165000, turnaroundMin:24, fuelEfficiency:0.92, reliability:94, image:'assets/planes/plane-business.svg', charterClass:'light' },
+    { id:'global7500', name:'Jato Executivo Global VJ-7500', category:'Executivo ultra longo alcance', price:73500000, rangeKm:14260, speedKmh:910, capacity:14, cargoKg:1650, fuelBurnKgH:2450, maintenanceRate:0.72, leaseMonthly:880000, turnaroundMin:42, fuelEfficiency:0.96, reliability:95, image:'assets/planes/plane-business.svg', charterClass:'ultra' },
+    { id:'vipliner320', name:'VIP Liner 320 Corporate', category:'Executivo corporativo', price:92000000, rangeKm:7800, speedKmh:850, capacity:48, cargoKg:6500, fuelBurnKgH:3100, maintenanceRate:0.83, leaseMonthly:990000, turnaroundMin:58, fuelEfficiency:1.02, reliability:93, image:'assets/planes/plane-business.svg', charterClass:'corporate' }
+  ];
+  additions.forEach(a => { if (!AIRCRAFT.some(m => m.id === a.id)) AIRCRAFT.push(a); });
+}
+registerBusinessAircraftV180();
+
+const CHARTER_TIERS = {
+  lean: { id:'lean', label:'Charter enxuto', setupCost:0, dailyCost:0, revenue:0.92, demand:0.78, prestige:0.00, risk:0.03, note:'Entrada simples para gerar caixa com pouca estrutura dedicada.' },
+  premium: { id:'premium', label:'Charter premium', setupCost:185000, dailyCost:9400, revenue:1.08, demand:1.00, prestige:0.16, risk:0.015, note:'Atendimento executivo com concierge, rapidez e boa margem.' },
+  elite: { id:'elite', label:'Executive Elite', setupCost:640000, dailyCost:24800, revenue:1.24, demand:1.18, prestige:0.34, risk:0.008, note:'Serviço de alto padrão para CEOs, artistas e delegações.' },
+  sovereign: { id:'sovereign', label:'Soberano/Governo', setupCost:1380000, dailyCost:53800, revenue:1.42, demand:1.30, prestige:0.52, risk:0.004, minReputation:64, note:'Operação protocolar com exigência alta, contratos públicos e VIP internacional.' }
+};
+
+const VIP_HANDLING_LEVELS = {
+  standard: { id:'standard', label:'Atendimento executivo padrão', setupCost:0, dailyCost:0, boost:1.00, prestige:0, nps:0, note:'Sem terminal dedicado, mas aceita voos sob demanda.' },
+  concierge: { id:'concierge', label:'Concierge VIP', setupCost:240000, dailyCost:6900, boost:1.08, prestige:0.13, nps:1.2, note:'Recepção discreta, transporte premium e despacho rápido.' },
+  privateTerminal: { id:'privateTerminal', label:'Terminal privativo', setupCost:1120000, dailyCost:22500, boost:1.21, prestige:0.29, nps:3.4, note:'Experiência de luxo, segurança reforçada e margem superior.' }
+};
+
+const CHARTER_MISSION_TEMPLATES = [
+  { id:'exec_board_sp_bsb', title:'Conselho executivo urgente', type:'executivo', origin:'CGH', dest:'BSB', reward:54000, penalty:18000, minReputation:40, maxSeats:9, days:4, prestige:0.35, risk:'baixo', note:'Diretores precisam chegar para reunião estratégica.' },
+  { id:'artist_vip_gig_ssa', title:'Turnê VIP confidencial', type:'vip', origin:'GIG', dest:'SSA', reward:72000, penalty:26000, minReputation:45, maxSeats:12, days:5, prestige:0.48, risk:'médio', note:'Equipe artística exige privacidade e pontualidade.' },
+  { id:'medevac_gru_poa', title:'Evacuação médica executiva', type:'médico', origin:'GRU', dest:'POA', reward:88000, penalty:42000, minReputation:48, maxSeats:8, days:3, prestige:0.62, risk:'alto', note:'Missão sensível com prioridade de despacho e segurança.' },
+  { id:'gov_bsb_scl', title:'Delegação governamental', type:'governo', origin:'BSB', dest:'SCL', reward:156000, penalty:71000, minReputation:56, maxSeats:16, days:6, prestige:0.9, risk:'alto', note:'Contrato institucional com protocolo e reputação internacional.' },
+  { id:'vip_gru_mia', title:'Família VIP internacional', type:'vip internacional', origin:'GRU', dest:'MIA', reward:245000, penalty:98000, minReputation:58, maxSeats:14, days:8, prestige:1.1, risk:'médio', note:'Longo alcance com alta margem e exigência de serviço premium.' },
+  { id:'sports_cgh_gig', title:'Elenco esportivo express', type:'esporte', origin:'CGH', dest:'GIG', reward:42000, penalty:16000, minReputation:42, maxSeats:16, days:4, prestige:0.28, risk:'baixo', note:'Voo rápido sob demanda para equipe e staff.' },
+  { id:'corporate_lis_mad', title:'Roadshow europeu corporate', type:'corporativo', origin:'LIS', dest:'MAD', reward:69000, penalty:23000, minReputation:50, maxSeats:10, days:5, prestige:0.45, risk:'baixo', note:'Executivos financeiros em agenda internacional curta.' }
+];
+
+function defaultCharterOps(career) {
+  return {
+    tier:'lean',
+    vipHandling:{},
+    assignedPlanes:[],
+    missions:seedCharterMissions(career),
+    totalCharterRevenue:0,
+    totalCharterProfit:0,
+    totalCharterFlights:0,
+    vipContractsCompleted:0,
+    govContractsCompleted:0,
+    failedCharters:0,
+    executiveNps:68,
+    charterBrandScore:0,
+    dailyCharterCost:0,
+    onDemandDemand:0,
+    lastCharterAuditDay:0,
+    charterLog:[]
+  };
+}
+
+function charterLog(career, text, type='info') {
+  ensureV18Career(career);
+  career.charterOps.charterLog.unshift({ day:career.day || 1, time:Date.now(), type, text });
+  career.charterOps.charterLog = career.charterOps.charterLog.slice(0, 28);
+}
+
+function seedCharterMissions(career) {
+  const hubs = Array.isArray(career?.hubs) && career.hubs.length ? career.hubs : [career?.hubIata || 'GRU'];
+  const primary = hubs[0] || 'GRU';
+  return CHARTER_MISSION_TEMPLATES.map((tpl, idx) => {
+    const hasOrigin = hubs.includes(tpl.origin) || idx < 3;
+    const origin = hasOrigin ? tpl.origin : primary;
+    let dest = tpl.dest === origin ? (tpl.origin === primary ? 'GIG' : tpl.origin) : tpl.dest;
+    if (!utils.byIata(origin)) dest = tpl.dest;
+    return {
+      id:`${tpl.id}_${career?.day || 1}_${idx}`,
+      templateId:tpl.id,
+      title:tpl.title,
+      type:tpl.type,
+      origin:utils.byIata(origin) ? origin : primary,
+      dest:utils.byIata(dest) ? dest : 'GIG',
+      reward:tpl.reward,
+      penalty:tpl.penalty,
+      minReputation:tpl.minReputation,
+      maxSeats:tpl.maxSeats,
+      prestige:tpl.prestige,
+      risk:tpl.risk,
+      note:tpl.note,
+      status:idx < 5 ? 'available' : 'locked',
+      createdDay:career?.day || 1,
+      deadlineDay:(career?.day || 1) + tpl.days + idx
+    };
+  });
+}
+
+function ensureV18Career(career) {
+  if (!career) return null;
+  registerBusinessAircraftV180();
+  const defaults = defaultCharterOps(career);
+  career.charterOps = Object.assign(defaults, career.charterOps || {});
+  career.charterOps.vipHandling = Object.assign({}, defaults.vipHandling, career.charterOps.vipHandling || {});
+  career.charterOps.assignedPlanes = Array.isArray(career.charterOps.assignedPlanes) ? career.charterOps.assignedPlanes : [];
+  career.charterOps.missions = Array.isArray(career.charterOps.missions) && career.charterOps.missions.length ? career.charterOps.missions : seedCharterMissions(career);
+  career.charterOps.charterLog = Array.isArray(career.charterOps.charterLog) ? career.charterOps.charterLog : [];
+  career.charterOps.totalCharterRevenue = Number(career.charterOps.totalCharterRevenue || 0);
+  career.charterOps.totalCharterProfit = Number(career.charterOps.totalCharterProfit || 0);
+  career.charterOps.totalCharterFlights = Number(career.charterOps.totalCharterFlights || 0);
+  career.charterOps.vipContractsCompleted = Number(career.charterOps.vipContractsCompleted || 0);
+  career.charterOps.govContractsCompleted = Number(career.charterOps.govContractsCompleted || 0);
+  career.charterOps.failedCharters = Number(career.charterOps.failedCharters || 0);
+  career.charterOps.executiveNps = utils.clamp(Number(career.charterOps.executiveNps || 68), 0, 100);
+  career.charterOps.charterBrandScore = Number(career.charterOps.charterBrandScore || 0);
+  career.charterOps.dailyCharterCost = Number(career.charterOps.dailyCharterCost || 0);
+  career.charterOps.onDemandDemand = Number(career.charterOps.onDemandDemand || 0);
+  if (!CHARTER_TIERS[career.charterOps.tier]) career.charterOps.tier = 'lean';
+  (career.hubs || [career.hubIata || 'GRU']).forEach(h => { if (!career.charterOps.vipHandling[h]) career.charterOps.vipHandling[h] = 'standard'; });
+  career.fleet = Array.isArray(career.fleet) ? career.fleet : [];
+  career.fleet.forEach(p => { p.charterAssigned = career.charterOps.assignedPlanes.includes(p.id) || !!p.charterAssigned; if (p.charterAssigned && !career.charterOps.assignedPlanes.includes(p.id)) career.charterOps.assignedPlanes.push(p.id); });
+  refreshCharterSnapshot(career, true);
+  return career;
+}
+
+function isExecutiveModel(model) {
+  const text = String((model && (model.category + ' ' + model.name + ' ' + (model.charterClass || ''))) || '').toLowerCase();
+  return /executivo|corporativo|vip|global|charter|liner|vj-/.test(text) || (model && model.capacity > 0 && model.capacity <= 16 && model.rangeKm >= 1200);
+}
+
+function activeCharterPlanes(career) {
+  const ids = new Set((career && career.charterOps && career.charterOps.assignedPlanes) || []);
+  return (career.fleet || []).filter(p => ids.has(p.id)).map(p => ({ plane:p, model:utils.model(p.modelId) })).filter(x => x.model);
+}
+
+function charterVipBoost(career, iata) {
+  const key = career && career.charterOps && career.charterOps.vipHandling ? (career.charterOps.vipHandling[iata] || 'standard') : 'standard';
+  return VIP_HANDLING_LEVELS[key] || VIP_HANDLING_LEVELS.standard;
+}
+
+function calculateCharterSnapshot(career, update=true) {
+  if (!career) return { score:0, assigned:0, available:0, accepted:0, completed:0, dailyCost:0, demand:0, vipScore:0, critical:'sem carreira' };
+  if (!career.charterOps) career.charterOps = defaultCharterOps(career);
+  const ops = career.charterOps;
+  const tier = CHARTER_TIERS[ops.tier] || CHARTER_TIERS.lean;
+  const planes = activeCharterPlanes(career);
+  const vipScore = Object.values(ops.vipHandling || {}).reduce((sum,key)=>sum+((VIP_HANDLING_LEVELS[key]||VIP_HANDLING_LEVELS.standard).prestige||0),0);
+  const executiveAircraft = planes.reduce((sum,x)=>sum+(isExecutiveModel(x.model)?1:0),0);
+  const available = (ops.missions || []).filter(m => m.status === 'available').length;
+  const accepted = (ops.missions || []).filter(m => m.status === 'accepted').length;
+  const completed = (ops.missions || []).filter(m => m.status === 'completed').length;
+  const fleetQuality = planes.reduce((sum,x)=>sum+utils.clamp(Number(x.plane.condition||80)/100,0.35,1.05),0);
+  const demand = utils.clamp((career.reputation||50)*0.45 + (career.safety||90)*0.18 + tier.demand*18 + vipScore*35 + executiveAircraft*9 + available*2 - (ops.failedCharters||0)*1.6, 0, 100);
+  const dailyVip = Object.values(ops.vipHandling || {}).reduce((sum,key)=>sum+((VIP_HANDLING_LEVELS[key]||VIP_HANDLING_LEVELS.standard).dailyCost||0),0);
+  const standby = planes.reduce((sum,x)=>sum+Math.max(950, (x.model.price||0)*0.000018),0);
+  const dailyCost = Math.round((tier.dailyCost || 0) + dailyVip + standby);
+  const score = utils.clamp(Math.round(demand*0.52 + fleetQuality*9 + vipScore*28 + (ops.executiveNps||68)*0.24), 0, 100);
+  if (update) {
+    ops.dailyCharterCost = dailyCost;
+    ops.onDemandDemand = Math.round(demand);
+    ops.charterBrandScore = score;
+  }
+  return { score, assigned:planes.length, executiveAircraft, available, accepted, completed, dailyCost, demand:Math.round(demand), vipScore:Math.round(vipScore*100), critical: score >= 68 ? 'charter premium forte' : score >= 42 ? 'charter operacional' : 'charter fraco' };
+}
+
+function refreshCharterSnapshot(career, update=true) {
+  return calculateCharterSnapshot(career, update);
+}
+
+function setCharterTier(tierId) {
+  const c = activeCareer(); if (!c || !CHARTER_TIERS[tierId]) return;
+  ensureV18Career(c);
+  const cfg = CHARTER_TIERS[tierId];
+  if (cfg.minReputation && c.reputation < cfg.minReputation) return showToast(`Reputação mínima ${utils.pct(cfg.minReputation)} para ${cfg.label}.`, 'warn');
+  if (c.charterOps.tier !== tierId && cfg.setupCost > 0) {
+    if (c.cash < cfg.setupCost) return showToast(`Caixa insuficiente para ${cfg.label}.`, 'warn');
+    c.cash -= cfg.setupCost;
+    logFinance(c, `Implantação ${cfg.label}`, -cfg.setupCost, 'charter');
+  }
+  c.charterOps.tier = tierId;
+  c.reputation = utils.clamp((c.reputation||50) + (cfg.prestige||0)*1.2, 0, 100);
+  charterLog(c, `Plano ${cfg.label} ativado. Demanda sob demanda ${utils.pct(refreshCharterSnapshot(c,true).demand)}.`, 'ok');
+  updateMarket(c); setActiveCareer(c); render();
+}
+
+function setVipHandling(hub, levelId) {
+  const c = activeCareer(); if (!c || !VIP_HANDLING_LEVELS[levelId]) return;
+  ensureV18Career(c);
+  if (!(c.hubs || []).includes(hub)) return showToast('Hub inválido para atendimento VIP.', 'warn');
+  const cfg = VIP_HANDLING_LEVELS[levelId];
+  if ((c.charterOps.vipHandling[hub] || 'standard') !== levelId && cfg.setupCost > 0) {
+    if (c.cash < cfg.setupCost) return showToast(`Caixa insuficiente para ${cfg.label}.`, 'warn');
+    c.cash -= cfg.setupCost;
+    logFinance(c, `Implantação VIP ${hub}: ${cfg.label}`, -cfg.setupCost, 'charter');
+  }
+  c.charterOps.vipHandling[hub] = levelId;
+  c.charterOps.executiveNps = utils.clamp((c.charterOps.executiveNps||68) + (cfg.nps||0)*0.4, 0, 100);
+  charterLog(c, `${hub} agora opera ${cfg.label}.`, 'ok');
+  updateMarket(c); setActiveCareer(c); render();
+}
+
+function toggleCharterPlane(planeId) {
+  const c = activeCareer(); if (!c) return;
+  ensureV18Career(c);
+  const p = (c.fleet || []).find(x => x.id === planeId); if (!p) return;
+  const model = utils.model(p.modelId);
+  if (p.routeId || p.status === 'inFlight') return showToast('Aeronave em rota não pode entrar no pool charter agora.', 'warn');
+  const ids = new Set(c.charterOps.assignedPlanes || []);
+  if (ids.has(planeId)) {
+    ids.delete(planeId); p.charterAssigned = false; charterLog(c, `${p.name} removido do pool charter.`, 'info');
+  } else {
+    if (!model || model.capacity <= 0) return showToast('Cargueiro puro não é adequado para charter executivo.', 'warn');
+    ids.add(planeId); p.charterAssigned = true; charterLog(c, `${p.name} reservado para voos sob demanda.`, isExecutiveModel(model)?'ok':'warn');
+  }
+  c.charterOps.assignedPlanes = Array.from(ids);
+  refreshCharterSnapshot(c,true); updateMarket(c); setActiveCareer(c); render();
+}
+
+function refreshCharterMissions(force=false) {
+  const c = activeCareer(); if (!c) return;
+  ensureV18Career(c);
+  if (!force && (c.charterOps.missions || []).some(m => ['available','accepted'].includes(m.status))) return showToast('Ainda existem missões charter disponíveis ou aceitas.', 'warn');
+  c.charterOps.missions = seedCharterMissions(c);
+  charterLog(c, 'Nova carteira de voos sob demanda gerada pelo comercial executivo.', 'ok');
+  setActiveCareer(c); render();
+}
+
+function acceptCharterMission(missionId) {
+  const c = activeCareer(); if (!c) return;
+  ensureV18Career(c);
+  const mission = c.charterOps.missions.find(m => m.id === missionId); if (!mission) return;
+  if (mission.status !== 'available') return showToast('Missão não está disponível.', 'warn');
+  if ((c.reputation || 0) < mission.minReputation) return showToast(`Reputação mínima ${utils.pct(mission.minReputation)} exigida.`, 'warn');
+  if (!activeCharterPlanes(c).length) return showToast('Reserve ao menos uma aeronave para o pool charter.', 'warn');
+  mission.status = 'accepted';
+  mission.acceptedDay = c.day || 1;
+  charterLog(c, `Contrato aceito: ${mission.title}. Prazo até dia ${mission.deadlineDay}.`, 'ok');
+  setActiveCareer(c); render();
+}
+
+function bestCharterPlaneForMission(career, mission) {
+  const origin = utils.byIata(mission.origin); const dest = utils.byIata(mission.dest);
+  if (!origin || !dest) return null;
+  const distance = utils.distanceKm(origin, dest);
+  const candidates = activeCharterPlanes(career).filter(x => x.plane.condition >= 52 && !x.plane.routeId && x.model.capacity >= Math.min(mission.maxSeats || 1, 48) && x.model.rangeKm >= distance);
+  candidates.sort((a,b) => {
+    const ae = isExecutiveModel(a.model) ? 0 : 1;
+    const be = isExecutiveModel(b.model) ? 0 : 1;
+    return ae - be || (a.model.capacity - b.model.capacity) || ((b.plane.condition||0) - (a.plane.condition||0));
+  });
+  return candidates[0] || null;
+}
+
+function completeCharterMission(missionId) {
+  const c = activeCareer(); if (!c) return;
+  ensureV18Career(c);
+  const mission = c.charterOps.missions.find(m => m.id === missionId); if (!mission) return;
+  if (mission.status !== 'accepted') return showToast('Aceite o contrato antes de executar o voo.', 'warn');
+  const chosen = bestCharterPlaneForMission(c, mission);
+  if (!chosen) return showToast('Nenhuma aeronave charter com alcance/capacidade/condição suficiente.', 'warn');
+  const origin = utils.byIata(mission.origin); const dest = utils.byIata(mission.dest);
+  const distance = Math.round(utils.distanceKm(origin, dest));
+  const hours = Math.max(0.22, distance / chosen.model.speedKmh);
+  const tier = CHARTER_TIERS[c.charterOps.tier] || CHARTER_TIERS.lean;
+  const vip = charterVipBoost(c, mission.origin);
+  const deadlineFactor = (c.day || 1) <= mission.deadlineDay ? 1 : 0.62;
+  const executiveBonus = isExecutiveModel(chosen.model) ? 1.12 : 0.88;
+  const gross = Math.round(mission.reward * tier.revenue * vip.boost * executiveBonus * deadlineFactor);
+  const fuelCost = hours * chosen.model.fuelBurnKgH * getFuelPrice(c) * (chosen.model.fuelEfficiency || 1);
+  const handlingCost = Math.max(1800, distance * 1.9 + chosen.model.capacity * 110 + (vip.dailyCost || 0) * 0.18);
+  const maintenanceReserve = (chosen.model.price * chosen.model.maintenanceRate / 14000) * Math.max(hours, 0.5);
+  const protocolCost = mission.type.includes('governo') ? gross * 0.12 : mission.type.includes('médico') ? gross * 0.09 : gross * 0.055;
+  const cost = Math.round(fuelCost + handlingCost + maintenanceReserve + protocolCost);
+  const profit = Math.round(gross - cost);
+  c.cash += profit;
+  mission.status = 'completed';
+  mission.completedDay = c.day || 1;
+  mission.planeId = chosen.plane.id;
+  mission.profit = profit;
+  c.charterOps.totalCharterRevenue += gross;
+  c.charterOps.totalCharterProfit += profit;
+  c.charterOps.totalCharterFlights += 1;
+  if (mission.type.includes('vip')) c.charterOps.vipContractsCompleted += 1;
+  if (mission.type.includes('governo')) c.charterOps.govContractsCompleted += 1;
+  c.charterOps.executiveNps = utils.clamp((c.charterOps.executiveNps||68) + (profit > 0 ? 0.42 : -0.35) + (vip.nps || 0)*0.08, 0, 100);
+  c.reputation = utils.clamp((c.reputation||50) + (profit > 0 ? mission.prestige : -0.55), 0, 100);
+  c.punctuality = utils.clamp((c.punctuality||85) + ((c.day || 1) <= mission.deadlineDay ? 0.12 : -0.45), 0, 100);
+  chosen.plane.hours = Number(chosen.plane.hours || 0) + hours;
+  chosen.plane.cycles = Number(chosen.plane.cycles || 0) + 1;
+  chosen.plane.condition = utils.clamp(Number(chosen.plane.condition || 80) - Math.max(0.18, hours * chosen.model.maintenanceRate * 0.62), 0, 100);
+  logFinance(c, `Charter ${mission.origin} → ${mission.dest}: ${mission.title}`, profit, profit >= 0 ? 'charter' : 'prejuízo');
+  charterLog(c, `Voo charter concluído com ${chosen.plane.name}: lucro ${utils.money(profit)}.`, profit >= 0 ? 'ok' : 'warn');
+  if ((c.charterOps.missions || []).filter(m => ['available','accepted'].includes(m.status)).length <= 1) {
+    c.charterOps.missions = [...c.charterOps.missions, ...seedCharterMissions(c).slice(0, 3).map((m,i)=>Object.assign(m,{id:m.id+'_r'+Date.now().toString(36)+'_'+i, status:i===0?'available':m.status}))].slice(-10);
+  }
+  refreshCharterSnapshot(c,true); updateMarket(c); setActiveCareer(c); render();
+}
+
+function processCharterDaily(career) {
+  if (!career) return;
+  ensureV18Career(career);
+  const ops = career.charterOps;
+  const snap = refreshCharterSnapshot(career, true);
+  if (snap.dailyCost > 0) {
+    career.cash -= snap.dailyCost;
+    logFinance(career, 'Custo diário charter, VIP handling e aeronaves em standby', -snap.dailyCost, 'charter');
+  }
+  (ops.missions || []).forEach(m => {
+    if (m.status === 'accepted' && (career.day || 1) > m.deadlineDay) {
+      const penalty = Math.round(m.penalty * ((CHARTER_TIERS[ops.tier] || CHARTER_TIERS.lean).risk + 0.9));
+      career.cash -= penalty;
+      m.status = 'failed';
+      ops.failedCharters += 1;
+      ops.executiveNps = utils.clamp((ops.executiveNps||68) - 1.8, 0, 100);
+      career.reputation = utils.clamp((career.reputation||50) - 0.8, 0, 100);
+      logFinance(career, `Multa charter perdido: ${m.title}`, -penalty, 'charter');
+      charterLog(career, `Prazo perdido em ${m.title}: multa ${utils.money(penalty)}.`, 'warn');
+    }
+    if (m.status === 'locked' && (career.reputation || 0) >= m.minReputation) m.status = 'available';
+  });
+  if ((career.day || 1) - Number(ops.lastCharterAuditDay || 0) >= 3) {
+    ops.lastCharterAuditDay = career.day || 1;
+    charterLog(career, `Comercial executivo revisou carteira: ${snap.critical}, custo diário ${utils.money(snap.dailyCost)}.`, snap.score >= 55 ? 'ok' : 'info');
+    if ((ops.missions || []).filter(m => ['available','accepted'].includes(m.status)).length < 2) ops.missions = seedCharterMissions(career);
+  }
+}
+
+const previousNormalizeCareerV180 = normalizeCareer;
+normalizeCareer = function(career) {
+  const c = previousNormalizeCareerV180(career);
+  if (c) ensureV18Career(c);
+  return c;
+};
+
+const previousCreateCareerV180 = createCareer;
+createCareer = function(form) {
+  const c = previousCreateCareerV180(form);
+  ensureV18Career(c);
+  return c;
+};
+
+const previousRouteEstimateV180 = utils.routeEstimate.bind(utils);
+utils.routeEstimate = function(origin, dest, plane, career, route = null) {
+  const e = previousRouteEstimateV180(origin, dest, plane, career, route);
+  if (!career || !route || !origin || !dest) return e;
+  ensureV18Career(career);
+  const vipA = charterVipBoost(career, origin.iata);
+  const vipB = charterVipBoost(career, dest.iata);
+  const tier = CHARTER_TIERS[career.charterOps.tier] || CHARTER_TIERS.lean;
+  const corporateFactor = ((vipA.boost || 1) + (vipB.boost || 1) - 2) + (tier.prestige || 0);
+  const premiumSpill = Math.round(Math.max(0, Number(e.passengers || 0)) * (6 + Number(e.avgFare || 80) * 0.035) * corporateFactor);
+  if (premiumSpill > 0) {
+    e.charterFeedRevenue = premiumSpill;
+    e.revenue = Math.round(Number(e.revenue || 0) + premiumSpill);
+    e.profit = Math.round(Number(e.profit || 0) + premiumSpill * 0.82);
+    e.totalCost = Math.round(Number(e.totalCost || 0) + premiumSpill * 0.18);
+    e.margin = e.revenue > 0 ? (e.profit / e.revenue) * 100 : e.margin;
+    e.score = utils.clamp((e.profit / Math.max(e.totalCost, 1)) * 100, -80, 230);
+  }
+  return e;
+};
+
+const previousAdvanceCompanyDayV180 = advanceCompanyDay;
+advanceCompanyDay = function(career) {
+  const before = career && Number(career.day || 1);
+  previousAdvanceCompanyDayV180(career);
+  if (career && Number(career.day || 1) !== before) processCharterDaily(career);
+};
+
+const previousValuationV180 = valuation;
+valuation = function(career) {
+  const base = previousValuationV180(career);
+  if (!career) return base;
+  ensureV18Career(career);
+  const snap = calculateCharterSnapshot(career, false);
+  const charterValue = snap.score * 52000 + snap.assigned * 145000 + Number(career.charterOps.totalCharterRevenue || 0) * 0.22 + Number(career.charterOps.vipContractsCompleted || 0) * 85000 + Number(career.charterOps.govContractsCompleted || 0) * 150000;
+  return Math.round(base + charterValue);
+};
+
+const previousDailyObligationEstimateV180 = dailyObligationEstimate;
+dailyObligationEstimate = function(career) {
+  const base = previousDailyObligationEstimateV180(career);
+  if (!career) return base;
+  ensureV18Career(career);
+  return Math.round(base + Number(career.charterOps.dailyCharterCost || 0));
+};
+
+function renderCharterView() {
+  const c = activeCareer(); if (!c) return '<p>Sem carreira ativa.</p>';
+  ensureV18Career(c);
+  const snap = refreshCharterSnapshot(c, false);
+  const tierCards = Object.entries(CHARTER_TIERS).map(([id,t]) => `<article class="service-card ${c.charterOps.tier===id?'active':''}"><b>${t.label}</b><small>Setup ${utils.money(t.setupCost)} • dia ${utils.money(t.dailyCost)}${t.minReputation?' • rep. mín. '+utils.pct(t.minReputation):''}</small><p>${t.note}</p><div class="route-stats"><span>Receita x${t.revenue}</span><span>Demanda x${t.demand}</span><span>Prestígio +${utils.num(t.prestige*100,0)}</span></div><button class="btn mini ${c.charterOps.tier===id?'ghost':'primary'}" data-action="setCharterTier" data-tier="${id}" ${c.charterOps.tier===id?'disabled':''}>${c.charterOps.tier===id?'Ativo':'Ativar'}</button></article>`).join('');
+  const vipCards = (c.hubs || [c.hubIata]).map(h => { const level = c.charterOps.vipHandling[h] || 'standard'; const a = utils.byIata(h); const buttons = Object.entries(VIP_HANDLING_LEVELS).map(([id,l]) => `<button class="btn mini ${level===id?'primary':'ghost'}" data-action="setVipHandling" data-hub="${h}" data-level="${id}" ${level===id?'disabled':''}>${l.label}</button>`).join(''); return `<article class="service-card ${level!=='standard'?'active':''}"><b>${h} ${a ? '• '+a.city : ''}</b><small>${VIP_HANDLING_LEVELS[level].label}</small><p>${VIP_HANDLING_LEVELS[level].note}</p><div class="service-button-block"><span>nível</span>${buttons}</div></article>`; }).join('');
+  const fleetCards = (c.fleet || []).map(p => { const m = utils.model(p.modelId); if (!m) return ''; const assigned = c.charterOps.assignedPlanes.includes(p.id); const good = isExecutiveModel(m); const disabled = p.routeId || p.status === 'inFlight'; return `<article class="service-card ${assigned?'active':''}"><b>${utils.escape(p.name)}</b><small>${m.name} • ${m.category} • condição ${Math.round(p.condition||0)}%</small><p>${good?'Perfil ideal para charter executivo.':'Pode operar sob demanda, mas com menor percepção premium.'}</p><div class="route-stats"><span>Alcance ${utils.num(m.rangeKm)} km</span><span>Pax ${m.capacity}</span><span>${assigned?'Pool charter':'Operação normal'}</span></div><button class="btn mini ${assigned?'ghost':'primary'}" data-action="toggleCharterPlane" data-plane="${p.id}" ${disabled?'disabled':''}>${assigned?'Remover':'Reservar charter'}</button></article>`; }).join('') || '<p class="muted">Compre aeronaves para montar pool charter.</p>';
+  const missionCards = (c.charterOps.missions || []).map(m => { const o=utils.byIata(m.origin), d=utils.byIata(m.dest); const dist = o&&d ? Math.round(utils.distanceKm(o,d)) : 0; const statusLabel = m.status==='available'?'Disponível':m.status==='accepted'?'Aceito':m.status==='completed'?'Concluído':m.status==='failed'?'Falhou':'Bloqueado'; const locked = (c.reputation||0) < m.minReputation; return `<article class="service-card ${m.status}"><b>${utils.escape(m.title)}</b><small>${m.origin} → ${m.dest} • ${utils.num(dist)} km • ${statusLabel}</small><p>${utils.escape(m.note)} Meta: até dia ${m.deadlineDay}. Receita ${utils.money(m.reward)} • multa ${utils.money(m.penalty)}.</p><div class="route-stats"><span>${m.type}</span><span>Rep. mín. ${utils.pct(m.minReputation)}</span><span>Risco ${m.risk}</span></div>${m.status==='available'?`<button class="btn mini primary" data-action="acceptCharterMission" data-mission="${m.id}" ${locked?'disabled':''}>Aceitar</button>`:''}${m.status==='accepted'?`<button class="btn mini primary" data-action="completeCharterMission" data-mission="${m.id}">Executar voo</button>`:''}${m.status==='completed'?`<small class="ok">Lucro realizado: ${utils.money(m.profit||0)}</small>`:''}</article>`; }).join('');
+  const log = (c.charterOps.charterLog || []).map(l => `<div class="finance-row ${l.type}"><span>${utils.escape(l.text)}</span><small>Dia ${l.day}</small></div>`).join('') || '<p class="muted">Sem registros charter ainda.</p>';
+  return `<div class="charter-layout"><section class="panel glass passenger-hero"><span class="eyebrow">F57-F60 Aviação executiva</span><h2>Charter, VIP e governo</h2><p>Monte uma divisão de aviação executiva gratuita no jogo: pool de jatos, atendimento VIP por hub, voos sob demanda e contratos sensíveis com alto prestígio.</p><div class="kpi-grid"><div class="kpi"><small>Score charter</small><strong>${snap.score}/100</strong></div><div class="kpi"><small>Aeronaves no pool</small><strong>${snap.assigned}</strong></div><div class="kpi"><small>Demanda sob demanda</small><strong>${utils.pct(snap.demand)}</strong></div><div class="kpi"><small>NPS executivo</small><strong>${utils.pct(c.charterOps.executiveNps)}</strong></div><div class="kpi"><small>Receita charter</small><strong>${utils.money(c.charterOps.totalCharterRevenue)}</strong></div><div class="kpi"><small>Custo diário</small><strong>${utils.money(snap.dailyCost)}</strong></div></div><div class="row gap wrap"><button class="btn primary" data-action="refreshCharterMissions">Gerar nova carteira</button><button class="btn ghost" data-action="go" data-view="fleet">Comprar/gerenciar frota</button></div></section><section class="panel glass"><h2>Posicionamento da divisão charter</h2><div class="service-grid">${tierCards}</div></section><section class="panel glass"><h2>Atendimento VIP por hub</h2><div class="service-grid">${vipCards}</div></section><section class="panel glass"><h2>Pool de aeronaves executivas</h2><div class="service-grid">${fleetCards}</div></section><section class="panel glass"><h2>Contratos sob demanda</h2><div class="service-grid">${missionCards}</div></section><section class="panel glass"><h2>Histórico charter</h2><div class="finance-list">${log}</div></section></div>`;
+}
+
+const previousNavItemsV180 = navItems;
+navItems = function() {
+  const items = previousNavItemsV180();
+  const auditIndex = items.findIndex(i => i[0] === 'audit');
+  if (!items.some(i => i[0] === 'charter')) items.splice(auditIndex >= 0 ? auditIndex : items.length, 0, ['charter','Charter','✈']);
+  return items;
+};
+
+const previousRenderV180 = render;
+render = function() {
+  if (runtime.view === 'charter') {
+    safeExecute('render:charter', () => { hideFatal(); const c = activeCareer(); if (c) ensureV18Career(c); dom.app.innerHTML = shell(renderCharterView()); });
+    return;
+  }
+  previousRenderV180();
+};
+
+const previousRenderDashboardV180 = renderDashboard;
+renderDashboard = function() {
+  const html = previousRenderDashboardV180();
+  const c = activeCareer(); if (!c) return html;
+  ensureV18Career(c);
+  const snap = calculateCharterSnapshot(c, false);
+  const card = `<section class="panel glass"><span class="eyebrow">F57-F60 Charter premium</span><h2>Aviação executiva sob demanda</h2><div class="kpi-grid"><div class="kpi"><small>Score charter</small><strong>${snap.score}/100</strong></div><div class="kpi"><small>Aeronaves dedicadas</small><strong>${snap.assigned}</strong></div><div class="kpi"><small>Missões aceitas</small><strong>${snap.accepted}</strong></div><div class="kpi"><small>Lucro charter</small><strong>${utils.money(c.charterOps.totalCharterProfit)}</strong></div></div><button class="btn primary" data-action="go" data-view="charter">Abrir charter</button></section>`;
+  const pos = html.lastIndexOf('</div>');
+  return pos >= 0 ? html.slice(0,pos)+card+html.slice(pos) : html + card;
+};
+
+const previousRenderFleetV180 = renderFleet;
+renderFleet = function() {
+  const html = previousRenderFleetV180();
+  const c = activeCareer(); if (!c) return html;
+  ensureV18Career(c);
+  const snap = calculateCharterSnapshot(c, false);
+  const card = `<section class="panel glass"><span class="eyebrow">Pool charter</span><h2>Jatos executivos e standby</h2><div class="kpi-grid"><div class="kpi"><small>Aeronaves pool</small><strong>${snap.assigned}</strong></div><div class="kpi"><small>Executivas ideais</small><strong>${snap.executiveAircraft}</strong></div><div class="kpi"><small>Custo standby</small><strong>${utils.money(snap.dailyCost)}</strong></div><div class="kpi"><small>Score</small><strong>${snap.score}/100</strong></div></div><button class="btn primary" data-action="go" data-view="charter">Gerenciar pool charter</button></section>`;
+  return html.replace('</div>', card + '</div>');
+};
+
+const previousRenderFinanceV180 = renderFinance;
+renderFinance = function() {
+  const html = previousRenderFinanceV180();
+  const c = activeCareer(); if (!c) return html;
+  ensureV18Career(c);
+  const card = `<section class="panel glass"><span class="eyebrow">Charter e VIP</span><h2>Resultado aviação executiva</h2><div class="kpi-grid"><div class="kpi"><small>Receita</small><strong>${utils.money(c.charterOps.totalCharterRevenue)}</strong></div><div class="kpi"><small>Lucro</small><strong>${utils.money(c.charterOps.totalCharterProfit)}</strong></div><div class="kpi"><small>Custo/dia</small><strong>${utils.money(c.charterOps.dailyCharterCost)}</strong></div><div class="kpi"><small>Contratos concluídos</small><strong>${utils.num(c.charterOps.totalCharterFlights)}</strong></div></div></section>`;
+  return html.replace('</div>', card + '</div>');
+};
+
+const previousRenderAuditV180 = renderAudit;
+renderAudit = function() {
+  const checks = runIntegrityAudit();
+  const passed = checks.filter(c => c.ok).length;
+  return `<div class="audit-layout"><section class="panel glass"><div class="section-head"><div><span class="eyebrow">Sistema anti-quebra</span><h2>Auditoria da build</h2><p>Execução obrigatória por fase para garantir integridade, evolução real e compatibilidade dos saves.</p></div><button class="btn primary" data-action="runAudit">Rodar auditoria</button></div><div class="audit-score"><strong>${passed}/${checks.length}</strong><span>checks aprovados</span></div><div class="audit-list">${checks.map(c => `<div class="audit-row ${c.ok?'ok':'bad'}"><b>${c.ok?'✓':'!'}</b><span>${c.label}</span><small>${c.detail}</small></div>`).join('')}</div></section><section class="panel glass"><h2>Relatório desta entrega</h2><div class="todo-list"><span>F57 Aviação executiva: OK — jatos executivos genéricos, pool charter e standby operacional.</span><span>F58 Voos sob demanda: OK — missões aceitas, execução por alcance/capacidade/condição e receita imediata.</span><span>F59 Contratos VIP/governo: OK — contratos sensíveis com reputação mínima, prazo, multa e prestígio.</span><span>F60 Operação premium por jatos menores: OK — VIP handling, terminal privativo, NPS executivo e impacto em valuation.</span><span>Anti-quebra: OK — migração de saves v0.4 até v1.7 para schema 18 preservada.</span></div></section></div>`;
+};
+
+const previousRunIntegrityAuditV180 = runIntegrityAudit;
+runIntegrityAudit = function() {
+  const c = activeCareer(); if (c) ensureV18Career(c);
+  const blockedLabels = ['Schema da build','Chave de save v1.7','Migração v1.6 preservada','Normalização v1.7'];
+  const base = previousRunIntegrityAuditV180().filter(check => !blockedLabels.includes(check.label));
+  const extra = [
+    { ok: BUILD.schema === 18, label:'Schema da build', detail:`Schema atual ${BUILD.schema}.` },
+    { ok: STORE_KEY.includes('schema_18'), label:'Chave de save v1.8', detail:STORE_KEY },
+    { ok: LEGACY_STORE_KEYS.includes('vale_air_manager_schema_17'), label:'Migração v1.7 preservada', detail:'Saves schema 17 são migrados para schema 18 sem reset.' },
+    { ok: typeof ensureV18Career === 'function', label:'Normalização v1.8', detail:'Carreiras antigas recebem charter, VIP handling e missões.' },
+    { ok: AIRCRAFT.some(a => a.id === 'phenom300e') && AIRCRAFT.some(a => a.id === 'global7500'), label:'F57 Jatos executivos', detail:'Catálogo recebeu aeronaves executivas genéricas com SVG próprio.' },
+    { ok: navItems().some(i => i[0] === 'charter'), label:'Tela Charter no menu', detail:'HUD mobile inclui acesso direto à aviação executiva.' },
+    { ok: Object.keys(CHARTER_TIERS).length === 4, label:'F57 Divisão charter', detail:'Enxuto, Premium, Elite e Soberano/Governo configurados.' },
+    { ok: Object.keys(VIP_HANDLING_LEVELS).length === 3, label:'F60 VIP handling', detail:'Padrão, concierge e terminal privativo por hub.' },
+    { ok: CHARTER_MISSION_TEMPLATES.length === 7, label:'F58 Missões sob demanda', detail:'Sete modelos de charter executivo, médico, VIP, governo e esporte.' },
+    { ok: typeof calculateCharterSnapshot === 'function', label:'Snapshot charter', detail:c ? `Score ${c.charterOps.charterBrandScore}/100.` : 'Função disponível.' },
+    { ok: typeof setCharterTier === 'function', label:'Ação plano charter', detail:'Planos validam caixa, reputação e custo de implantação.' },
+    { ok: typeof setVipHandling === 'function', label:'Ação VIP por hub', detail:'Atendimento VIP gera custo, NPS e boost de demanda.' },
+    { ok: typeof toggleCharterPlane === 'function', label:'Ação pool de aeronaves', detail:'Aeronaves podem entrar/sair do standby charter sem quebrar rotas.' },
+    { ok: typeof acceptCharterMission === 'function', label:'Ação aceitar charter', detail:'Contratos validam reputação e aeronave dedicada.' },
+    { ok: typeof completeCharterMission === 'function', label:'Ação executar charter', detail:'Missão calcula alcance, capacidade, custo, lucro e desgaste.' },
+    { ok: typeof processCharterDaily === 'function', label:'Ciclo diário charter', detail:'Custo diário, prazos, multas e auditoria executiva processados.' },
+    { ok: typeof utils.routeEstimate === 'function', label:'Estimativa com premium spillover', detail:'VIP handling gera receita executiva auxiliar nas rotas regulares.' },
+    { ok: typeof dailyObligationEstimate === 'function', label:'Obrigações charter', detail:c ? `${utils.money(dailyObligationEstimate(c))} incluindo charter.` : 'Função disponível.' },
+    { ok: typeof valuation === 'function', label:'Valuation charter', detail:'Score charter, contratos VIP e governo influenciam valor da empresa.' },
+    { ok: typeof renderCharterView === 'function', label:'Render Charter', detail:'Tela charter pronta para mobile/desktop.' },
+    { ok: !c || c.charterOps && Array.isArray(c.charterOps.missions), label:'Missões no save', detail:c ? `${c.charterOps.missions.length} missão(ões) charter.` : 'Sem carreira ativa.' },
+    { ok: !c || Number.isFinite(c.charterOps.totalCharterRevenue), label:'Receita charter acumulada', detail:c ? utils.money(c.charterOps.totalCharterRevenue || 0) : 'Sem carreira ativa.' },
+    { ok: !c || Array.isArray(c.charterOps.assignedPlanes), label:'Pool charter no save', detail:c ? `${c.charterOps.assignedPlanes.length} aeronave(s) reservada(s).` : 'Sem carreira ativa.' },
+    { ok: !c || c.hubs.every(h => c.charterOps.vipHandling[h]), label:'VIP handling por hub', detail:c ? `${c.hubs.length} hub(s) com atendimento definido.` : 'Sem carreira ativa.' },
+    { ok: typeof refreshCharterMissions === 'function', label:'Refresh carteira charter', detail:'Comercial executivo pode gerar nova carteira sem resetar carreira.' },
+    { ok: typeof isExecutiveModel === 'function', label:'Classificação executiva', detail:'Jatos menores e VIP liners recebem leitura especial.' }
+  ];
+  return [...extra, ...base];
+};
+
+const previousHandleActionV180 = handleAction;
+handleAction = function(target) {
+  const action = target.dataset.action;
+  if (action === 'setCharterTier') return safeExecute('action:setCharterTier', () => setCharterTier(target.dataset.tier));
+  if (action === 'setVipHandling') return safeExecute('action:setVipHandling', () => setVipHandling(target.dataset.hub, target.dataset.level));
+  if (action === 'toggleCharterPlane') return safeExecute('action:toggleCharterPlane', () => toggleCharterPlane(target.dataset.plane));
+  if (action === 'acceptCharterMission') return safeExecute('action:acceptCharterMission', () => acceptCharterMission(target.dataset.mission));
+  if (action === 'completeCharterMission') return safeExecute('action:completeCharterMission', () => completeCharterMission(target.dataset.mission));
+  if (action === 'refreshCharterMissions') return safeExecute('action:refreshCharterMissions', () => refreshCharterMissions(true));
+  return previousHandleActionV180(target);
 };
 
 

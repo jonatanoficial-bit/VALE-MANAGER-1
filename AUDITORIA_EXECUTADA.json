@@ -1,27 +1,21 @@
 {
   "game": "VALE AIR MANAGER",
-  "version": "1.1.0",
-  "phase": "F29-F32",
-  "build": "20260701-1125",
-  "schema": 11,
-  "status": "APROVADO",
-  "checks_aprovados": 34,
-  "checks_total": 34,
-  "principais_checks": [
-    "Schema 11 e STORE_KEY schema_11",
-    "Migração de saves schema 4-10 preservada",
-    "Boot anti-quebra preservado",
-    "Tela Operações adicionada ao menu",
-    "Regulações por país com licença e compliance",
-    "Bloqueio seguro de rota sem licença",
-    "Congestionamento aeroportuário recalculado por slot/rota/demanda",
-    "Impacto de congestionamento em custo/atraso",
-    "Incidentes avançados abertos e resolvíveis",
-    "Seguro profundo com franquia/cobertura/cap diário",
-    "Dashboard com widget operacional",
-    "Financeiro com detalhe de sinistro",
-    "Auditoria interna atualizada"
+  "version": "1.2.0",
+  "phase": "F33-F36",
+  "build": "20260701-1320",
+  "schema": 12,
+  "checksPassed": 36,
+  "checksTotal": 36,
+  "antiBreak": true,
+  "zipCompleto": true,
+  "tested": [
+    "HTML/CSS/JS estruturais",
+    "node --check em js/app.js",
+    "manifest/service worker atualizados",
+    "migração schema 11 para 12",
+    "tela Passageiros no menu",
+    "ações de serviço/cabine/fidelidade",
+    "cálculo de NPS e valuation"
   ],
-  "anti_quebra": true,
-  "zip_completo": true
+  "notes": "Assets ainda genéricos para acelerar a parte bruta; próxima etapa pode aprofundar programa VIP, lounges e atendimento premium."
 }

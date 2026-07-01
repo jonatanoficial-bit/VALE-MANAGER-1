@@ -1,12 +1,13 @@
-VALE AIR MANAGER v1.1.0 — F29-F32
-Build 20260701-1125 — Schema 11
+VALE AIR MANAGER v1.2.0 - F33-F36
+Build: 20260701-1320
+Schema: 12
+Auditoria obrigatória por fase: 36/36 checks aprovados.
+Anti-quebra: ativo.
+ZIP: completo.
+Migração: saves v0.4 até v1.1 preservados e normalizados para schema 12.
 
-Auditoria executada: 34/34 checks aprovados.
-Sistema anti-quebra ativo. ZIP completo.
-
-F29 — Regulações por país: licenças, compliance, taxas e bloqueio seguro de rotas sem permissão.
-F30 — Aeroportos congestionados: pressão por slots, atraso, custo e painel operacional.
-F31 — Incidentes operacionais avançados: bird strike, AOG, multas, alfândega, fadiga e slot perdido.
-F32 — Seguro profundo: franquia, cobertura por tipo, cap diário, sinistros e histórico.
-
-Compatibilidade: migra saves de schemas 4,5,6,7,8,9 e 10 para schema 11.
+Entrega:
+- F33 experiência do passageiro com NPS, satisfação por voo, reclamações e elogios.
+- F34 cabines por rota: alta densidade, mista, executiva e passageiro+carga.
+- F35 fidelidade Vale Miles: básico, plus e elite.
+- F36 reputação de serviço impactando demanda, reputação geral e valuation.

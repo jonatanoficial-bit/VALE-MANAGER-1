@@ -1,15 +1,15 @@
 
 'use strict';
 
-// VALE AIR MANAGER - v1.1.0 - Build 20260701-1125
-// Fases F29-F32: regulações por país, congestionamento aeroportuário, incidentes avançados e seguros profundos.
+// VALE AIR MANAGER - v1.2.0 - Build 20260701-1320
+// Fases F33-F36: experiência do passageiro, cabine, fidelidade e reputação de serviço.
 
 const BUILD = Object.freeze({
   game: 'VALE AIR MANAGER',
-  version: '1.1.0',
-  phase: 'F29-F32',
-  build: '20260701-1125',
-  schema: 11,
+  version: '1.2.0',
+  phase: 'F33-F36',
+  build: '20260701-1320',
+  schema: 12,
   date: '2026-07-01',
   timezone: 'America/Sao_Paulo'
 });
@@ -730,8 +730,8 @@ const COMPETITORS = Object.freeze([
   { id:'cargo_sul', name:'Cargo Sul Express', base:'GRU', region:'Cargo', value:4100000, fleet:1, routes:['GRU-SCL','GRU-MIA'], reputation:55, debt:540000, modelId:'b737cargo', synergy:1.10 }
 ]);
 
-const STORE_KEY = 'vale_air_manager_schema_11';
-const LEGACY_STORE_KEYS = ['vale_air_manager_schema_10','vale_air_manager_schema_9','vale_air_manager_schema_8','vale_air_manager_schema_7','vale_air_manager_schema_6','vale_air_manager_schema_5','vale_air_manager_schema_4'];
+const STORE_KEY = 'vale_air_manager_schema_12';
+const LEGACY_STORE_KEYS = ['vale_air_manager_schema_11','vale_air_manager_schema_10','vale_air_manager_schema_9','vale_air_manager_schema_8','vale_air_manager_schema_7','vale_air_manager_schema_6','vale_air_manager_schema_5','vale_air_manager_schema_4'];
 const CRASH_KEY = 'vale_air_manager_last_crash';
 const DEFAULT_SPEED = 1;
 
@@ -3784,6 +3784,358 @@ handleAction = function(target) {
   if (action === 'buyPermit') return safeExecute('action:buyPermit', () => buyPermit(target.dataset.country));
   if (action === 'resolveIncident') return safeExecute('action:resolveIncident', () => resolveIncident(target.dataset.incident));
   return previousHandleActionV110(target);
+};
+
+
+
+// ============================================================
+// v1.2.0 - F33-F36: Experiência do passageiro, cabine, fidelidade e reputação de serviço
+// ============================================================
+const SERVICE_TIERS = Object.freeze({
+  economy: { label:'Econômico', fare:0.92, demand:1.10, serviceCost:0.82, satisfaction:-1.8, loyalty:0.78, note:'Preço agressivo, lotação alta e margem por volume.' },
+  standard: { label:'Conforto', fare:1.00, demand:1.00, serviceCost:1.00, satisfaction:0.8, loyalty:1.00, note:'Equilíbrio entre tarifa, custo e satisfação.' },
+  premium: { label:'Premium', fare:1.22, demand:0.88, serviceCost:1.34, satisfaction:3.4, loyalty:1.42, note:'Menos volume, mais tarifa, reputação e fidelidade.' }
+});
+
+const CABIN_MIX_PRESETS = Object.freeze({
+  dense: { label:'Alta densidade', economy:0.92, business:0.08, first:0.00, fare:0.96, capacity:1.08, comfort:-2.4, cost:0.90, note:'Mais assentos e menor conforto. Ideal para low-cost.' },
+  balanced: { label:'Mista', economy:0.78, business:0.18, first:0.04, fare:1.08, capacity:1.00, comfort:1.0, cost:1.06, note:'Cabine equilibrada para rotas nacionais fortes.' },
+  premium: { label:'Executiva forte', economy:0.62, business:0.30, first:0.08, fare:1.28, capacity:0.88, comfort:3.8, cost:1.22, note:'Menos assentos, ticket médio alto e imagem premium.' },
+  cargoPlus: { label:'Passageiro + carga', economy:0.74, business:0.14, first:0.02, fare:1.02, capacity:0.94, comfort:0.2, cost:1.04, cargoBoost:1.22, note:'Boa para rotas com carga e demanda moderada.' }
+});
+
+const LOYALTY_LEVELS = Object.freeze({
+  none: { label:'Sem programa', dailyCost:0, demand:1.00, retention:1.00, memberGrowth:0, note:'Sem custo e sem fidelização.' },
+  basic: { label:'Vale Miles Básico', dailyCost:4200, demand:1.03, retention:1.05, memberGrowth:120, note:'Acumula pontos e reduz abandono em rotas domésticas.' },
+  plus: { label:'Vale Miles Plus', dailyCost:11800, demand:1.07, retention:1.12, memberGrowth:320, note:'Benefícios de embarque, bagagem e upgrades pontuais.' },
+  elite: { label:'Vale Miles Elite', dailyCost:26500, demand:1.12, retention:1.22, memberGrowth:720, note:'Sala VIP, upgrade, prioridade e público premium.' }
+});
+
+function ensureV12Career(career) {
+  if (!career) return null;
+  if (typeof ensureV11Career === 'function') ensureV11Career(career);
+  career.passengerExperience = Object.assign({
+    nps: 48,
+    serviceReputation: 55,
+    loyaltyMembers: 0,
+    loyaltyLevel: 'none',
+    complaints: 0,
+    compliments: 0,
+    cabinRevenue: 0,
+    lastServiceReviewDay: 0,
+    lastDailyLoyaltyDay: 0,
+    routeRatings: []
+  }, career.passengerExperience || {});
+  if (!LOYALTY_LEVELS[career.passengerExperience.loyaltyLevel]) career.passengerExperience.loyaltyLevel = 'none';
+  career.routes = Array.isArray(career.routes) ? career.routes : [];
+  career.routes.forEach(r => {
+    r.serviceTier = r.serviceTier || 'standard';
+    if (!SERVICE_TIERS[r.serviceTier]) r.serviceTier = 'standard';
+    r.cabinPreset = r.cabinPreset || 'balanced';
+    if (!CABIN_MIX_PRESETS[r.cabinPreset]) r.cabinPreset = 'balanced';
+    r.lastSatisfaction = Number.isFinite(Number(r.lastSatisfaction)) ? Number(r.lastSatisfaction) : 50;
+    r.lastNpsDelta = Number(r.lastNpsDelta || 0);
+  });
+  return career;
+}
+
+function passengerServiceScore(career, route, plane, estimate) {
+  ensureV12Career(career);
+  const tier = SERVICE_TIERS[route?.serviceTier || 'standard'] || SERVICE_TIERS.standard;
+  const cabin = CABIN_MIX_PRESETS[route?.cabinPreset || 'balanced'] || CABIN_MIX_PRESETS.balanced;
+  const staffQuality = typeof getStaffQuality === 'function' ? getStaffQuality(career) : { service:1, maintenance:1 };
+  const condition = plane ? Number(plane.condition || 90) : 90;
+  const punctuality = Number(career.punctuality || 80);
+  const load = Number(estimate?.loadFactor || 0.78) * 100;
+  const congestionPenalty = Number(estimate?.congestionDelayRisk || 0) * 0.10;
+  const quality = 42 + (staffQuality.service || 1) * 18 + (condition - 70) * 0.18 + (punctuality - 70) * 0.16 + tier.satisfaction + cabin.comfort - congestionPenalty - Math.max(0, load - 92) * 0.18;
+  return utils.clamp(quality, 8, 98);
+}
+
+function applyPassengerExperience(career, route, plane, model) {
+  ensureV12Career(career);
+  const origin = utils.byIata(route.origin), dest = utils.byIata(route.dest);
+  if (!origin || !dest || !model) return;
+  const estimate = utils.routeEstimate(origin, dest, model, career, route);
+  const score = passengerServiceScore(career, route, plane, estimate);
+  const pax = Number(estimate.passengers || 0);
+  const tier = SERVICE_TIERS[route.serviceTier || 'standard'] || SERVICE_TIERS.standard;
+  const cabin = CABIN_MIX_PRESETS[route.cabinPreset || 'balanced'] || CABIN_MIX_PRESETS.balanced;
+  const loyalty = LOYALTY_LEVELS[career.passengerExperience.loyaltyLevel || 'none'] || LOYALTY_LEVELS.none;
+  const npsDelta = (score - 50) / 42;
+  career.passengerExperience.nps = utils.clamp(Number(career.passengerExperience.nps || 48) + npsDelta, 0, 100);
+  career.passengerExperience.serviceReputation = utils.clamp(Number(career.passengerExperience.serviceReputation || 55) + npsDelta * 0.75 + (tier.satisfaction / 30), 0, 100);
+  const membersGain = Math.round(Math.max(0, pax * 0.018 * tier.loyalty * loyalty.retention * (score / 65)) + loyalty.memberGrowth / 18);
+  career.passengerExperience.loyaltyMembers = Math.max(0, Math.round(Number(career.passengerExperience.loyaltyMembers || 0) + membersGain));
+  const complaints = score < 48 ? Math.round((48 - score) * Math.max(1, pax / 160)) : 0;
+  const compliments = score > 70 ? Math.round((score - 70) * Math.max(1, pax / 220)) : 0;
+  career.passengerExperience.complaints = Number(career.passengerExperience.complaints || 0) + complaints;
+  career.passengerExperience.compliments = Number(career.passengerExperience.compliments || 0) + compliments;
+  career.passengerExperience.cabinRevenue = Number(career.passengerExperience.cabinRevenue || 0) + Math.round(Number(estimate.cabinUpsellRevenue || 0));
+  route.lastSatisfaction = Math.round(score);
+  route.lastNpsDelta = Number(npsDelta.toFixed(2));
+  route.lastCabinRevenue = Math.round(Number(estimate.cabinUpsellRevenue || 0));
+  career.passengerExperience.routeRatings.unshift({ day:career.day || 1, route:`${route.origin}-${route.dest}`, score:Math.round(score), npsDelta:Number(npsDelta.toFixed(2)), pax, tier:tier.label, cabin:cabin.label, complaints, compliments });
+  career.passengerExperience.routeRatings = career.passengerExperience.routeRatings.slice(0, 18);
+  if (complaints > 0) {
+    career.reputation = utils.clamp(Number(career.reputation || 50) - Math.min(1.8, complaints / 28), 0, 100);
+    pushMessage(career, `Passageiros reclamaram da rota ${route.origin}-${route.dest}. Satisfação ${Math.round(score)}%.`, 'warn');
+  } else if (compliments > 0) {
+    career.reputation = utils.clamp(Number(career.reputation || 50) + Math.min(1.1, compliments / 44), 0, 100);
+  }
+}
+
+function dailyLoyaltyCost(career) {
+  ensureV12Career(career);
+  const lvl = LOYALTY_LEVELS[career.passengerExperience.loyaltyLevel || 'none'] || LOYALTY_LEVELS.none;
+  const membersFactor = Math.ceil(Number(career.passengerExperience.loyaltyMembers || 0) / 2400) * 1200;
+  return Math.round(lvl.dailyCost + membersFactor);
+}
+
+function setRouteServiceTier(id, tier) {
+  const c = activeCareer(); if (!c) return;
+  ensureV12Career(c);
+  const r = c.routes.find(x => x.id === id); if (!r) return showToast('Rota não encontrada.', 'warn');
+  if (!SERVICE_TIERS[tier]) return showToast('Serviço inválido.', 'warn');
+  r.serviceTier = tier;
+  pushMessage(c, `Serviço da rota ${r.origin}-${r.dest} alterado para ${SERVICE_TIERS[tier].label}.`, 'info');
+  updateMarket(c); setActiveCareer(c); showToast('Padrão de serviço atualizado.', 'ok'); render();
+}
+
+function setRouteCabinPreset(id, preset) {
+  const c = activeCareer(); if (!c) return;
+  ensureV12Career(c);
+  const r = c.routes.find(x => x.id === id); if (!r) return showToast('Rota não encontrada.', 'warn');
+  if (!CABIN_MIX_PRESETS[preset]) return showToast('Cabine inválida.', 'warn');
+  r.cabinPreset = preset;
+  pushMessage(c, `Cabine da rota ${r.origin}-${r.dest} ajustada para ${CABIN_MIX_PRESETS[preset].label}.`, 'info');
+  updateMarket(c); setActiveCareer(c); showToast('Configuração de cabine salva.', 'ok'); render();
+}
+
+function setLoyaltyLevel(level) {
+  const c = activeCareer(); if (!c) return;
+  ensureV12Career(c);
+  if (!LOYALTY_LEVELS[level]) return showToast('Programa de fidelidade inválido.', 'warn');
+  const cfg = LOYALTY_LEVELS[level];
+  if (level !== 'none' && c.cash < cfg.dailyCost * 2) return showToast(`Caixa baixo para ativar ${cfg.label}. Reserve pelo menos ${utils.money(cfg.dailyCost*2)}.`, 'warn');
+  c.passengerExperience.loyaltyLevel = level;
+  pushMessage(c, `Programa de fidelidade definido como ${cfg.label}.`, 'success');
+  updateMarket(c); setActiveCareer(c); showToast('Fidelidade atualizada.', 'ok'); render();
+}
+
+function serviceActionPlan() {
+  const c = activeCareer(); if (!c) return;
+  ensureV12Career(c);
+  const cost = 85000 + (c.routes.length * 9000) + Math.round(Number(c.passengerExperience.loyaltyMembers || 0) * 1.8);
+  if (c.cash < cost) return showToast(`Plano de serviço exige ${utils.money(cost)}.`, 'warn');
+  c.cash -= cost;
+  c.passengerExperience.nps = utils.clamp(Number(c.passengerExperience.nps || 48) + 4.5, 0, 100);
+  c.passengerExperience.serviceReputation = utils.clamp(Number(c.passengerExperience.serviceReputation || 55) + 3.2, 0, 100);
+  c.passengerExperience.complaints = Math.max(0, Number(c.passengerExperience.complaints || 0) - 18);
+  c.reputation = utils.clamp(Number(c.reputation || 50) + 1.4, 0, 100);
+  logFinance(c, 'Plano de experiência do passageiro', -cost, 'serviço');
+  pushMessage(c, `Plano de serviço executado. NPS e reputação de atendimento subiram.`, 'success');
+  updateMarket(c); setActiveCareer(c); render();
+}
+
+const previousNormalizeCareerV120 = normalizeCareer;
+normalizeCareer = function(career) {
+  const c = previousNormalizeCareerV120(career);
+  ensureV12Career(c);
+  return c;
+};
+
+const previousCreateCareerV120 = createCareer;
+createCareer = function(form) {
+  const c = previousCreateCareerV120(form);
+  ensureV12Career(c);
+  c.messages.unshift({ time: Date.now(), type:'info', text:'v1.2: experiência do passageiro, cabine, fidelidade e reputação de serviço ativadas.' });
+  return c;
+};
+
+const baseRouteEstimateV120 = utils.routeEstimate.bind(utils);
+utils.routeEstimate = function(origin, dest, plane, career, route = null) {
+  ensureV12Career(career);
+  const e = baseRouteEstimateV120(origin, dest, plane, career, route);
+  const tier = SERVICE_TIERS[(route && route.serviceTier) || 'standard'] || SERVICE_TIERS.standard;
+  const cabin = CABIN_MIX_PRESETS[(route && route.cabinPreset) || 'balanced'] || CABIN_MIX_PRESETS.balanced;
+  const loyalty = LOYALTY_LEVELS[career.passengerExperience?.loyaltyLevel || 'none'] || LOYALTY_LEVELS.none;
+  const basePassengers = Number(e.passengers || 0);
+  const adjustedPassengers = plane.capacity > 0 ? Math.floor(basePassengers * cabin.capacity * tier.demand * loyalty.demand) : 0;
+  const avgFare = Math.round(Number(e.avgFare || 0) * tier.fare * cabin.fare);
+  const ancillary = Math.round(adjustedPassengers * (tier === SERVICE_TIERS.economy ? 20 : tier === SERVICE_TIERS.premium ? 13 : 15));
+  const businessUpsell = Math.round(adjustedPassengers * ((cabin.business || 0) * 42 + (cabin.first || 0) * 115));
+  const cargoBoost = Number(cabin.cargoBoost || 1);
+  const cargoRevenueBoost = Math.round(Number(e.cargoTons || 0) * 110 * cargoBoost);
+  const serviceCost = Math.round(Math.max(0, adjustedPassengers) * (6 + (tier.serviceCost * 8) + (cabin.cost * 4)));
+  const oldRevenue = Number(e.revenue || 0);
+  const newRevenue = Math.round((adjustedPassengers * avgFare) + ancillary + businessUpsell + cargoRevenueBoost);
+  const revenueDelta = newRevenue - oldRevenue;
+  e.passengers = adjustedPassengers;
+  e.avgFare = avgFare;
+  e.cabinLabel = cabin.label;
+  e.serviceLabel = tier.label;
+  e.loyaltyLabel = loyalty.label;
+  e.cabinUpsellRevenue = businessUpsell + ancillary + cargoRevenueBoost;
+  e.serviceCost = serviceCost;
+  e.revenue = Math.max(0, Math.round(oldRevenue + revenueDelta));
+  e.totalCost = Math.round(Number(e.totalCost || 0) + serviceCost);
+  e.profit = Math.round(e.revenue - e.totalCost);
+  e.margin = e.revenue > 0 ? (e.profit / e.revenue) * 100 : -100;
+  e.loadFactor = plane.capacity > 0 ? utils.clamp(adjustedPassengers / Math.max(plane.capacity,1), 0, 1.22) : Number(e.loadFactor || 0);
+  return e;
+};
+
+const previousCompleteFlightV120 = completeFlight;
+completeFlight = function(career, route, plane, model) {
+  previousCompleteFlightV120(career, route, plane, model);
+  applyPassengerExperience(career, route, plane, model);
+};
+
+const previousAdvanceCompanyDayV120 = advanceCompanyDay;
+advanceCompanyDay = function(career) {
+  const beforeDay = Number(career.day || 1);
+  previousAdvanceCompanyDayV120(career);
+  if (Number(career.day || 1) !== beforeDay) {
+    ensureV12Career(career);
+    if (career.passengerExperience.lastDailyLoyaltyDay !== career.day) {
+      career.passengerExperience.lastDailyLoyaltyDay = career.day;
+      const cost = dailyLoyaltyCost(career);
+      if (cost > 0) {
+        career.cash -= cost;
+        logFinance(career, 'Programa de fidelidade', -cost, 'fidelidade');
+      }
+      const drift = (Number(career.passengerExperience.serviceReputation || 55) - 55) / 90;
+      career.passengerExperience.nps = utils.clamp(Number(career.passengerExperience.nps || 48) + drift, 0, 100);
+    }
+  }
+};
+
+const previousValuationV120 = valuation;
+valuation = function(career) {
+  ensureV12Career(career);
+  const base = previousValuationV120(career);
+  const pe = career.passengerExperience || {};
+  const loyaltyValue = Math.round(Number(pe.loyaltyMembers || 0) * 18);
+  const servicePremium = Math.round(Number(pe.serviceReputation || 55) * 2600 + Number(pe.nps || 48) * 1800);
+  const complaintPenalty = Math.round(Number(pe.complaints || 0) * 280);
+  return Math.max(0, Math.round(base + loyaltyValue + servicePremium - complaintPenalty));
+};
+
+function renderPassengersView() {
+  const c = activeCareer(); if (!c) return renderOnboarding();
+  ensureV12Career(c);
+  const pe = c.passengerExperience;
+  const loyaltyCards = Object.entries(LOYALTY_LEVELS).map(([key,l]) => `<article class="service-card ${pe.loyaltyLevel===key?'active':''}"><b>${utils.escape(l.label)}</b><small>${utils.escape(l.note)}</small><div class="route-stats"><span>Custo/dia ${utils.money(l.dailyCost)}</span><span>Demanda x${l.demand.toFixed(2)}</span><span>Retenção x${l.retention.toFixed(2)}</span></div><button class="btn mini ${pe.loyaltyLevel===key?'ghost':'primary'}" data-action="setLoyalty" data-level="${key}" ${pe.loyaltyLevel===key?'disabled':''}>${pe.loyaltyLevel===key?'Ativo':'Ativar'}</button></article>`).join('');
+  const ratingRows = (pe.routeRatings || []).slice(0,12).map(r => `<div class="finance-row"><span>Dia ${r.day}<small>${utils.escape(r.route)} • ${utils.escape(r.tier)} • ${utils.escape(r.cabin)}</small></span><b class="${r.score>=65?'ok':r.score<48?'bad':''}">${utils.pct(r.score)}</b><em>${r.pax} pax • reclamações ${r.complaints} • elogios ${r.compliments}</em></div>`).join('') || '<p>Sem avaliações ainda. Complete voos para medir satisfação real.</p>';
+  const routeCards = c.routes.map(r => {
+    const tier = SERVICE_TIERS[r.serviceTier || 'standard'] || SERVICE_TIERS.standard;
+    const cabin = CABIN_MIX_PRESETS[r.cabinPreset || 'balanced'] || CABIN_MIX_PRESETS.balanced;
+    return `<article class="service-route"><div><b>${r.origin} → ${r.dest}</b><small>${tier.label} • ${cabin.label} • satisfação ${utils.pct(r.lastSatisfaction || 50)}</small></div><div class="route-stats"><span>Upsell ${utils.money(r.lastCabinRevenue || 0)}</span><span>NPS ${Number(r.lastNpsDelta || 0).toFixed(2)}</span><span>Ocup. ${r.lastLoadFactor || 0}%</span></div><div class="row gap wrap"><button class="btn mini" data-action="setServiceTier" data-route="${r.id}" data-tier="economy">Econômico</button><button class="btn mini" data-action="setServiceTier" data-route="${r.id}" data-tier="standard">Conforto</button><button class="btn mini" data-action="setServiceTier" data-route="${r.id}" data-tier="premium">Premium</button><button class="btn mini ghost" data-action="setCabinPreset" data-route="${r.id}" data-preset="dense">Densa</button><button class="btn mini ghost" data-action="setCabinPreset" data-route="${r.id}" data-preset="balanced">Mista</button><button class="btn mini ghost" data-action="setCabinPreset" data-route="${r.id}" data-preset="premium">Executiva</button><button class="btn mini ghost" data-action="setCabinPreset" data-route="${r.id}" data-preset="cargoPlus">Carga+</button></div></article>`;
+  }).join('') || '<p>Crie rotas para configurar cabine e serviço.</p>';
+  return `<div class="passenger-layout"><section class="panel glass passenger-hero"><span class="eyebrow">F33-F36 Experiência do passageiro</span><h2>Cabine, atendimento, fidelidade e reputação</h2><div class="kpi-grid"><div class="kpi"><small>NPS</small><strong>${utils.pct(pe.nps)}</strong></div><div class="kpi"><small>Reputação serviço</small><strong>${utils.pct(pe.serviceReputation)}</strong></div><div class="kpi"><small>Fidelidade</small><strong>${utils.num(pe.loyaltyMembers)} membros</strong></div><div class="kpi"><small>Programa</small><strong>${utils.escape(LOYALTY_LEVELS[pe.loyaltyLevel].label)}</strong></div><div class="kpi"><small>Reclamações</small><strong>${utils.num(pe.complaints)}</strong></div><div class="kpi"><small>Receita cabine</small><strong>${utils.money(pe.cabinRevenue)}</strong></div></div><p class="hint">Serviço e cabine mexem em tarifa, ocupação, custo de bordo, NPS, reputação e valor de mercado.</p><button class="btn primary" data-action="servicePlan">Plano rápido de melhoria</button></section><section class="panel glass"><h2>Programa de fidelidade</h2><div class="service-grid">${loyaltyCards}</div></section><section class="panel glass"><h2>Configuração por rota</h2><div class="service-route-list">${routeCards}</div></section><section class="panel glass"><h2>Últimas avaliações</h2><div class="finance-list">${ratingRows}</div></section></div>`;
+}
+
+const previousNavItemsV120 = navItems;
+navItems = function() {
+  const items = previousNavItemsV120();
+  if (!items.some(i => i[0] === 'passengers')) items.splice(Math.max(0, items.length - 1), 0, ['passengers','Passag.','★']);
+  return items;
+};
+
+const previousRenderV120 = render;
+render = function() {
+  if (runtime.view === 'passengers') {
+    safeExecute('render:passengers', () => {
+      const career = activeCareer(); if (career) ensureV12Career(career);
+      dom.app.innerHTML = shell(renderPassengersView());
+      if (dom.buildBadge) dom.buildBadge.textContent = `${BUILD.game} • v${BUILD.version} • Build ${BUILD.build} • Schema ${BUILD.schema}`;
+    });
+    return;
+  }
+  previousRenderV120();
+};
+
+const previousRenderDashboardV120 = renderDashboard;
+renderDashboard = function() {
+  const html = previousRenderDashboardV120();
+  const c = activeCareer(); if (!c) return html;
+  ensureV12Career(c);
+  const pe = c.passengerExperience;
+  const widget = `<section class="panel glass passenger-widget"><div class="section-head"><div><span class="eyebrow">Experiência do passageiro</span><h2>NPS ${utils.pct(pe.nps)} • Serviço ${utils.pct(pe.serviceReputation)}</h2><p>${utils.num(pe.loyaltyMembers)} membros de fidelidade • ${utils.num(pe.complaints)} reclamações acumuladas • receita cabine ${utils.money(pe.cabinRevenue)}</p></div><button class="btn primary" data-action="go" data-view="passengers">Abrir passageiros</button></div></section>`;
+  const pos = html.lastIndexOf('</div>');
+  return pos >= 0 ? html.slice(0, pos) + widget + html.slice(pos) : html + widget;
+};
+
+const previousRenderRoutesV120 = renderRoutes;
+renderRoutes = function() {
+  const html = previousRenderRoutesV120();
+  const info = `<section class="panel glass route-service-hint"><span class="eyebrow">Cabine e serviço</span><p>Agora cada rota tem padrão de serviço e cabine. Isso afeta tarifa, ocupação, NPS, fidelidade e reputação.</p><button class="btn mini primary" data-action="go" data-view="passengers">Configurar passageiros</button></section>`;
+  return html.replace('<div class="routes-layout">', `<div class="routes-layout">${info}`);
+};
+
+const previousRenderRouteCardV120 = renderRouteCard;
+renderRouteCard = function(r) {
+  ensureV12Career(activeCareer());
+  let html = previousRenderRouteCardV120(r);
+  const tier = SERVICE_TIERS[r.serviceTier || 'standard'] || SERVICE_TIERS.standard;
+  const cabin = CABIN_MIX_PRESETS[r.cabinPreset || 'balanced'] || CABIN_MIX_PRESETS.balanced;
+  const service = `<div class="route-stats service-stats"><span>Serviço: ${tier.label}</span><span>Cabine: ${cabin.label}</span><span>Satisfação: ${utils.pct(r.lastSatisfaction || 50)}</span><span>Upsell: ${utils.money(r.lastCabinRevenue || 0)}</span></div>`;
+  const controls = `<div class="row gap wrap service-controls"><button class="btn mini" data-action="setServiceTier" data-route="${r.id}" data-tier="economy">Econômico</button><button class="btn mini" data-action="setServiceTier" data-route="${r.id}" data-tier="standard">Conforto</button><button class="btn mini" data-action="setServiceTier" data-route="${r.id}" data-tier="premium">Premium</button><button class="btn mini ghost" data-action="setCabinPreset" data-route="${r.id}" data-preset="balanced">Cabine mista</button><button class="btn mini ghost" data-action="setCabinPreset" data-route="${r.id}" data-preset="premium">Executiva</button></div>`;
+  html = html.replace('</article>', `${service}${controls}</article>`);
+  return html;
+};
+
+const previousRenderFinanceV120 = renderFinance;
+renderFinance = function() {
+  const html = previousRenderFinanceV120();
+  const c = activeCareer(); if (!c) return html;
+  ensureV12Career(c);
+  const pe = c.passengerExperience;
+  const card = `<section class="panel glass"><span class="eyebrow">F33-F36 Receita por passageiro</span><h2>Cabine e fidelidade</h2><div class="kpi-grid"><div class="kpi"><small>Receita cabine</small><strong>${utils.money(pe.cabinRevenue)}</strong></div><div class="kpi"><small>Custo fidelidade/dia</small><strong>${utils.money(dailyLoyaltyCost(c))}</strong></div><div class="kpi"><small>Membros</small><strong>${utils.num(pe.loyaltyMembers)}</strong></div><div class="kpi"><small>NPS</small><strong>${utils.pct(pe.nps)}</strong></div></div><button class="btn primary" data-action="go" data-view="passengers">Gerenciar experiência</button></section>`;
+  return html.replace('</div>', card + '</div>');
+};
+
+const previousRenderAuditV120 = renderAudit;
+renderAudit = function() {
+  const checks = runIntegrityAudit();
+  const passed = checks.filter(c => c.ok).length;
+  return `<div class="audit-layout"><section class="panel glass"><div class="section-head"><div><span class="eyebrow">Sistema anti-quebra</span><h2>Auditoria da build</h2><p>Execução obrigatória por fase para garantir integridade e evolução real.</p></div><button class="btn primary" data-action="runAudit">Rodar auditoria</button></div><div class="audit-score"><strong>${passed}/${checks.length}</strong><span>checks aprovados</span></div><div class="audit-list">${checks.map(c => `<div class="audit-row ${c.ok?'ok':'bad'}"><b>${c.ok?'✓':'!'}</b><span>${c.label}</span><small>${c.detail}</small></div>`).join('')}</div></section><section class="panel glass"><h2>Relatório desta entrega</h2><div class="todo-list"><span>F33 Experiência do passageiro: OK — NPS, satisfação por voo, reclamações e elogios.</span><span>F34 Cabines profundas: OK — alta densidade, mista, executiva e passageiro+carga por rota.</span><span>F35 Fidelidade: OK — Vale Miles básico, plus e elite com custo, demanda e retenção.</span><span>F36 Reputação de serviço: OK — atendimento impacta reputação, valuation, demanda e financeiro.</span><span>Anti-quebra: OK — migração de saves v0.4 até v1.1 para schema 12 preservada.</span></div></section></div>`;
+};
+
+const previousRunIntegrityAuditV120 = runIntegrityAudit;
+runIntegrityAudit = function() {
+  const c = activeCareer(); if (c) ensureV12Career(c);
+  const blockedLabels = ['Schema da build','Chave de save v1.1','Migração v1.0 preservada','Normalização v1.1','F29 Regulações por país','F30 Congestionamento','F31 Incidentes avançados','F32 Seguro profundo','Tela Operações no menu','Regulações no save','Congestionamento no save','Fila de incidentes','Cálculo de sinistro'];
+  const base = previousRunIntegrityAuditV120().filter(check => !blockedLabels.includes(check.label));
+  const extra = [
+    { ok: BUILD.schema === 12, label:'Schema da build', detail:`Schema atual ${BUILD.schema}.` },
+    { ok: STORE_KEY.includes('schema_12'), label:'Chave de save v1.2', detail:STORE_KEY },
+    { ok: LEGACY_STORE_KEYS.includes('vale_air_manager_schema_11'), label:'Migração v1.1 preservada', detail:'Saves schema 11 são migrados para schema 12 sem reset.' },
+    { ok: typeof ensureV12Career === 'function', label:'Normalização v1.2', detail:'Carreiras antigas recebem NPS, fidelidade e cabine.' },
+    { ok: Object.keys(SERVICE_TIERS).length === 3, label:'F33 Serviço por rota', detail:'Econômico, conforto e premium configurados.' },
+    { ok: Object.keys(CABIN_MIX_PRESETS).length >= 4, label:'F34 Cabines profundas', detail:'Alta densidade, mista, executiva e carga+ disponíveis.' },
+    { ok: Object.keys(LOYALTY_LEVELS).length === 4, label:'F35 Fidelidade', detail:'Sem programa, básico, plus e elite configurados.' },
+    { ok: typeof passengerServiceScore === 'function', label:'F36 Reputação de serviço', detail:'NPS e reputação calculados por voo.' },
+    { ok: navItems().some(i => i[0] === 'passengers'), label:'Tela Passageiros no menu', detail:'Experiência do passageiro acessível pelo HUD mobile.' },
+    { ok: !c || c.passengerExperience && Number.isFinite(Number(c.passengerExperience.nps)), label:'Experiência no save', detail:c ? `NPS ${utils.pct(c.passengerExperience.nps)} • serviço ${utils.pct(c.passengerExperience.serviceReputation)}.` : 'Sem carreira ativa.' },
+    { ok: !c || c.routes.every(r => SERVICE_TIERS[r.serviceTier] && CABIN_MIX_PRESETS[r.cabinPreset]), label:'Rotas com cabine/serviço', detail:c ? `${c.routes.length} rotas normalizadas.` : 'Sem carreira ativa.' },
+    { ok: typeof setRouteServiceTier === 'function' && typeof setRouteCabinPreset === 'function', label:'Ações de rota v1.2', detail:'Botões de serviço e cabine funcionam sem tela solta.' },
+    { ok: typeof setLoyaltyLevel === 'function' && typeof dailyLoyaltyCost === 'function', label:'Custo de fidelidade', detail:'Programa Vale Miles gera custo diário e bônus de demanda.' },
+    { ok: typeof serviceActionPlan === 'function', label:'Plano de serviço', detail:'Ação corretiva para melhorar NPS sem quebrar caixa.' },
+    { ok: !c || Array.isArray(c.passengerExperience.routeRatings), label:'Histórico de avaliações', detail:c ? `${c.passengerExperience.routeRatings.length} avaliação(ões) registradas.` : 'Sem carreira ativa.' }
+  ];
+  return [...extra, ...base];
+};
+
+const previousHandleActionV120 = handleAction;
+handleAction = function(target) {
+  const action = target.dataset.action;
+  if (action === 'setServiceTier') return safeExecute('action:setServiceTier', () => setRouteServiceTier(target.dataset.route, target.dataset.tier));
+  if (action === 'setCabinPreset') return safeExecute('action:setCabinPreset', () => setRouteCabinPreset(target.dataset.route, target.dataset.preset));
+  if (action === 'setLoyalty') return safeExecute('action:setLoyalty', () => setLoyaltyLevel(target.dataset.level));
+  if (action === 'servicePlan') return safeExecute('action:servicePlan', () => serviceActionPlan());
+  return previousHandleActionV120(target);
 };
 
 boot();

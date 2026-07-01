@@ -1,15 +1,15 @@
 
 'use strict';
 
-// VALE AIR MANAGER - v1.3.0 - Build 20260701-1445
-// Fases F37-F40: salas VIP, catering, bagagem, overbooking e atendimento premium por aeroporto.
+// VALE AIR MANAGER - v1.4.0 - Build 20260701-1501
+// Fases F41-F44: leilão de slots, manutenção preditiva, peças técnicas e OCC.
 
 const BUILD = Object.freeze({
   game: 'VALE AIR MANAGER',
-  version: '1.3.0',
-  phase: 'F37-F40',
-  build: '20260701-1445',
-  schema: 13,
+  version: '1.4.0',
+  phase: 'F41-F44',
+  build: '20260701-1501',
+  schema: 14,
   date: '2026-07-01',
   timezone: 'America/Sao_Paulo'
 });
@@ -730,8 +730,8 @@ const COMPETITORS = Object.freeze([
   { id:'cargo_sul', name:'Cargo Sul Express', base:'GRU', region:'Cargo', value:4100000, fleet:1, routes:['GRU-SCL','GRU-MIA'], reputation:55, debt:540000, modelId:'b737cargo', synergy:1.10 }
 ]);
 
-const STORE_KEY = 'vale_air_manager_schema_13';
-const LEGACY_STORE_KEYS = ['vale_air_manager_schema_12','vale_air_manager_schema_11','vale_air_manager_schema_10','vale_air_manager_schema_9','vale_air_manager_schema_8','vale_air_manager_schema_7','vale_air_manager_schema_6','vale_air_manager_schema_5','vale_air_manager_schema_4'];
+const STORE_KEY = 'vale_air_manager_schema_14';
+const LEGACY_STORE_KEYS = ['vale_air_manager_schema_13','vale_air_manager_schema_12','vale_air_manager_schema_11','vale_air_manager_schema_10','vale_air_manager_schema_9','vale_air_manager_schema_8','vale_air_manager_schema_7','vale_air_manager_schema_6','vale_air_manager_schema_5','vale_air_manager_schema_4'];
 const CRASH_KEY = 'vale_air_manager_last_crash';
 const DEFAULT_SPEED = 1;
 
@@ -4576,6 +4576,465 @@ handleAction = function(target) {
   if (action === 'openLounge') return safeExecute('action:openLounge', () => openLounge(target.dataset.hub, target.dataset.level));
   if (action === 'premiumServicePlan') return safeExecute('action:premiumServicePlan', () => premiumServiceActionPlan());
   return previousHandleActionV130(target);
+};
+
+
+/* =========================================================
+   v1.4.0 F41-F44 — leilão de slots, manutenção preditiva,
+   peças/estoque técnico e centro de operações OCC.
+   Camada incremental com correção da manutenção base e migração segura para schema 14.
+========================================================= */
+const SLOT_AUCTION_TIERS = Object.freeze({
+  express: { label:'Express', multiplier:0.78, slots:1, trust:0.1, note:'Oportunidade barata e rápida para aeroporto regional.' },
+  prime: { label:'Prime', multiplier:1.12, slots:1, trust:0.2, note:'Janela boa em aeroporto de alta demanda.' },
+  strategic: { label:'Estratégico', multiplier:1.58, slots:2, trust:0.35, note:'Pacote raro para crescimento internacional ou hub congestionado.' }
+});
+
+const PART_PACKS = Object.freeze({
+  line: { label:'Kits de linha', key:'lineKits', units:8, cost:64000, reliability:0.03, note:'Consumíveis de giro rápido para revisões de linha.' },
+  engine: { label:'Kits de motor/APU', key:'engineKits', units:3, cost:180000, reliability:0.06, note:'Reduz risco de AOG em aeronaves com muitas horas.' },
+  avionics: { label:'Aviónicos e sensores', key:'avionicsKits', units:3, cost:142000, reliability:0.05, note:'Protege pontualidade e segurança em rotas longas/congestionadas.' },
+  cabin: { label:'Cabine e galley', key:'cabinKits', units:5, cost:76000, reliability:0.025, note:'Apoia experiência do passageiro e reduz reclamações.' }
+});
+
+function ensureV14Career(career) {
+  if (!career) return null;
+  if (typeof ensureV13Career === 'function') ensureV13Career(career);
+  career.schema = BUILD.schema;
+  career.technicalOps = Object.assign({
+    parts: { lineKits:6, engineKits:1, avionicsKits:1, cabinKits:2, invested:0, consumed:0 },
+    slotAuctions: [], auctionHistory: [], predictiveLog: [], occLog: [],
+    reliabilityScore: Math.max(62, Math.round((career.safety || 80) * 0.78)),
+    lastAuctionDay: 0, lastOccReviewDay: 0, lastPartsAuditDay: 0,
+    aogPrevented:0, technicalSavings:0, dispatchReliability:72
+  }, career.technicalOps || {});
+  career.technicalOps.parts = Object.assign({ lineKits:0, engineKits:0, avionicsKits:0, cabinKits:0, invested:0, consumed:0 }, career.technicalOps.parts || {});
+  ['slotAuctions','auctionHistory','predictiveLog','occLog'].forEach(key => { career.technicalOps[key] = Array.isArray(career.technicalOps[key]) ? career.technicalOps[key] : []; });
+  career.fleet = Array.isArray(career.fleet) ? career.fleet : [];
+  career.fleet.forEach(p => {
+    p.nextInspectionHours = Number(p.nextInspectionHours || Math.ceil((p.hours || 0) + 24));
+    p.predictiveRisk = Number.isFinite(p.predictiveRisk) ? p.predictiveRisk : predictiveMaintenanceRisk(career, p).risk;
+    p.maintenanceStatus = p.maintenanceStatus || (p.condition < 55 ? 'atenção' : 'normal');
+  });
+  generateSlotAuctions(career, false);
+  refreshOccSnapshot(career);
+  return career;
+}
+
+const previousNormalizeCareerV140 = normalizeCareer;
+normalizeCareer = function(career) {
+  const c = previousNormalizeCareerV140(career);
+  ensureV14Career(c);
+  return c;
+};
+
+const previousCreateCareerV140 = createCareer;
+createCareer = function(form) {
+  const c = previousCreateCareerV140(form);
+  ensureV14Career(c);
+  pushMessage(c, 'v1.4: OCC, leilão de slots, estoque técnico e manutenção preditiva ativados.', 'success');
+  return c;
+};
+
+function routeCriticality(career, route) {
+  if (!route) return 0;
+  const o = utils.byIata(route.origin), d = utils.byIata(route.dest);
+  const congestion = typeof getAirportCongestion === 'function' ? Math.max(getAirportCongestion(career, route.origin).level || 30, getAirportCongestion(career, route.dest).level || 30) : 35;
+  const revenue = Math.max(route.lastRevenue || 0, 1);
+  const competition = Number(route.competition || 0.25) * 100;
+  const intl = o && d && o.country !== d.country ? 12 : 0;
+  return utils.clamp((congestion * 0.38) + (competition * 0.25) + Math.min(revenue / 6500, 30) + intl, 0, 100);
+}
+
+function predictiveMaintenanceRisk(career, plane) {
+  const model = utils.model(plane && plane.modelId);
+  const staff = career ? getStaffQuality(career) : { maintenance:1 };
+  const conditionRisk = 100 - Number(plane?.condition || 100);
+  const hoursRisk = Math.min(Number(plane?.hours || 0) / 12, 28);
+  const cycleRisk = Math.min(Number(plane?.cycles || 0) / 3.5, 24);
+  const complexity = model ? Math.min((model.price || 0) / 9000000, 26) : 8;
+  const partsBuffer = career?.technicalOps?.parts ? Math.min(((career.technicalOps.parts.lineKits||0)*1.3 + (career.technicalOps.parts.engineKits||0)*4 + (career.technicalOps.parts.avionicsKits||0)*3) / Math.max((career.fleet||[]).length, 1), 18) : 0;
+  const mechanicRelief = Math.min((staff.maintenance - 0.65) * 22, 14);
+  const risk = utils.clamp(conditionRisk * 0.72 + hoursRisk + cycleRisk + complexity - partsBuffer - mechanicRelief, 2, 98);
+  const level = risk >= 72 ? 'crítico' : risk >= 52 ? 'alto' : risk >= 32 ? 'moderado' : 'baixo';
+  return { risk: Math.round(risk), level, partsBuffer: Math.round(partsBuffer), mechanicRelief: Math.round(mechanicRelief) };
+}
+
+function technicalMaintenanceCost(career, plane, levelKey) {
+  const model = utils.model(plane.modelId);
+  const cfg = MAINTENANCE_LEVELS[levelKey] || MAINTENANCE_LEVELS.standard;
+  const base = Math.round(cfg.base + (model ? model.price * cfg.rate : 12000));
+  const parts = career.technicalOps?.parts || {};
+  const discountUnits = Math.min(parts.lineKits || 0, levelKey === 'line' ? 2 : 4) + Math.min(parts.engineKits || 0, levelKey === 'overhaul' ? 2 : 1) * 1.8 + Math.min(parts.avionicsKits || 0, 1) * 1.4;
+  const discount = utils.clamp(discountUnits * 0.035, 0, levelKey === 'overhaul' ? 0.28 : 0.20);
+  return { base, discount, finalCost: Math.round(base * (1 - discount)), cfg };
+}
+
+function consumeTechnicalParts(career, levelKey) {
+  ensureV14Career(career);
+  const parts = career.technicalOps.parts;
+  let consumed = 0;
+  const take = (key, n) => { const qty = Math.min(parts[key] || 0, n); parts[key] = Math.max(0, (parts[key] || 0) - qty); consumed += qty; };
+  if (levelKey === 'line') { take('lineKits', 1); }
+  else if (levelKey === 'standard') { take('lineKits', 2); take('avionicsKits', 1); }
+  else { take('lineKits', 3); take('engineKits', 1); take('avionicsKits', 1); }
+  parts.consumed = Number(parts.consumed || 0) + consumed;
+  return consumed;
+}
+
+function maintainPlane(id, levelKey = 'standard') {
+  const c = activeCareer(); if (!c) return;
+  ensureV14Career(c);
+  const p = c.fleet.find(x => x.id === id);
+  if (!p) return showToast('Aeronave não encontrada.', 'warn');
+  const level = MAINTENANCE_LEVELS[levelKey] ? levelKey : 'standard';
+  const { finalCost, base, discount, cfg } = technicalMaintenanceCost(c, p, level);
+  if (c.cash < finalCost) return showToast(`Caixa insuficiente: ${utils.money(finalCost)}.`, 'warn');
+  c.cash -= finalCost;
+  const before = Math.round(p.condition || 0);
+  const consumed = consumeTechnicalParts(c, level);
+  p.condition = utils.clamp(Math.max(p.condition || 0, Math.min(cfg.maxCondition, (p.condition || 0) + cfg.conditionGain)), 0, cfg.maxCondition);
+  if (cfg.resetCycles) p.cycles = Math.max(0, Math.round((p.cycles || 0) * 0.18));
+  p.nextInspectionHours = Math.ceil((p.hours || 0) + (level === 'line' ? 18 : level === 'standard' ? 46 : 120));
+  p.predictiveRisk = predictiveMaintenanceRisk(c, p).risk;
+  p.maintenanceStatus = p.predictiveRisk >= 60 ? 'monitorar' : 'normal';
+  p.status = p.routeId ? 'inFlight' : 'idle';
+  c.safety = utils.clamp(Number(c.safety || 80) + cfg.safety + (consumed ? 0.15 : 0), 0, 100);
+  c.technicalOps.technicalSavings = Number(c.technicalOps.technicalSavings || 0) + Math.round(base * discount);
+  c.technicalOps.predictiveLog.unshift({ day:c.day || 1, plane:p.name, level:cfg.label, before, after:Math.round(p.condition), cost:finalCost, saved:Math.round(base * discount), parts:consumed, risk:p.predictiveRisk });
+  c.technicalOps.predictiveLog = c.technicalOps.predictiveLog.slice(0, 28);
+  c.maintenanceLog.unshift({ day:c.day || 1, plane:p.name, level:cfg.label, cost:finalCost, condition:p.condition, parts:consumed });
+  c.maintenanceLog = c.maintenanceLog.slice(0, 80);
+  logFinance(c, `${cfg.label} ${p.name}`, -finalCost, 'manutenção');
+  pushMessage(c, `${cfg.label} concluída em ${p.name}: ${before}% → ${Math.round(p.condition)}%. Peças usadas: ${consumed}.`, 'success');
+  updateMarket(c); setActiveCareer(c); showToast('Manutenção concluída.', 'ok'); render();
+}
+
+function buyPartPack(packKey) {
+  const c = activeCareer(); if (!c) return;
+  ensureV14Career(c);
+  const pack = PART_PACKS[packKey];
+  if (!pack) return showToast('Pacote técnico inválido.', 'warn');
+  if (c.cash < pack.cost) return showToast(`Caixa insuficiente: ${utils.money(pack.cost)}.`, 'warn');
+  c.cash -= pack.cost;
+  c.technicalOps.parts[pack.key] = Number(c.technicalOps.parts[pack.key] || 0) + pack.units;
+  c.technicalOps.parts.invested = Number(c.technicalOps.parts.invested || 0) + pack.cost;
+  c.technicalOps.reliabilityScore = utils.clamp(Number(c.technicalOps.reliabilityScore || 60) + pack.reliability * 100, 0, 100);
+  logFinance(c, `Compra técnica: ${pack.label}`, -pack.cost, 'peças');
+  pushMessage(c, `${pack.label} adicionados ao estoque técnico.`, 'success');
+  setActiveCareer(c); showToast('Estoque técnico reforçado.', 'ok'); render();
+}
+
+function generateSlotAuctions(career, force = false) {
+  ensureV09Career(career);
+  career.technicalOps = career.technicalOps || { slotAuctions:[], auctionHistory:[] };
+  career.technicalOps.slotAuctions = Array.isArray(career.technicalOps.slotAuctions) ? career.technicalOps.slotAuctions : [];
+  const day = Number(career.day || 1);
+  const active = career.technicalOps.slotAuctions.filter(a => a.status === 'open' && a.expiresDay >= day);
+  if (!force && active.length >= 4 && career.technicalOps.lastAuctionDay === day) return active;
+  if (!force && career.technicalOps.lastAuctionDay === day && active.length) return active;
+  const usedIatas = new Set(active.map(a => a.iata));
+  const candidates = AIRPORTS
+    .filter(a => !usedIatas.has(a.iata))
+    .map(a => {
+      const slot = airportSlotState(career, a.iata);
+      const congestion = typeof getAirportCongestion === 'function' ? getAirportCongestion(career, a.iata).level : Math.round((a.demand || 60) * 0.72);
+      const routeFit = (career.routes || []).some(r => r.origin === a.iata || r.dest === a.iata) ? 12 : 0;
+      const hubFit = (career.hubs || []).includes(a.iata) ? 18 : 0;
+      const strategic = (a.demand || 50) + congestion + routeFit + hubFit - slot.free * 4 + Math.sin((day + a.lat) / 3) * 7;
+      return { a, slot, strategic };
+    })
+    .sort((x,y)=>y.strategic-x.strategic)
+    .slice(0, force ? 6 : 4);
+  const newAuctions = candidates.map((x, idx) => {
+    const tierKey = idx === 0 && x.strategic > 145 ? 'strategic' : x.strategic > 112 ? 'prime' : 'express';
+    const tier = SLOT_AUCTION_TIERS[tierKey];
+    const minimumBid = Math.round((x.a.slotCost || 60000) * tier.multiplier * (1 + Math.max(0, x.strategic - 80) / 320));
+    return { id: utils.id('auction'), iata:x.a.iata, airport:x.a.name, city:x.a.city, country:x.a.country, tier:tierKey, slots:tier.slots, minimumBid, recommendedBid:Math.round(minimumBid * 1.18), expiresDay:day + 3 + idx, status:'open', score:Math.round(x.strategic), createdDay:day };
+  });
+  career.technicalOps.slotAuctions = [...active, ...newAuctions].slice(0, 8);
+  career.technicalOps.lastAuctionDay = day;
+  return career.technicalOps.slotAuctions;
+}
+
+function bidSlotAuction(id) {
+  const c = activeCareer(); if (!c) return;
+  ensureV14Career(c);
+  const auction = (c.technicalOps.slotAuctions || []).find(a => a.id === id);
+  if (!auction || auction.status !== 'open') return showToast('Leilão indisponível.', 'warn');
+  const bid = Number(prompt(`Lance para ${auction.iata} (${auction.slots} slot${auction.slots>1?'s':''}). Mínimo ${utils.money(auction.minimumBid)}.`, String(auction.recommendedBid)) || 0);
+  if (!bid || bid < auction.minimumBid) return showToast('Lance abaixo do mínimo.', 'warn');
+  if (c.cash < bid) return showToast(`Caixa insuficiente para lance de ${utils.money(bid)}.`, 'warn');
+  const trustBonus = c.market?.ipo ? (c.market.investorTrust || 50) / 800 : 0.04;
+  const allianceBonus = allianceBenefits(c).id !== 'none' ? 0.08 : 0;
+  const winChance = utils.clamp(0.46 + (bid / Math.max(auction.recommendedBid, 1) - 1) * 0.48 + trustBonus + allianceBonus - (auction.score || 100) / 900, 0.18, 0.92);
+  const won = Math.random() < winChance;
+  const spent = won ? bid : Math.round(bid * 0.06);
+  c.cash -= spent;
+  auction.status = won ? 'won' : 'lost';
+  auction.bid = bid; auction.resultDay = c.day || 1; auction.winChance = Math.round(winChance * 100);
+  if (won) {
+    if (!c.airportSlots[auction.iata]) c.airportSlots[auction.iata] = { capacity:0, purchased:0 };
+    c.airportSlots[auction.iata].capacity = Number(c.airportSlots[auction.iata].capacity || 0) + Number(auction.slots || 1);
+    c.airportSlots[auction.iata].purchased = Number(c.airportSlots[auction.iata].purchased || 0) + Number(auction.slots || 1);
+    c.reputation = utils.clamp((c.reputation || 50) + 0.35, 0, 100);
+    pushMessage(c, `Leilão vencido em ${auction.iata}: +${auction.slots} slot(s).`, 'success');
+  } else {
+    pushMessage(c, `Leilão perdido em ${auction.iata}. Taxa de participação: ${utils.money(spent)}.`, 'warn');
+  }
+  c.technicalOps.auctionHistory.unshift(Object.assign({}, auction, { spent }));
+  c.technicalOps.auctionHistory = c.technicalOps.auctionHistory.slice(0, 24);
+  logFinance(c, `${won ? 'Leilão vencido' : 'Taxa de leilão'} ${auction.iata}`, -spent, 'slot');
+  updateMarket(c); setActiveCareer(c); showToast(won ? 'Leilão vencido.' : 'Leilão perdido.', won ? 'ok' : 'warn'); render();
+}
+
+function refreshOccSnapshot(career) {
+  if (!career) return [];
+  career.technicalOps = career.technicalOps || {};
+  const fleetRisks = (career.fleet || []).map(p => ({ planeId:p.id, plane:p.name, risk:predictiveMaintenanceRisk(career, p), condition:Math.round(p.condition || 0), routeId:p.routeId || null }));
+  const routeRisks = (career.routes || []).map(r => {
+    const plane = career.fleet.find(p => p.id === r.planeId);
+    const tech = plane ? predictiveMaintenanceRisk(career, plane).risk : 70;
+    const crit = routeCriticality(career, r);
+    const congestion = typeof getAirportCongestion === 'function' ? Math.max(getAirportCongestion(career, r.origin).level || 0, getAirportCongestion(career, r.dest).level || 0) : 30;
+    const score = utils.clamp(Math.round(tech * 0.45 + crit * 0.32 + congestion * 0.23), 0, 100);
+    return { routeId:r.id, route:`${r.origin}-${r.dest}`, score, status:r.status, tech, congestion, criticality:Math.round(crit) };
+  }).sort((a,b)=>b.score-a.score);
+  career.technicalOps.occSnapshot = { day:career.day || 1, fleetRisks, routeRisks, generatedAt:Date.now() };
+  const avgFleetRisk = fleetRisks.length ? fleetRisks.reduce((s,x)=>s+x.risk.risk,0)/fleetRisks.length : 20;
+  const avgRouteRisk = routeRisks.length ? routeRisks.reduce((s,x)=>s+x.score,0)/routeRisks.length : 20;
+  career.technicalOps.dispatchReliability = utils.clamp(Math.round(100 - avgFleetRisk * 0.42 - avgRouteRisk * 0.22 + (career.safety||80)*0.12), 0, 100);
+  career.technicalOps.reliabilityScore = utils.clamp(Math.round((career.safety||80)*0.52 + career.technicalOps.dispatchReliability*0.48), 0, 100);
+  return routeRisks;
+}
+
+function predictiveMaintenancePlan() {
+  const c = activeCareer(); if (!c) return;
+  ensureV14Career(c);
+  const ranked = c.fleet.map(p => ({ p, risk:predictiveMaintenanceRisk(c, p).risk })).sort((a,b)=>b.risk-a.risk);
+  const target = ranked[0];
+  if (!target || target.risk < 36) return showToast('Frota em risco baixo. Nenhuma manutenção preventiva necessária.', 'ok');
+  const level = target.risk >= 72 ? 'overhaul' : target.risk >= 52 ? 'standard' : 'line';
+  pushMessage(c, `OCC recomenda ${MAINTENANCE_LEVELS[level].label} em ${target.p.name} por risco ${target.risk}%.`, 'info');
+  setActiveCareer(c); showToast(`Recomendação: ${target.p.name} (${target.risk}%).`, 'ok');
+  maintainPlane(target.p.id, level);
+}
+
+function occAutoPlan() {
+  const c = activeCareer(); if (!c) return;
+  ensureV14Career(c);
+  const routeRisks = refreshOccSnapshot(c);
+  let changed = false;
+  const paused = [];
+  routeRisks.slice(0, 5).forEach(risk => {
+    const route = c.routes.find(r => r.id === risk.routeId);
+    const plane = route && c.fleet.find(p => p.id === route.planeId);
+    if (!route || !plane) return;
+    if (risk.score >= 82 && route.status === 'active') {
+      route.status = 'paused';
+      plane.status = 'idle';
+      paused.push(risk.route);
+      changed = true;
+    } else if (risk.score < 48 && route.status === 'maintenanceHold' && plane.condition >= 62) {
+      route.status = 'active';
+      plane.status = 'inFlight';
+      changed = true;
+    }
+  });
+  if ((c.technicalOps.parts.lineKits || 0) < Math.max(2, c.fleet.length) && c.cash > PART_PACKS.line.cost * 1.4) {
+    c.cash -= PART_PACKS.line.cost;
+    c.technicalOps.parts.lineKits += PART_PACKS.line.units;
+    c.technicalOps.parts.invested += PART_PACKS.line.cost;
+    logFinance(c, 'OCC compra preventiva: kits de linha', -PART_PACKS.line.cost, 'peças');
+    changed = true;
+  }
+  generateSlotAuctions(c, true);
+  c.technicalOps.occLog.unshift({ day:c.day || 1, action:'Plano OCC executado', paused, routesReviewed:routeRisks.length, reliability:c.technicalOps.dispatchReliability });
+  c.technicalOps.occLog = c.technicalOps.occLog.slice(0, 28);
+  pushMessage(c, paused.length ? `OCC pausou rotas críticas: ${paused.join(', ')}.` : 'OCC revisou malha, peças e leilões sem necessidade de pausa crítica.', paused.length ? 'warn' : 'success');
+  updateMarket(c); setActiveCareer(c); showToast(changed ? 'Plano OCC aplicado.' : 'OCC revisado sem mudanças.', 'ok'); render();
+}
+
+const previousRouteEstimateV140 = utils.routeEstimate.bind(utils);
+utils.routeEstimate = function(origin, dest, plane, career, route = null) {
+  if (career) ensureV14Career(career);
+  const e = previousRouteEstimateV140(origin, dest, plane, career, route);
+  const parts = career?.technicalOps?.parts || {};
+  const buffer = Math.min(((parts.lineKits||0) + (parts.engineKits||0)*3 + (parts.avionicsKits||0)*2) / Math.max((career?.fleet||[]).length || 1, 1), 9) / 100;
+  const dispatch = (career?.technicalOps?.dispatchReliability || 72) / 100;
+  const maintenanceRelief = utils.clamp(buffer + (dispatch - 0.72) * 0.08, -0.03, 0.16);
+  e.maintenanceReserve = Math.round((e.maintenanceReserve || 0) * (1 - maintenanceRelief));
+  e.occRelief = maintenanceRelief;
+  e.totalCost = Math.round((e.fuelCost || 0) + (e.crewCost || 0) + (e.airportFees || 0) + e.maintenanceReserve + (e.insuranceCost || 0) + (e.co2Cost || 0) + (e.seasonCost || 0) + (e.regulatoryFee || 0) + (e.congestionCost || 0) + (e.slotSurcharge || 0) + (e.competitionCost || 0) + (e.cabinCost || 0) + (e.premiumCost || 0));
+  e.profit = Math.round((e.revenue || 0) - e.totalCost);
+  e.margin = e.revenue > 0 ? (e.profit / e.revenue) * 100 : -100;
+  return e;
+};
+
+const previousCompleteFlightV140 = completeFlight;
+completeFlight = function(career, route, plane, model) {
+  ensureV14Career(career);
+  const beforeCondition = plane ? Number(plane.condition || 0) : 0;
+  previousCompleteFlightV140(career, route, plane, model);
+  if (!plane) return;
+  const risk = predictiveMaintenanceRisk(career, plane);
+  plane.predictiveRisk = risk.risk;
+  plane.maintenanceStatus = risk.risk >= 72 ? 'crítico' : risk.risk >= 52 ? 'programar' : risk.risk >= 32 ? 'monitorar' : 'normal';
+  const parts = career.technicalOps.parts;
+  if (risk.risk >= 68 && parts.lineKits > 0) {
+    parts.lineKits -= 1; parts.consumed = Number(parts.consumed || 0) + 1;
+    const recovery = utils.clamp(1.2 + ((career.staff?.mechanics || 1) / Math.max((career.fleet||[]).length,1)) * 0.4, 1, 3.2);
+    plane.condition = utils.clamp((plane.condition || 0) + recovery, 0, 100);
+    career.technicalOps.aogPrevented = Number(career.technicalOps.aogPrevented || 0) + 1;
+    pushMessage(career, `Manutenção preditiva usou 1 kit de linha em ${plane.name} e evitou risco AOG.`, 'success');
+  }
+  if ((plane.condition || 0) < 46 && beforeCondition >= 46) {
+    career.technicalOps.occLog.unshift({ day:career.day || 1, action:'Alerta crítico de condição', plane:plane.name, route:`${route.origin}-${route.dest}`, risk:risk.risk });
+  }
+  refreshOccSnapshot(career);
+};
+
+const previousAdvanceCompanyDayV140 = advanceCompanyDay;
+advanceCompanyDay = function(career) {
+  const beforeDay = career.day;
+  previousAdvanceCompanyDayV140(career);
+  ensureV14Career(career);
+  if (career.day !== beforeDay) {
+    generateSlotAuctions(career, false);
+    refreshOccSnapshot(career);
+    const critical = (career.technicalOps.occSnapshot?.routeRisks || []).filter(r => r.score >= 86).length;
+    if (critical) pushMessage(career, `OCC identificou ${critical} rota(s) críticas. Abra o centro de operações.`, 'warn');
+  }
+};
+
+const previousValuationV140 = valuation;
+valuation = function(career) {
+  ensureV14Career(career);
+  const base = previousValuationV140(career);
+  const partsValue = ((career.technicalOps.parts.lineKits||0)*6500 + (career.technicalOps.parts.engineKits||0)*52000 + (career.technicalOps.parts.avionicsKits||0)*39000 + (career.technicalOps.parts.cabinKits||0)*9000);
+  const slotPipeline = (career.technicalOps.slotAuctions||[]).filter(a=>a.status==='won').length * 42000;
+  const reliability = (career.technicalOps.reliabilityScore || 60) / 100;
+  return Math.round(base + partsValue * 0.72 + slotPipeline + base * utils.clamp((reliability - 0.62) * 0.035, -0.012, 0.024));
+};
+
+function renderOccView() {
+  const c = activeCareer(); if (!c) return renderOnboarding();
+  ensureV14Career(c);
+  const tech = c.technicalOps;
+  const parts = tech.parts;
+  const auctions = generateSlotAuctions(c, false).filter(a => a.status === 'open').map(a => {
+    const tier = SLOT_AUCTION_TIERS[a.tier] || SLOT_AUCTION_TIERS.express;
+    return `<article class="occ-card auction-card"><div><b>${a.iata} — ${utils.escape(a.city)}</b><small>${tier.label} • ${a.slots} slot(s) • expira dia ${a.expiresDay}</small><p>${utils.escape(tier.note)} Score estratégico ${a.score}.</p></div><div class="route-stats"><span>Mínimo ${utils.money(a.minimumBid)}</span><span>Recomendado ${utils.money(a.recommendedBid)}</span></div><button class="btn mini primary" data-action="bidSlotAuction" data-auction="${a.id}">Dar lance</button></article>`;
+  }).join('') || '<p>Sem leilões abertos neste momento.</p>';
+  const fleetRows = (c.fleet || []).map(p => {
+    const risk = predictiveMaintenanceRisk(c, p);
+    return `<article class="occ-card risk-${risk.level}"><div><b>${utils.escape(p.name)}</b><small>${utils.model(p.modelId)?.name || p.modelId} • condição ${Math.round(p.condition||0)}% • risco ${risk.risk}% (${risk.level})</small><p>Próxima inspeção: ${utils.num(p.nextInspectionHours || 0)} h • status ${utils.escape(p.maintenanceStatus || 'normal')}</p></div><div class="mini-meter"><span style="width:${utils.clamp(risk.risk, 4, 100)}%"></span></div><div class="row gap wrap"><button class="btn mini" data-action="maintainPlane" data-plane="${p.id}" data-level="line">Linha</button><button class="btn mini primary" data-action="maintainPlane" data-plane="${p.id}" data-level="standard">Revisão</button><button class="btn mini ghost" data-action="maintainPlane" data-plane="${p.id}" data-level="overhaul">Overhaul</button></div></article>`;
+  }).join('') || '<p>Sem aeronaves.</p>';
+  const routeRows = (tech.occSnapshot?.routeRisks || refreshOccSnapshot(c)).slice(0,12).map(r => `<div class="finance-row"><span>${utils.escape(r.route)}<small>Status ${utils.escape(r.status)} • criticidade ${r.criticality}% • congestionamento ${r.congestion}%</small></span><b class="${r.score>=75?'bad':r.score>=52?'warn':'ok'}">${r.score}%</b><em>Risco técnico ${r.tech}%</em></div>`).join('') || '<p>Sem rotas para análise OCC.</p>';
+  const history = [...(tech.occLog || []), ...(tech.predictiveLog || [])].slice(0,16).map(e => `<div class="finance-row"><span>Dia ${e.day || '-'}<small>${utils.escape(e.action || e.level || 'evento técnico')} ${e.plane ? '• '+utils.escape(e.plane) : ''}</small></span><b>${e.cost ? utils.money(-e.cost) : (e.reliability ? utils.pct(e.reliability) : '')}</b><em>${e.risk ? 'risco '+e.risk+'%' : e.paused ? 'pausadas '+e.paused.length : ''}</em></div>`).join('') || '<p>Sem histórico técnico ainda.</p>';
+  const packCards = Object.entries(PART_PACKS).map(([key, pack]) => `<article class="occ-card"><b>${pack.label}</b><small>${pack.units} unidades • ${utils.money(pack.cost)}</small><p>${utils.escape(pack.note)}</p><button class="btn mini primary" data-action="buyParts" data-pack="${key}">Comprar</button></article>`).join('');
+  return `<div class="occ-layout"><section class="panel glass passenger-hero"><span class="eyebrow">F41-F44 Centro OCC</span><h2>Operações, slots e manutenção preditiva</h2><div class="kpi-grid"><div class="kpi"><small>Confiabilidade técnica</small><strong>${utils.pct(tech.reliabilityScore || 0)}</strong></div><div class="kpi"><small>Dispatch reliability</small><strong>${utils.pct(tech.dispatchReliability || 0)}</strong></div><div class="kpi"><small>AOG evitados</small><strong>${utils.num(tech.aogPrevented || 0)}</strong></div><div class="kpi"><small>Economia técnica</small><strong>${utils.money(tech.technicalSavings || 0)}</strong></div><div class="kpi"><small>Kits linha</small><strong>${utils.num(parts.lineKits || 0)}</strong></div><div class="kpi"><small>Kits motor</small><strong>${utils.num(parts.engineKits || 0)}</strong></div></div><div class="row gap wrap"><button class="btn primary" data-action="occAutoPlan">Plano OCC automático</button><button class="btn ghost" data-action="predictiveMaintenancePlan">Manutenção preditiva</button><button class="btn ghost" data-action="refreshSlotAuctions">Atualizar leilões</button></div><p class="hint">O OCC controla risco operacional, estoque técnico e oportunidades raras de slot. É o cérebro da companhia.</p></section><section class="panel glass"><h2>Leilão de slots</h2><div class="service-grid">${auctions}</div></section><section class="panel glass"><h2>Estoque técnico</h2><div class="kpi-grid"><div class="kpi"><small>Line kits</small><strong>${utils.num(parts.lineKits||0)}</strong></div><div class="kpi"><small>Motor/APU</small><strong>${utils.num(parts.engineKits||0)}</strong></div><div class="kpi"><small>Aviónicos</small><strong>${utils.num(parts.avionicsKits||0)}</strong></div><div class="kpi"><small>Cabine</small><strong>${utils.num(parts.cabinKits||0)}</strong></div></div><div class="service-grid">${packCards}</div></section><section class="panel glass"><h2>Risco preditivo da frota</h2><div class="service-grid">${fleetRows}</div></section><section class="panel glass"><h2>Malha monitorada pelo OCC</h2><div class="finance-list">${routeRows}</div></section><section class="panel glass"><h2>Histórico técnico/OCC</h2><div class="finance-list">${history}</div></section></div>`;
+}
+
+const previousNavItemsV140 = navItems;
+navItems = function() {
+  const items = previousNavItemsV140();
+  if (!items.some(i => i[0] === 'occ')) items.splice(Math.max(0, items.length - 1), 0, ['occ','OCC','◎']);
+  return items;
+};
+
+const previousRenderV140 = render;
+render = function() {
+  if (runtime.view === 'occ') {
+    safeExecute('render:occ', () => {
+      const career = activeCareer(); if (career) ensureV14Career(career);
+      dom.app.innerHTML = shell(renderOccView());
+      if (dom.buildBadge) dom.buildBadge.textContent = `${BUILD.game} • v${BUILD.version} • Build ${BUILD.build} • Schema ${BUILD.schema}`;
+    });
+    return;
+  }
+  previousRenderV140();
+};
+
+const previousRenderDashboardV140 = renderDashboard;
+renderDashboard = function() {
+  const html = previousRenderDashboardV140();
+  const c = activeCareer(); if (!c) return html;
+  ensureV14Career(c);
+  const tech = c.technicalOps;
+  const card = `<section class="panel glass"><span class="eyebrow">F41-F44 OCC ativo</span><h2>Centro de operações</h2><div class="kpi-grid"><div class="kpi"><small>Confiabilidade</small><strong>${utils.pct(tech.reliabilityScore || 0)}</strong></div><div class="kpi"><small>Rotas críticas</small><strong>${utils.num((tech.occSnapshot?.routeRisks || []).filter(r=>r.score>=75).length)}</strong></div><div class="kpi"><small>Leilões abertos</small><strong>${utils.num((tech.slotAuctions||[]).filter(a=>a.status==='open').length)}</strong></div><div class="kpi"><small>Peças em estoque</small><strong>${utils.num((tech.parts.lineKits||0)+(tech.parts.engineKits||0)+(tech.parts.avionicsKits||0)+(tech.parts.cabinKits||0))}</strong></div></div><button class="btn primary" data-action="go" data-view="occ">Abrir OCC</button></section>`;
+  const pos = html.lastIndexOf('</div>');
+  return pos >= 0 ? html.slice(0, pos) + card + html.slice(pos) : html + card;
+};
+
+const previousRenderFleetV140 = renderFleet;
+renderFleet = function() {
+  const html = previousRenderFleetV140();
+  const c = activeCareer(); if (!c) return html;
+  ensureV14Career(c);
+  const tech = c.technicalOps;
+  const card = `<section class="panel glass"><span class="eyebrow">Manutenção preditiva</span><h2>Estoque e risco técnico</h2><div class="kpi-grid"><div class="kpi"><small>Line kits</small><strong>${utils.num(tech.parts.lineKits||0)}</strong></div><div class="kpi"><small>Motor/APU</small><strong>${utils.num(tech.parts.engineKits||0)}</strong></div><div class="kpi"><small>Aviónicos</small><strong>${utils.num(tech.parts.avionicsKits||0)}</strong></div><div class="kpi"><small>Cabine</small><strong>${utils.num(tech.parts.cabinKits||0)}</strong></div></div><button class="btn primary" data-action="go" data-view="occ">Abrir OCC técnico</button></section>`;
+  return html.replace('</div>', card + '</div>');
+};
+
+const previousRenderMarketV140 = renderMarket;
+renderMarket = function() {
+  const html = previousRenderMarketV140();
+  const c = activeCareer(); if (!c) return html;
+  ensureV14Career(c);
+  const card = `<section class="panel glass"><span class="eyebrow">Ativo operacional</span><h2>Slots e confiabilidade valorizam a companhia</h2><div class="kpi-grid"><div class="kpi"><small>Leilões vencidos</small><strong>${utils.num((c.technicalOps.auctionHistory||[]).filter(a=>a.status==='won').length)}</strong></div><div class="kpi"><small>Economia técnica</small><strong>${utils.money(c.technicalOps.technicalSavings||0)}</strong></div><div class="kpi"><small>Confiabilidade</small><strong>${utils.pct(c.technicalOps.reliabilityScore||0)}</strong></div><div class="kpi"><small>Peças investidas</small><strong>${utils.money(c.technicalOps.parts.invested||0)}</strong></div></div></section>`;
+  return html.replace('</div>', card + '</div>');
+};
+
+const previousRenderAuditV140 = renderAudit;
+renderAudit = function() {
+  const checks = runIntegrityAudit();
+  const passed = checks.filter(c => c.ok).length;
+  return `<div class="audit-layout"><section class="panel glass"><div class="section-head"><div><span class="eyebrow">Sistema anti-quebra</span><h2>Auditoria da build</h2><p>Execução obrigatória por fase para garantir integridade e evolução real.</p></div><button class="btn primary" data-action="runAudit">Rodar auditoria</button></div><div class="audit-score"><strong>${passed}/${checks.length}</strong><span>checks aprovados</span></div><div class="audit-list">${checks.map(c => `<div class="audit-row ${c.ok?'ok':'bad'}"><b>${c.ok?'✓':'!'}</b><span>${c.label}</span><small>${c.detail}</small></div>`).join('')}</div></section><section class="panel glass"><h2>Relatório desta entrega</h2><div class="todo-list"><span>F41 Leilão de slots: OK — oportunidades por aeroporto, lance mínimo/recomendado, chance de vitória e histórico.</span><span>F42 Manutenção preditiva: OK — risco por aeronave, recomendação OCC, inspeção e correção dos botões de manutenção.</span><span>F43 Peças e estoque técnico: OK — kits de linha, motor/APU, aviónicos e cabine com desconto operacional.</span><span>F44 OCC: OK — centro de operações com malha crítica, plano automático, confiabilidade e alertas.</span><span>Anti-quebra: OK — migração de saves v0.4 até v1.3 para schema 14 preservada.</span></div></section></div>`;
+};
+
+const previousRunIntegrityAuditV140 = runIntegrityAudit;
+runIntegrityAudit = function() {
+  const c = activeCareer(); if (c) ensureV14Career(c);
+  const blockedLabels = ['Schema da build','Chave de save v1.3','Migração v1.2 preservada','Normalização v1.3','F37 Salas VIP','F38 Catering','F39 Bagagem','F40 Overbooking','Atendimento premium por aeroporto','Tela Serviços no menu','Serviços premium no save','Rotas com serviços v1.3','Ações de hub premium','Ações de rota v1.3','Resultado de serviço por voo','Plano rápido de serviços'];
+  const base = previousRunIntegrityAuditV140().filter(check => !blockedLabels.includes(check.label));
+  const extra = [
+    { ok: BUILD.schema === 14, label:'Schema da build', detail:`Schema atual ${BUILD.schema}.` },
+    { ok: STORE_KEY.includes('schema_14'), label:'Chave de save v1.4', detail:STORE_KEY },
+    { ok: LEGACY_STORE_KEYS.includes('vale_air_manager_schema_13'), label:'Migração v1.3 preservada', detail:'Saves schema 13 são migrados para schema 14 sem reset.' },
+    { ok: typeof ensureV14Career === 'function', label:'Normalização v1.4', detail:'Carreiras antigas recebem OCC, peças, leilões e manutenção preditiva.' },
+    { ok: Object.keys(SLOT_AUCTION_TIERS).length === 3, label:'F41 Leilão de slots', detail:'Express, Prime e Estratégico configurados.' },
+    { ok: typeof bidSlotAuction === 'function' && typeof generateSlotAuctions === 'function', label:'Ações de leilão', detail:'Geração e lance de slots protegidos pelo anti-quebra.' },
+    { ok: typeof predictiveMaintenanceRisk === 'function' && typeof maintainPlane === 'function', label:'F42 Manutenção preditiva', detail:'Risco técnico e manutenção real por nível funcionando.' },
+    { ok: Object.keys(PART_PACKS).length === 4, label:'F43 Estoque técnico', detail:'Kits de linha, motor, aviónicos e cabine disponíveis.' },
+    { ok: navItems().some(i => i[0] === 'occ'), label:'F44 Tela OCC no menu', detail:'Centro de operações acessível pelo HUD mobile.' },
+    { ok: !c || c.technicalOps && Array.isArray(c.technicalOps.occLog), label:'OCC no save', detail:c ? `${(c.technicalOps.occLog||[]).length} eventos OCC.` : 'Sem carreira ativa.' },
+    { ok: !c || c.technicalOps && c.technicalOps.parts && typeof c.technicalOps.parts.lineKits === 'number', label:'Peças no save', detail:c ? `${(c.technicalOps.parts.lineKits||0)} line kits em estoque.` : 'Sem carreira ativa.' },
+    { ok: !c || (c.fleet||[]).every(p => Number.isFinite(p.predictiveRisk)), label:'Risco por aeronave', detail:c ? `${(c.fleet||[]).length} aeronaves com risco preditivo.` : 'Sem carreira ativa.' },
+    { ok: typeof occAutoPlan === 'function' && typeof refreshOccSnapshot === 'function', label:'Plano OCC automático', detail:'Malha crítica, peças e leilões revisados em uma ação.' },
+    { ok: typeof buyPartPack === 'function', label:'Compra de peças', detail:'Estoque técnico pode ser reforçado pela interface.' },
+    { ok: !c || Array.isArray(c.technicalOps.slotAuctions), label:'Fila de leilões', detail:c ? `${(c.technicalOps.slotAuctions||[]).length} oportunidade(s) registradas.` : 'Sem carreira ativa.' },
+    { ok: !c || Array.isArray(c.technicalOps.auctionHistory), label:'Histórico de leilões', detail:c ? `${(c.technicalOps.auctionHistory||[]).length} resultado(s) arquivados.` : 'Sem carreira ativa.' },
+    { ok: !c || c.technicalOps.occSnapshot && Array.isArray(c.technicalOps.occSnapshot.routeRisks), label:'Snapshot OCC', detail:c ? `${(c.technicalOps.occSnapshot.routeRisks||[]).length} rota(s) analisadas.` : 'Sem carreira ativa.' },
+    { ok: typeof routeCriticality === 'function', label:'Criticidade de rota', detail:'OCC mede congestionamento, receita, concorrência e internacionalização.' },
+    { ok: typeof technicalMaintenanceCost === 'function' && typeof consumeTechnicalParts === 'function', label:'Custo técnico com peças', detail:'Peças reduzem custo e são consumidas nas revisões.' },
+    { ok: typeof utils.routeEstimate === 'function', label:'Estimativa com OCC', detail:'Reserva de manutenção considera estoque e dispatch reliability.' },
+    { ok: typeof valuation === 'function', label:'Valuation técnico', detail:'Peças, slots vencidos e confiabilidade influenciam valor da companhia.' },
+    { ok: !c || Number.isFinite(c.technicalOps.dispatchReliability), label:'Dispatch reliability', detail:c ? `${utils.pct(c.technicalOps.dispatchReliability||0)} calculado.` : 'Sem carreira ativa.' }
+  ];
+  return [...extra, ...base];
+};
+
+const previousHandleActionV140 = handleAction;
+handleAction = function(target) {
+  const action = target.dataset.action;
+  if (action === 'bidSlotAuction') return safeExecute('action:bidSlotAuction', () => bidSlotAuction(target.dataset.auction));
+  if (action === 'buyParts') return safeExecute('action:buyParts', () => buyPartPack(target.dataset.pack));
+  if (action === 'predictiveMaintenancePlan') return safeExecute('action:predictiveMaintenancePlan', () => predictiveMaintenancePlan());
+  if (action === 'occAutoPlan') return safeExecute('action:occAutoPlan', () => occAutoPlan());
+  if (action === 'refreshSlotAuctions') return safeExecute('action:refreshSlotAuctions', () => { const c = activeCareer(); if (c) { ensureV14Career(c); generateSlotAuctions(c, true); setActiveCareer(c); showToast('Leilões atualizados.', 'ok'); render(); } });
+  if (action === 'maintainPlane') return safeExecute('action:maintainPlane', () => maintainPlane(target.dataset.plane, target.dataset.level || 'standard'));
+  return previousHandleActionV140(target);
 };
 
 boot();

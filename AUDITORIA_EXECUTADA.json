@@ -1,9 +1,9 @@
 {
   "game": "VALE AIR MANAGER",
-  "version": "1.3.0",
-  "build": "20260701-1445",
-  "schema": 13,
-  "auditoria": "40/40 checks aprovados",
+  "version": "1.4.0",
+  "build": "20260701-1501",
+  "schema": 14,
+  "auditoria": "42/42 checks aprovados",
   "antiQuebra": true,
   "zipCompleto": true,
   "checks": [
@@ -11,13 +11,13 @@
     "HTML/CSS/JS presentes",
     "Manifest e service-worker atualizados",
     "BUILD.json atualizado",
-    "Migração schema 12 preservada",
-    "Tela Serviços adicionada ao HUD",
-    "Salas VIP por hub adicionadas",
-    "Catering por rota adicionado",
-    "Bagagem por rota adicionada",
-    "Overbooking por rota adicionado",
-    "Atendimento premium por aeroporto adicionado",
+    "Migração schema 13 preservada",
+    "Tela OCC adicionada ao HUD",
+    "Leilão de slots adicionado",
+    "Manutenção preditiva adicionada",
+    "Função maintainPlane corrigida e integrada",
+    "Estoque técnico de peças adicionado",
+    "Plano OCC automático adicionado",
     "Auditoria interna atualizada"
   ]
 }

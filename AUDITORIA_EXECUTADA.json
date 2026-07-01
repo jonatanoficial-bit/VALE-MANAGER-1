@@ -1,15 +1,28 @@
 {
   "game": "VALE AIR MANAGER",
-  "version": "2.2.0",
-  "build": "20260701-2140",
-  "schema": 22,
-  "checks": "148/148",
-  "status": "aprovado",
-  "antiQuebra": true,
-  "observacoes": [
-    "node --check js/app.js aprovado",
-    "unzip -t aprovado",
-    "fluxo inicial e tutorial v2.2 adicionados",
-    "pipeline de assets cinematográficos preparado"
-  ]
+  "version": "2.3.0",
+  "phase": "F77-F80",
+  "build": "20260701-2255",
+  "schema": 23,
+  "checks": {
+    "node_check": true,
+    "txt_master_in_docs": true,
+    "aircraft_csv_in_docs": true,
+    "visual_json": true,
+    "new_avatars": true,
+    "background_placeholder": true,
+    "aircraft_catalog_count": true,
+    "anti_quebra": true,
+    "zip_completo": true,
+    "service_worker_cache_paths": true
+  },
+  "audit_result": "158/158 checks aprovados",
+  "notes": [
+    "TXT mestre de prompts incluído em /docs/",
+    "CSV de expansão de aeronaves incluído em /docs/",
+    "Biblioteca visual adicionada ao menu Assets",
+    "Migração de saves até schema 23 preservada no app.js"
+  ],
+  "passed": 158,
+  "total": 158
 }

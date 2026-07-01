@@ -1,11 +1,48 @@
-const CACHE_NAME = 'vale-air-manager-v2-2-0-build-20260701-2140';
+const CACHE_NAME = 'vale-air-manager-v2.3.0-f77-f80-20260701-2255';
 const ASSETS = [
-  './', './index.html', './css/style.css', './js/app.js', './manifest.json', './BUILD.json',
-  './assets/logos/logo-1.svg', './assets/logos/logo-2.svg', './assets/logos/logo-3.svg', './assets/logos/logo-4.svg', './assets/logos/logo-5.svg', './assets/logos/logo-6.svg',
-  './assets/avatars/avatar-ceo-1.svg', './assets/avatars/avatar-ceo-2.svg', './assets/avatars/avatar-ceo-3.svg', './assets/avatars/avatar-ceo-4.svg', './assets/avatars/avatar-ceo-5.svg', './assets/avatars/avatar-ceo-6.svg',
-  './assets/planes/plane-regional.svg', './assets/planes/plane-turboprop.svg', './assets/planes/plane-narrow.svg', './assets/planes/plane-wide.svg', './assets/planes/plane-heavy.svg', './assets/planes/plane-cargo.svg', './assets/planes/plane-business.svg',
-  './assets/staff/pilot.svg', './assets/staff/crew.svg', './assets/staff/mechanic.svg', './assets/staff/director.svg',
-  './data/airports.json', './data/aircraft.json', './data/staff.json', './data/asset_pipeline_v22.json'
+  "./",
+  "./index.html",
+  "./css/style.css",
+  "./js/app.js",
+  "./manifest.json",
+  "./BUILD.json",
+  "./AUDITORIA_EXECUTADA.json",
+  "./README_AUDITORIA.txt",
+  "./assets/logos/logo-1.svg",
+  "./assets/logos/logo-2.svg",
+  "./assets/logos/logo-3.svg",
+  "./assets/logos/logo-4.svg",
+  "./assets/logos/logo-5.svg",
+  "./assets/logos/logo-6.svg",
+  "./assets/avatars/avatar-ceo-1.svg",
+  "./assets/avatars/avatar-ceo-2.svg",
+  "./assets/avatars/avatar-ceo-3.svg",
+  "./assets/avatars/avatar-ceo-4.svg",
+  "./assets/avatars/avatar-ceo-5.svg",
+  "./assets/avatars/avatar-ceo-6.svg",
+  "./assets/avatars/avatar-ceo-7.svg",
+  "./assets/avatars/avatar-ceo-8.svg",
+  "./assets/avatars/avatar-ceo-9.svg",
+  "./assets/avatars/avatar-ceo-10.svg",
+  "./assets/planes/plane-regional.svg",
+  "./assets/planes/plane-turboprop.svg",
+  "./assets/planes/plane-narrow.svg",
+  "./assets/planes/plane-wide.svg",
+  "./assets/planes/plane-heavy.svg",
+  "./assets/planes/plane-cargo.svg",
+  "./assets/planes/plane-business.svg",
+  "./assets/backgrounds/bg-cinematic-placeholder.svg",
+  "./assets/staff/pilot.svg",
+  "./assets/staff/crew.svg",
+  "./assets/staff/mechanic.svg",
+  "./assets/staff/director.svg",
+  "./data/airports.json",
+  "./data/aircraft.json",
+  "./data/staff.json",
+  "./data/asset_pipeline_v22.json",
+  "./data/visual_asset_library_v23.json",
+  "./docs/ASSET_MASTER_PROMPTS_v2.3.0.txt",
+  "./docs/AIRCRAFT_EXPANSION_TEMPLATE_v2.3.0.csv"
 ];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
@@ -16,3 +53,4 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request).catch(() => caches.match('./index.html'))));
 });
+// v2.3.0 F77-F80 build 20260701-2255: asset library docs included

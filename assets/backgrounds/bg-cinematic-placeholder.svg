@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#061020"/><stop offset=".55" stop-color="#0a2a4a"/><stop offset="1" stop-color="#d7a447"/></linearGradient></defs>
+<rect width="1280" height="720" fill="url(#g)"/>
+<path d="M0 560 C260 500 430 540 640 485 S1050 420 1280 470 L1280 720 L0 720z" fill="#071527" opacity=".65"/>
+<path d="M120 430 L1110 250" stroke="#d8eefc" stroke-width="4" opacity=".18"/>
+<path d="M870 250 l120 36 -120 36 18-36z" fill="#eef6ff" opacity=".75"/>
+<text x="60" y="96" font-family="Arial" font-size="40" fill="#fff" font-weight="700">VALE AIR MANAGER</text>
+<text x="60" y="142" font-family="Arial" font-size="22" fill="#a9c7e8">Fundo placeholder cinematográfico — substituir por asset IA</text>
+</svg>

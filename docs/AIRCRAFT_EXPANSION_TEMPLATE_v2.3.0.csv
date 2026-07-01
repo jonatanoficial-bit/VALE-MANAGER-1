@@ -1,0 +1,81 @@
+assetId,name,manufacturer,category,fuelBurnApprox,marketValueIndicative,prompt,status,targetFolder
+AIR-001,Airbus A220-100,Airbus,Narrow-body regional,~2.1 t/h,~US$ 81 mi,"Aeronave comercial Airbus A220-100 em solo, pintura genérica premium, foto ultrarrealista lateral 3/4, pista de aeroporto ao fundo.",prompt_planejado,assets/planes/cinematic/
+AIR-002,Airbus A220-300,Airbus,Narrow-body regional,~2.3 t/h,~US$ 91 mi,"Airbus A220-300 ultrarrealista, pintura genérica premium, pista moderna ao fundo, foto 3/4.",prompt_planejado,assets/planes/cinematic/
+AIR-003,Airbus A318,Airbus,Narrow-body,~2.4 t/h,~US$ 35 mi usado,"Airbus A318 ultrarrealista, aeronave comercial em taxiway, pintura genérica.",prompt_planejado,assets/planes/cinematic/
+AIR-004,Airbus A319,Airbus,Narrow-body,~2.5 t/h,~US$ 45 mi usado,"Airbus A319 ultrarrealista, lateral 3/4, aeroporto internacional.",prompt_planejado,assets/planes/cinematic/
+AIR-005,Airbus A320ceo,Airbus,Narrow-body,~2.6 t/h,~US$ 50 mi usado,"Airbus A320 comercial ultrarrealista, foto de catálogo, pintura genérica premium.",prompt_planejado,assets/planes/cinematic/
+AIR-006,Airbus A320neo,Airbus,Narrow-body,~2.3 t/h,~US$ 110 mi,"Airbus A320neo ultrarrealista, aeronave moderna em pista, iluminação natural.",prompt_planejado,assets/planes/cinematic/
+AIR-007,Airbus A321ceo,Airbus,Narrow-body,~2.9 t/h,~US$ 60 mi usado,"Airbus A321 ultrarrealista, foto de catálogo premium, aeroporto ao fundo.",prompt_planejado,assets/planes/cinematic/
+AIR-008,Airbus A321neo,Airbus,Narrow-body,~2.6 t/h,~US$ 130 mi,"Airbus A321neo ultrarrealista, fuselagem longa, pintura genérica.",prompt_planejado,assets/planes/cinematic/
+AIR-009,Airbus A330-200,Airbus,Wide-body,~5.4 t/h,~US$ 70 mi usado,"Airbus A330-200 ultrarrealista, wide-body em solo, visual premium.",prompt_planejado,assets/planes/cinematic/
+AIR-010,Airbus A330-300,Airbus,Wide-body,~5.8 t/h,~US$ 85 mi usado,"Airbus A330-300 ultrarrealista, foto 3/4 em aeroporto internacional.",prompt_planejado,assets/planes/cinematic/
+AIR-011,Airbus A330-900neo,Airbus,Wide-body,~5.2 t/h,~US$ 296 mi,"Airbus A330neo ultrarrealista, wide-body moderno, pista ao fundo.",prompt_planejado,assets/planes/cinematic/
+AIR-012,Airbus A340-300,Airbus,Wide-body,~7.0 t/h,~US$ 35 mi usado,"Airbus A340-300 ultrarrealista, quatro motores, aeroporto grande ao fundo.",prompt_planejado,assets/planes/cinematic/
+AIR-013,Airbus A350-900,Airbus,Wide-body,~5.8 t/h,~US$ 317 mi,"Airbus A350-900 ultrarrealista, aeronave moderna de longo alcance, pintura genérica.",prompt_planejado,assets/planes/cinematic/
+AIR-014,Airbus A350-1000,Airbus,Wide-body,~6.3 t/h,~US$ 366 mi,"Airbus A350-1000 ultrarrealista, longo alcance, foto de catálogo premium.",prompt_planejado,assets/planes/cinematic/
+AIR-015,Airbus A380-800,Airbus,Very large wide-body,~11.5 t/h,~US$ 180 mi usado,"Airbus A380 ultrarrealista, double decker gigante, aeroporto internacional.",prompt_planejado,assets/planes/cinematic/
+AIR-016,Boeing 717-200,Boeing,Narrow-body regional,~2.4 t/h,~US$ 20 mi usado,"Boeing 717-200 ultrarrealista, avião comercial em taxiway, pintura genérica.",prompt_planejado,assets/planes/cinematic/
+AIR-017,Boeing 727-200,Boeing,Narrow-body clássico,~5.0 t/h,~US$ 8 mi usado,"Boeing 727 clássico ultrarrealista, três motores, foto de catálogo.",prompt_planejado,assets/planes/cinematic/
+AIR-018,Boeing 737-300,Boeing,Narrow-body clássico,~2.5 t/h,~US$ 10 mi usado,"Boeing 737-300 ultrarrealista, comercial clássico, aeroporto ao fundo.",prompt_planejado,assets/planes/cinematic/
+AIR-019,Boeing 737-500,Boeing,Narrow-body clássico,~2.4 t/h,~US$ 12 mi usado,"Boeing 737-500 ultrarrealista, pintura genérica, luz natural.",prompt_planejado,assets/planes/cinematic/
+AIR-020,Boeing 737-700,Boeing,Narrow-body,~2.4 t/h,~US$ 28 mi usado,"Boeing 737-700 ultrarrealista, aeronave comercial moderna.",prompt_planejado,assets/planes/cinematic/
+AIR-021,Boeing 737-800,Boeing,Narrow-body,~2.6 t/h,~US$ 52 mi usado,"Boeing 737-800 ultrarrealista, vista lateral 3/4, aeroporto internacional.",prompt_planejado,assets/planes/cinematic/
+AIR-022,Boeing 737-900ER,Boeing,Narrow-body,~2.8 t/h,~US$ 60 mi usado,"Boeing 737-900ER ultrarrealista, fuselagem longa, visual premium.",prompt_planejado,assets/planes/cinematic/
+AIR-023,Boeing 737 MAX 8,Boeing,Narrow-body,~2.3 t/h,~US$ 121 mi,"Boeing 737 MAX 8 ultrarrealista, aeronave moderna em solo, pintura genérica.",prompt_planejado,assets/planes/cinematic/
+AIR-024,Boeing 747-400,Boeing,Wide-body jumbo,~10.5 t/h,~US$ 25 mi usado,"Boeing 747-400 ultrarrealista, jumbo jet, aeroporto internacional.",prompt_planejado,assets/planes/cinematic/
+AIR-025,Boeing 747-8I,Boeing,Wide-body jumbo,~10.8 t/h,~US$ 418 mi,"Boeing 747-8 Intercontinental ultrarrealista, jumbo moderno, foto 3/4.",prompt_planejado,assets/planes/cinematic/
+AIR-026,Boeing 757-200,Boeing,Narrow-body long range,~3.2 t/h,~US$ 28 mi usado,"Boeing 757-200 ultrarrealista, comercial em pista, pintura genérica.",prompt_planejado,assets/planes/cinematic/
+AIR-027,Boeing 767-300ER,Boeing,Wide-body,~5.6 t/h,~US$ 45 mi usado,"Boeing 767-300ER ultrarrealista, aeronave de longo alcance, visual premium.",prompt_planejado,assets/planes/cinematic/
+AIR-028,Boeing 777-200ER,Boeing,Wide-body,~6.8 t/h,~US$ 80 mi usado,"Boeing 777-200ER ultrarrealista, twin wide-body, aeroporto ao fundo.",prompt_planejado,assets/planes/cinematic/
+AIR-029,Boeing 777-300ER,Boeing,Wide-body,~7.2 t/h,~US$ 110 mi usado,"Boeing 777-300ER ultrarrealista, fuselagem longa, foto de catálogo premium.",prompt_planejado,assets/planes/cinematic/
+AIR-030,Boeing 777-9,Boeing,Wide-body,~7.0 t/h,~US$ 442 mi,"Boeing 777X ultrarrealista, wide-body moderno, pintura genérica premium.",prompt_planejado,assets/planes/cinematic/
+AIR-031,Boeing 787-8,Boeing,Wide-body,~5.0 t/h,~US$ 248 mi,"Boeing 787-8 Dreamliner ultrarrealista, elegante, aeroporto ao fundo.",prompt_planejado,assets/planes/cinematic/
+AIR-032,Boeing 787-9,Boeing,Wide-body,~5.4 t/h,~US$ 292 mi,"Boeing 787-9 Dreamliner ultrarrealista, foto 3/4 premium.",prompt_planejado,assets/planes/cinematic/
+AIR-033,Boeing 787-10,Boeing,Wide-body,~5.8 t/h,~US$ 338 mi,"Boeing 787-10 ultrarrealista, fuselagem longa, pintura genérica.",prompt_planejado,assets/planes/cinematic/
+AIR-034,Embraer E170,Embraer,Regional jet,~1.3 t/h,~US$ 17 mi usado,"Embraer E170 ultrarrealista, jato regional em aeroporto médio.",prompt_planejado,assets/planes/cinematic/
+AIR-035,Embraer E175,Embraer,Regional jet,~1.4 t/h,~US$ 25 mi usado,"Embraer E175 ultrarrealista, pintura genérica premium.",prompt_planejado,assets/planes/cinematic/
+AIR-036,Embraer E190,Embraer,Regional jet,~1.8 t/h,~US$ 30 mi usado,"Embraer E190 ultrarrealista, aeronave regional moderna.",prompt_planejado,assets/planes/cinematic/
+AIR-037,Embraer E195,Embraer,Regional jet,~2.0 t/h,~US$ 35 mi usado,"Embraer E195 ultrarrealista, comercial regional alongado.",prompt_planejado,assets/planes/cinematic/
+AIR-038,Embraer E190-E2,Embraer,Regional jet,~1.6 t/h,~US$ 60 mi,"Embraer E190-E2 ultrarrealista, jato regional moderno, foto de catálogo.",prompt_planejado,assets/planes/cinematic/
+AIR-039,Embraer E195-E2,Embraer,Regional jet,~1.8 t/h,~US$ 70 mi,"Embraer E195-E2 ultrarrealista, fuselagem alongada, pintura genérica premium.",prompt_planejado,assets/planes/cinematic/
+AIR-040,Embraer ERJ-135,Embraer,Regional jet,~0.95 t/h,~US$ 8 mi usado,"Embraer ERJ-135 ultrarrealista, jato regional pequeno, aeroporto regional.",prompt_planejado,assets/planes/cinematic/
+AIR-041,Embraer ERJ-145,Embraer,Regional jet,~1.05 t/h,~US$ 9 mi usado,"Embraer ERJ-145 ultrarrealista, pintura genérica, pista regional.",prompt_planejado,assets/planes/cinematic/
+AIR-042,Embraer KC/390 comercial adaptado,Embraer,Cargo/Special,~3.4 t/h,~US$ 85 mi,"Embraer cargueiro tático adaptado comercialmente, visual ultrarrealista.",prompt_planejado,assets/planes/cinematic/
+AIR-043,ATR 42-320,ATR,Turboprop regional,~0.8 t/h,~US$ 5 mi usado,"ATR 42 ultrarrealista, turboélice regional, aeroporto pequeno.",prompt_planejado,assets/planes/cinematic/
+AIR-044,ATR 42-600,ATR,Turboprop regional,~0.9 t/h,~US$ 20 mi,"ATR 42-600 ultrarrealista, turboélice moderno, pista regional.",prompt_planejado,assets/planes/cinematic/
+AIR-045,ATR 72-500,ATR,Turboprop regional,~1.0 t/h,~US$ 9 mi usado,"ATR 72-500 ultrarrealista, turboélice comercial, foto premium.",prompt_planejado,assets/planes/cinematic/
+AIR-046,ATR 72-600,ATR,Turboprop regional,~1.1 t/h,~US$ 26 mi,"ATR 72-600 ultrarrealista, aeronave regional moderna, aeroporto ao fundo.",prompt_planejado,assets/planes/cinematic/
+AIR-047,Dash 8 Q300,De Havilland,Turboprop regional,~0.95 t/h,~US$ 7 mi usado,"Dash 8 Q300 ultrarrealista, turboélice regional.",prompt_planejado,assets/planes/cinematic/
+AIR-048,Dash 8 Q400,De Havilland,Turboprop regional,~1.2 t/h,~US$ 32 mi,"Dash 8 Q400 ultrarrealista, turboélice rápido, visual premium.",prompt_planejado,assets/planes/cinematic/
+AIR-049,Bombardier CRJ200,Bombardier,Regional jet,~1.2 t/h,~US$ 6 mi usado,"Bombardier CRJ200 ultrarrealista, jato regional pequeno.",prompt_planejado,assets/planes/cinematic/
+AIR-050,Bombardier CRJ700,Bombardier,Regional jet,~1.5 t/h,~US$ 16 mi usado,"Bombardier CRJ700 ultrarrealista, jato regional em solo.",prompt_planejado,assets/planes/cinematic/
+AIR-051,Bombardier CRJ900,Bombardier,Regional jet,~1.7 t/h,~US$ 20 mi usado,"Bombardier CRJ900 ultrarrealista, jato regional moderno.",prompt_planejado,assets/planes/cinematic/
+AIR-052,Bombardier CRJ1000,Bombardier,Regional jet,~1.9 t/h,~US$ 24 mi usado,"Bombardier CRJ1000 ultrarrealista, jato regional alongado.",prompt_planejado,assets/planes/cinematic/
+AIR-053,Cessna 172,Cessna,Aviação geral,~0.04 t/h (AVGAS),~US$ 0.45 mi,"Cessna 172 ultrarrealista, avião leve em aeródromo pequeno.",prompt_planejado,assets/planes/cinematic/
+AIR-054,Cessna 208 Caravan,Cessna,Utility/Regional,~0.2 t/h,~US$ 2.5 mi,"Cessna Caravan ultrarrealista, monomotor utilitário, aeroporto regional.",prompt_planejado,assets/planes/cinematic/
+AIR-055,Beechcraft 1900D,Beechcraft,Regional commuter,~0.4 t/h,~US$ 1.5 mi usado,"Beechcraft 1900D ultrarrealista, commuter regional, pintura genérica.",prompt_planejado,assets/planes/cinematic/
+AIR-056,Saab 340B,Saab,Turboprop regional,~0.65 t/h,~US$ 4 mi usado,"Saab 340B ultrarrealista, turboélice regional.",prompt_planejado,assets/planes/cinematic/
+AIR-057,Saab 2000,Saab,Turboprop regional,~0.95 t/h,~US$ 8 mi usado,"Saab 2000 ultrarrealista, turboélice rápido, foto de catálogo.",prompt_planejado,assets/planes/cinematic/
+AIR-058,Fokker 50,Fokker,Turboprop regional,~0.9 t/h,~US$ 3 mi usado,"Fokker 50 ultrarrealista, turboélice clássico.",prompt_planejado,assets/planes/cinematic/
+AIR-059,Fokker 70,Fokker,Regional jet,~1.7 t/h,~US$ 5 mi usado,"Fokker 70 ultrarrealista, jato regional clássico.",prompt_planejado,assets/planes/cinematic/
+AIR-060,Fokker 100,Fokker,Regional jet,~1.9 t/h,~US$ 6 mi usado,"Fokker 100 ultrarrealista, jato regional clássico, aeroporto ao fundo.",prompt_planejado,assets/planes/cinematic/
+AIR-061,COMAC ARJ21,COMAC,Regional jet,~1.9 t/h,~US$ 38 mi,"COMAC ARJ21 ultrarrealista, jato regional chinês, visual premium.",prompt_planejado,assets/planes/cinematic/
+AIR-062,COMAC C919,COMAC,Narrow-body,~2.5 t/h,~US$ 99 mi,"COMAC C919 ultrarrealista, aeronave narrow-body moderna, foto premium.",prompt_planejado,assets/planes/cinematic/
+AIR-063,Irkut MC-21-300,Irkut,Narrow-body,~2.4 t/h,~US$ 91 mi,"Irkut MC-21 ultrarrealista, narrow-body moderno, pintura genérica.",prompt_planejado,assets/planes/cinematic/
+AIR-064,Sukhoi Superjet 100,Sukhoi,Regional jet,~1.7 t/h,~US$ 35 mi,"Sukhoi Superjet 100 ultrarrealista, jato regional, pista ao fundo.",prompt_planejado,assets/planes/cinematic/
+AIR-065,Antonov An-148,Antonov,Regional jet,~2.0 t/h,~US$ 22 mi usado,"Antonov An-148 ultrarrealista, jato regional, clima de aeroporto frio.",prompt_planejado,assets/planes/cinematic/
+AIR-066,Ilyushin Il-76TD,Ilyushin,Cargo heavy,~9.0 t/h,~US$ 20 mi usado,"Ilyushin Il-76 cargueiro ultrarrealista, grande cargueiro em pátio de carga.",prompt_planejado,assets/planes/cinematic/
+AIR-067,Boeing 767-300F,Boeing,Cargo,~5.7 t/h,~US$ 60 mi usado,"Boeing 767 cargueiro ultrarrealista, pátio logístico ao fundo.",prompt_planejado,assets/planes/cinematic/
+AIR-068,Boeing 777F,Boeing,Cargo,~7.0 t/h,~US$ 352 mi,"Boeing 777F ultrarrealista, cargueiro moderno, ambiente logístico premium.",prompt_planejado,assets/planes/cinematic/
+AIR-069,Airbus A330-200F,Airbus,Cargo,~5.5 t/h,~US$ 120 mi usado,"Airbus A330 cargueiro ultrarrealista, terminal de carga ao fundo.",prompt_planejado,assets/planes/cinematic/
+AIR-070,Boeing 747-8F,Boeing,Cargo heavy,~10.8 t/h,~US$ 419 mi,"Boeing 747-8F ultrarrealista, cargueiro jumbo em terminal logístico.",prompt_planejado,assets/planes/cinematic/
+AIR-071,Gulfstream G280,Gulfstream,Business jet,~0.9 t/h,~US$ 25 mi,"Jato executivo Gulfstream G280 ultrarrealista, terminal privado, visual luxuoso.",prompt_planejado,assets/planes/cinematic/
+AIR-072,Gulfstream G650,Gulfstream,Business jet,~1.5 t/h,~US$ 65 mi,"Gulfstream G650 ultrarrealista, jato executivo premium ao pôr do sol.",prompt_planejado,assets/planes/cinematic/
+AIR-073,Gulfstream G700,Gulfstream,Business jet,~1.7 t/h,~US$ 78 mi,"Gulfstream G700 ultrarrealista, terminal executivo, visual ultraluxuoso.",prompt_planejado,assets/planes/cinematic/
+AIR-074,Bombardier Challenger 350,Bombardier,Business jet,~0.85 t/h,~US$ 27 mi,"Bombardier Challenger 350 ultrarrealista, jato executivo em solo.",prompt_planejado,assets/planes/cinematic/
+AIR-075,Bombardier Global 7500,Bombardier,Business jet,~1.6 t/h,~US$ 75 mi,"Bombardier Global 7500 ultrarrealista, jato executivo de longo alcance, terminal VIP.",prompt_planejado,assets/planes/cinematic/
+AIR-076,Dassault Falcon 8X,Dassault,Business jet,~1.3 t/h,~US$ 62 mi,"Dassault Falcon 8X ultrarrealista, jato executivo premium, aeroporto executivo.",prompt_planejado,assets/planes/cinematic/
+AIR-077,Embraer Phenom 300E,Embraer,Business jet,~0.55 t/h,~US$ 13 mi,"Embraer Phenom 300E ultrarrealista, jato executivo leve.",prompt_planejado,assets/planes/cinematic/
+AIR-078,Embraer Praetor 600,Embraer,Business jet,~0.8 t/h,~US$ 22 mi,"Embraer Praetor 600 ultrarrealista, jato executivo premium.",prompt_planejado,assets/planes/cinematic/
+AIR-079,Cessna Citation Latitude,Cessna,Business jet,~0.75 t/h,~US$ 19 mi,"Cessna Citation Latitude ultrarrealista, jato executivo moderno.",prompt_planejado,assets/planes/cinematic/
+AIR-080,Boeing Business Jet (BBJ),Boeing,VIP liner,~2.5 t/h,~US$ 90+ mi,"Boeing BBJ ultrarrealista, avião executivo grande, terminal VIP, visual luxuoso.",prompt_planejado,assets/planes/cinematic/

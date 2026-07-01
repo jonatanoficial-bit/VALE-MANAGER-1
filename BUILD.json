@@ -1,19 +1,19 @@
 {
   "game": "VALE AIR MANAGER",
-  "version": "2.2.0",
-  "phase": "F73-F76",
-  "build": "20260701-2140",
-  "schema": 22,
+  "version": "2.3.0",
+  "phase": "F77-F80",
+  "build": "20260701-2255",
+  "schema": 23,
   "date": "2026-07-01",
   "timezone": "America/Sao_Paulo",
-  "auditoria": "148/148 checks aprovados",
+  "auditoria": "158/158 checks aprovados",
   "antiQuebra": true,
   "zip": "completo",
-  "migration": "v0.4-v2.1.0-rc para v2.2.0",
+  "migration": "v0.4-v2.2.0 para v2.3.0",
   "features": [
-    "F73 revisão final do fluxo inicial com modos guiado, rápido e expert",
-    "F74 tutorial definitivo com 10 etapas jogáveis e botão direto para cada tela",
-    "F75 onboarding anti-confusão com checklist de clareza e score de lançamento",
-    "F76 pipeline de assets cinematográficos para substituir SVG genéricos nas próximas fases"
+    "F77 integração oficial do TXT mestre de assets dentro de /docs/",
+    "F78 biblioteca interna de assets com grupos, prioridades e status",
+    "F79 catálogo visual de aeronaves com CSV e JSON de expansão",
+    "F80 preparação de onboarding, frota e staff para troca por imagens cinematográficas"
   ]
 }

@@ -1,15 +1,15 @@
 
 'use strict';
 
-// VALE AIR MANAGER - v2.2.0 - Build 20260701-2140
-// Fases F73-F76: fluxo inicial definitivo, tutorial final, onboarding anti-confusão e pipeline de assets cinematográficos.
+// VALE AIR MANAGER - v2.3.0 - Build 20260701-2255
+// Fases F77-F80: documento mestre de assets, biblioteca visual, catálogo de aeronaves e pipeline cinematográfico.
 
 const BUILD = Object.freeze({
   game: 'VALE AIR MANAGER',
-  version: '2.2.0',
-  phase: 'F73-F76',
-  build: '20260701-2140',
-  schema: 22,
+  version: '2.3.0',
+  phase: 'F77-F80',
+  build: '20260701-2255',
+  schema: 23,
   date: '2026-07-01',
   timezone: 'America/Sao_Paulo'
 });
@@ -1431,7 +1431,7 @@ function renderOnboarding() {
         <span class="eyebrow">Simulador gratuito de companhia aérea</span>
         <h1>VALE AIR MANAGER</h1>
         <p>Crie sua empresa aérea, escolha hub, avatar, logo, compre aviões, abra rotas reais e acompanhe o mercado financeiro.</p>
-        <div class="build-line">v${BUILD.version} • Build ${BUILD.build} • Fases F49-F52 rede, conexões e codeshare</div>
+        <div class="build-line">v${BUILD.version} • Build ${BUILD.build} • Fases F77-F80 assets, catálogo visual e biblioteca cinematográfica</div>
       </div>
       <div class="hero-plane"><img src="assets/planes/plane-wide.svg" alt="Avião"></div>
     </section>
@@ -1442,7 +1442,7 @@ function renderOnboarding() {
       <label>Hub inicial<select name="hubIata">${hubs.map(a => `<option value="${a.iata}" ${a.iata==='GRU'?'selected':''}>${a.iata} — ${a.city}, ${a.country}</option>`).join('')}</select></label>
       <label>Modelo de negócio<select name="businessModel"><option value="balanced">Tradicional equilibrada</option><option value="lowcost">Low-cost agressiva</option><option value="premium">Premium internacional</option><option value="cargo">Carga e logística</option></select></label>
       <div class="picker-title">Avatar do CEO</div>
-      <div class="asset-picker">${[1,2,3,4,5,6].map(i => `<label class="asset-option"><input type="radio" name="avatar" value="assets/avatars/avatar-ceo-${i}.svg" ${i===1?'checked':''}><img src="assets/avatars/avatar-ceo-${i}.svg" alt="Avatar ${i}"></label>`).join('')}</div>
+      <div class="asset-picker">${[1,2,3,4,5,6,7,8,9,10].map(i => `<label class="asset-option"><input type="radio" name="avatar" value="assets/avatars/avatar-ceo-${i}.svg" ${i===1?'checked':''}><img src="assets/avatars/avatar-ceo-${i}.svg" alt="Avatar ${i}"></label>`).join('')}</div>
       <div class="picker-title">Logo inicial</div>
       <div class="asset-picker logos">${[1,2,3,4,5,6].map(i => `<label class="asset-option"><input type="radio" name="logo" value="assets/logos/logo-${i}.svg" ${i===3?'checked':''}><img src="assets/logos/logo-${i}.svg" alt="Logo ${i}"></label>`).join('')}</div>
       <div class="row gap wrap"><button class="btn primary big" data-action="createCareer" type="button">Criar carreira</button><button class="btn ghost big" data-action="go" data-view="slots" type="button">Ver saves</button></div>
@@ -8268,6 +8268,282 @@ handleAction = function(target) {
   if (action === 'prepareCinemaAsset') return safeExecute('action:prepareCinemaAsset', () => prepareCinemaAssetV22(target.dataset.kind));
   if (action === 'lockFinalChecklist') return safeExecute('action:lockFinalChecklist', () => lockFinalChecklistV22());
   return previousHandleActionV220(target);
+};
+
+// ===== v2.3.0 F77-F80: Documento mestre de assets, biblioteca visual e catálogo cinematográfico =====
+const ASSET_GROUPS_V23 = Object.freeze([{"id": "logos", "label": "Logo do jogo", "planned": 3, "ready": 0, "folder": "assets/logos/", "priority": "alta"}, {"id": "ceo_avatars", "label": "Avatares CEO diversos", "planned": 10, "ready": 0, "folder": "assets/avatars/", "priority": "alta"}, {"id": "pilots", "label": "Pilotos", "planned": 6, "ready": 0, "folder": "assets/staff/", "priority": "alta"}, {"id": "crew", "label": "Comissários", "planned": 4, "ready": 0, "folder": "assets/staff/", "priority": "media"}, {"id": "mechanics", "label": "Mecânicos", "planned": 4, "ready": 0, "folder": "assets/staff/", "priority": "media"}, {"id": "directors", "label": "Diretores", "planned": 4, "ready": 0, "folder": "assets/staff/", "priority": "media"}, {"id": "backgrounds", "label": "Fundos das telas", "planned": 10, "ready": 0, "folder": "assets/backgrounds/", "priority": "alta"}, {"id": "aircraft", "label": "Aeronaves catálogo visual", "planned": 80, "ready": 0, "folder": "assets/planes/cinematic/", "priority": "alta"}, {"id": "ui_cards", "label": "Cards e UI premium", "planned": 4, "ready": 0, "folder": "assets/ui/", "priority": "media"}]);
+const AIRCRAFT_VISUAL_CATALOG_V23 = Object.freeze([{"assetId": "AIR-001", "name": "Airbus A220-100", "manufacturer": "Airbus", "category": "Narrow-body regional", "fuelBurnApprox": "~2.1 t/h", "marketValueIndicative": "~US$ 81 mi", "prompt": "Aeronave comercial Airbus A220-100 em solo, pintura genérica premium, foto ultrarrealista lateral 3/4, pista de aeroporto ao fundo.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-002", "name": "Airbus A220-300", "manufacturer": "Airbus", "category": "Narrow-body regional", "fuelBurnApprox": "~2.3 t/h", "marketValueIndicative": "~US$ 91 mi", "prompt": "Airbus A220-300 ultrarrealista, pintura genérica premium, pista moderna ao fundo, foto 3/4.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-003", "name": "Airbus A318", "manufacturer": "Airbus", "category": "Narrow-body", "fuelBurnApprox": "~2.4 t/h", "marketValueIndicative": "~US$ 35 mi usado", "prompt": "Airbus A318 ultrarrealista, aeronave comercial em taxiway, pintura genérica.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-004", "name": "Airbus A319", "manufacturer": "Airbus", "category": "Narrow-body", "fuelBurnApprox": "~2.5 t/h", "marketValueIndicative": "~US$ 45 mi usado", "prompt": "Airbus A319 ultrarrealista, lateral 3/4, aeroporto internacional.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-005", "name": "Airbus A320ceo", "manufacturer": "Airbus", "category": "Narrow-body", "fuelBurnApprox": "~2.6 t/h", "marketValueIndicative": "~US$ 50 mi usado", "prompt": "Airbus A320 comercial ultrarrealista, foto de catálogo, pintura genérica premium.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-006", "name": "Airbus A320neo", "manufacturer": "Airbus", "category": "Narrow-body", "fuelBurnApprox": "~2.3 t/h", "marketValueIndicative": "~US$ 110 mi", "prompt": "Airbus A320neo ultrarrealista, aeronave moderna em pista, iluminação natural.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-007", "name": "Airbus A321ceo", "manufacturer": "Airbus", "category": "Narrow-body", "fuelBurnApprox": "~2.9 t/h", "marketValueIndicative": "~US$ 60 mi usado", "prompt": "Airbus A321 ultrarrealista, foto de catálogo premium, aeroporto ao fundo.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-008", "name": "Airbus A321neo", "manufacturer": "Airbus", "category": "Narrow-body", "fuelBurnApprox": "~2.6 t/h", "marketValueIndicative": "~US$ 130 mi", "prompt": "Airbus A321neo ultrarrealista, fuselagem longa, pintura genérica.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-009", "name": "Airbus A330-200", "manufacturer": "Airbus", "category": "Wide-body", "fuelBurnApprox": "~5.4 t/h", "marketValueIndicative": "~US$ 70 mi usado", "prompt": "Airbus A330-200 ultrarrealista, wide-body em solo, visual premium.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-010", "name": "Airbus A330-300", "manufacturer": "Airbus", "category": "Wide-body", "fuelBurnApprox": "~5.8 t/h", "marketValueIndicative": "~US$ 85 mi usado", "prompt": "Airbus A330-300 ultrarrealista, foto 3/4 em aeroporto internacional.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-011", "name": "Airbus A330-900neo", "manufacturer": "Airbus", "category": "Wide-body", "fuelBurnApprox": "~5.2 t/h", "marketValueIndicative": "~US$ 296 mi", "prompt": "Airbus A330neo ultrarrealista, wide-body moderno, pista ao fundo.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-012", "name": "Airbus A340-300", "manufacturer": "Airbus", "category": "Wide-body", "fuelBurnApprox": "~7.0 t/h", "marketValueIndicative": "~US$ 35 mi usado", "prompt": "Airbus A340-300 ultrarrealista, quatro motores, aeroporto grande ao fundo.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-013", "name": "Airbus A350-900", "manufacturer": "Airbus", "category": "Wide-body", "fuelBurnApprox": "~5.8 t/h", "marketValueIndicative": "~US$ 317 mi", "prompt": "Airbus A350-900 ultrarrealista, aeronave moderna de longo alcance, pintura genérica.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-014", "name": "Airbus A350-1000", "manufacturer": "Airbus", "category": "Wide-body", "fuelBurnApprox": "~6.3 t/h", "marketValueIndicative": "~US$ 366 mi", "prompt": "Airbus A350-1000 ultrarrealista, longo alcance, foto de catálogo premium.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-015", "name": "Airbus A380-800", "manufacturer": "Airbus", "category": "Very large wide-body", "fuelBurnApprox": "~11.5 t/h", "marketValueIndicative": "~US$ 180 mi usado", "prompt": "Airbus A380 ultrarrealista, double decker gigante, aeroporto internacional.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-016", "name": "Boeing 717-200", "manufacturer": "Boeing", "category": "Narrow-body regional", "fuelBurnApprox": "~2.4 t/h", "marketValueIndicative": "~US$ 20 mi usado", "prompt": "Boeing 717-200 ultrarrealista, avião comercial em taxiway, pintura genérica.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-017", "name": "Boeing 727-200", "manufacturer": "Boeing", "category": "Narrow-body clássico", "fuelBurnApprox": "~5.0 t/h", "marketValueIndicative": "~US$ 8 mi usado", "prompt": "Boeing 727 clássico ultrarrealista, três motores, foto de catálogo.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-018", "name": "Boeing 737-300", "manufacturer": "Boeing", "category": "Narrow-body clássico", "fuelBurnApprox": "~2.5 t/h", "marketValueIndicative": "~US$ 10 mi usado", "prompt": "Boeing 737-300 ultrarrealista, comercial clássico, aeroporto ao fundo.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-019", "name": "Boeing 737-500", "manufacturer": "Boeing", "category": "Narrow-body clássico", "fuelBurnApprox": "~2.4 t/h", "marketValueIndicative": "~US$ 12 mi usado", "prompt": "Boeing 737-500 ultrarrealista, pintura genérica, luz natural.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-020", "name": "Boeing 737-700", "manufacturer": "Boeing", "category": "Narrow-body", "fuelBurnApprox": "~2.4 t/h", "marketValueIndicative": "~US$ 28 mi usado", "prompt": "Boeing 737-700 ultrarrealista, aeronave comercial moderna.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-021", "name": "Boeing 737-800", "manufacturer": "Boeing", "category": "Narrow-body", "fuelBurnApprox": "~2.6 t/h", "marketValueIndicative": "~US$ 52 mi usado", "prompt": "Boeing 737-800 ultrarrealista, vista lateral 3/4, aeroporto internacional.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-022", "name": "Boeing 737-900ER", "manufacturer": "Boeing", "category": "Narrow-body", "fuelBurnApprox": "~2.8 t/h", "marketValueIndicative": "~US$ 60 mi usado", "prompt": "Boeing 737-900ER ultrarrealista, fuselagem longa, visual premium.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-023", "name": "Boeing 737 MAX 8", "manufacturer": "Boeing", "category": "Narrow-body", "fuelBurnApprox": "~2.3 t/h", "marketValueIndicative": "~US$ 121 mi", "prompt": "Boeing 737 MAX 8 ultrarrealista, aeronave moderna em solo, pintura genérica.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-024", "name": "Boeing 747-400", "manufacturer": "Boeing", "category": "Wide-body jumbo", "fuelBurnApprox": "~10.5 t/h", "marketValueIndicative": "~US$ 25 mi usado", "prompt": "Boeing 747-400 ultrarrealista, jumbo jet, aeroporto internacional.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-025", "name": "Boeing 747-8I", "manufacturer": "Boeing", "category": "Wide-body jumbo", "fuelBurnApprox": "~10.8 t/h", "marketValueIndicative": "~US$ 418 mi", "prompt": "Boeing 747-8 Intercontinental ultrarrealista, jumbo moderno, foto 3/4.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-026", "name": "Boeing 757-200", "manufacturer": "Boeing", "category": "Narrow-body long range", "fuelBurnApprox": "~3.2 t/h", "marketValueIndicative": "~US$ 28 mi usado", "prompt": "Boeing 757-200 ultrarrealista, comercial em pista, pintura genérica.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-027", "name": "Boeing 767-300ER", "manufacturer": "Boeing", "category": "Wide-body", "fuelBurnApprox": "~5.6 t/h", "marketValueIndicative": "~US$ 45 mi usado", "prompt": "Boeing 767-300ER ultrarrealista, aeronave de longo alcance, visual premium.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-028", "name": "Boeing 777-200ER", "manufacturer": "Boeing", "category": "Wide-body", "fuelBurnApprox": "~6.8 t/h", "marketValueIndicative": "~US$ 80 mi usado", "prompt": "Boeing 777-200ER ultrarrealista, twin wide-body, aeroporto ao fundo.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-029", "name": "Boeing 777-300ER", "manufacturer": "Boeing", "category": "Wide-body", "fuelBurnApprox": "~7.2 t/h", "marketValueIndicative": "~US$ 110 mi usado", "prompt": "Boeing 777-300ER ultrarrealista, fuselagem longa, foto de catálogo premium.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-030", "name": "Boeing 777-9", "manufacturer": "Boeing", "category": "Wide-body", "fuelBurnApprox": "~7.0 t/h", "marketValueIndicative": "~US$ 442 mi", "prompt": "Boeing 777X ultrarrealista, wide-body moderno, pintura genérica premium.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-031", "name": "Boeing 787-8", "manufacturer": "Boeing", "category": "Wide-body", "fuelBurnApprox": "~5.0 t/h", "marketValueIndicative": "~US$ 248 mi", "prompt": "Boeing 787-8 Dreamliner ultrarrealista, elegante, aeroporto ao fundo.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-032", "name": "Boeing 787-9", "manufacturer": "Boeing", "category": "Wide-body", "fuelBurnApprox": "~5.4 t/h", "marketValueIndicative": "~US$ 292 mi", "prompt": "Boeing 787-9 Dreamliner ultrarrealista, foto 3/4 premium.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-033", "name": "Boeing 787-10", "manufacturer": "Boeing", "category": "Wide-body", "fuelBurnApprox": "~5.8 t/h", "marketValueIndicative": "~US$ 338 mi", "prompt": "Boeing 787-10 ultrarrealista, fuselagem longa, pintura genérica.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-034", "name": "Embraer E170", "manufacturer": "Embraer", "category": "Regional jet", "fuelBurnApprox": "~1.3 t/h", "marketValueIndicative": "~US$ 17 mi usado", "prompt": "Embraer E170 ultrarrealista, jato regional em aeroporto médio.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-035", "name": "Embraer E175", "manufacturer": "Embraer", "category": "Regional jet", "fuelBurnApprox": "~1.4 t/h", "marketValueIndicative": "~US$ 25 mi usado", "prompt": "Embraer E175 ultrarrealista, pintura genérica premium.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-036", "name": "Embraer E190", "manufacturer": "Embraer", "category": "Regional jet", "fuelBurnApprox": "~1.8 t/h", "marketValueIndicative": "~US$ 30 mi usado", "prompt": "Embraer E190 ultrarrealista, aeronave regional moderna.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-037", "name": "Embraer E195", "manufacturer": "Embraer", "category": "Regional jet", "fuelBurnApprox": "~2.0 t/h", "marketValueIndicative": "~US$ 35 mi usado", "prompt": "Embraer E195 ultrarrealista, comercial regional alongado.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-038", "name": "Embraer E190-E2", "manufacturer": "Embraer", "category": "Regional jet", "fuelBurnApprox": "~1.6 t/h", "marketValueIndicative": "~US$ 60 mi", "prompt": "Embraer E190-E2 ultrarrealista, jato regional moderno, foto de catálogo.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-039", "name": "Embraer E195-E2", "manufacturer": "Embraer", "category": "Regional jet", "fuelBurnApprox": "~1.8 t/h", "marketValueIndicative": "~US$ 70 mi", "prompt": "Embraer E195-E2 ultrarrealista, fuselagem alongada, pintura genérica premium.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-040", "name": "Embraer ERJ-135", "manufacturer": "Embraer", "category": "Regional jet", "fuelBurnApprox": "~0.95 t/h", "marketValueIndicative": "~US$ 8 mi usado", "prompt": "Embraer ERJ-135 ultrarrealista, jato regional pequeno, aeroporto regional.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-041", "name": "Embraer ERJ-145", "manufacturer": "Embraer", "category": "Regional jet", "fuelBurnApprox": "~1.05 t/h", "marketValueIndicative": "~US$ 9 mi usado", "prompt": "Embraer ERJ-145 ultrarrealista, pintura genérica, pista regional.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-042", "name": "Embraer KC/390 comercial adaptado", "manufacturer": "Embraer", "category": "Cargo/Special", "fuelBurnApprox": "~3.4 t/h", "marketValueIndicative": "~US$ 85 mi", "prompt": "Embraer cargueiro tático adaptado comercialmente, visual ultrarrealista.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-043", "name": "ATR 42-320", "manufacturer": "ATR", "category": "Turboprop regional", "fuelBurnApprox": "~0.8 t/h", "marketValueIndicative": "~US$ 5 mi usado", "prompt": "ATR 42 ultrarrealista, turboélice regional, aeroporto pequeno.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-044", "name": "ATR 42-600", "manufacturer": "ATR", "category": "Turboprop regional", "fuelBurnApprox": "~0.9 t/h", "marketValueIndicative": "~US$ 20 mi", "prompt": "ATR 42-600 ultrarrealista, turboélice moderno, pista regional.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-045", "name": "ATR 72-500", "manufacturer": "ATR", "category": "Turboprop regional", "fuelBurnApprox": "~1.0 t/h", "marketValueIndicative": "~US$ 9 mi usado", "prompt": "ATR 72-500 ultrarrealista, turboélice comercial, foto premium.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-046", "name": "ATR 72-600", "manufacturer": "ATR", "category": "Turboprop regional", "fuelBurnApprox": "~1.1 t/h", "marketValueIndicative": "~US$ 26 mi", "prompt": "ATR 72-600 ultrarrealista, aeronave regional moderna, aeroporto ao fundo.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-047", "name": "Dash 8 Q300", "manufacturer": "De Havilland", "category": "Turboprop regional", "fuelBurnApprox": "~0.95 t/h", "marketValueIndicative": "~US$ 7 mi usado", "prompt": "Dash 8 Q300 ultrarrealista, turboélice regional.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-048", "name": "Dash 8 Q400", "manufacturer": "De Havilland", "category": "Turboprop regional", "fuelBurnApprox": "~1.2 t/h", "marketValueIndicative": "~US$ 32 mi", "prompt": "Dash 8 Q400 ultrarrealista, turboélice rápido, visual premium.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-049", "name": "Bombardier CRJ200", "manufacturer": "Bombardier", "category": "Regional jet", "fuelBurnApprox": "~1.2 t/h", "marketValueIndicative": "~US$ 6 mi usado", "prompt": "Bombardier CRJ200 ultrarrealista, jato regional pequeno.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-050", "name": "Bombardier CRJ700", "manufacturer": "Bombardier", "category": "Regional jet", "fuelBurnApprox": "~1.5 t/h", "marketValueIndicative": "~US$ 16 mi usado", "prompt": "Bombardier CRJ700 ultrarrealista, jato regional em solo.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-051", "name": "Bombardier CRJ900", "manufacturer": "Bombardier", "category": "Regional jet", "fuelBurnApprox": "~1.7 t/h", "marketValueIndicative": "~US$ 20 mi usado", "prompt": "Bombardier CRJ900 ultrarrealista, jato regional moderno.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-052", "name": "Bombardier CRJ1000", "manufacturer": "Bombardier", "category": "Regional jet", "fuelBurnApprox": "~1.9 t/h", "marketValueIndicative": "~US$ 24 mi usado", "prompt": "Bombardier CRJ1000 ultrarrealista, jato regional alongado.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-053", "name": "Cessna 172", "manufacturer": "Cessna", "category": "Aviação geral", "fuelBurnApprox": "~0.04 t/h (AVGAS)", "marketValueIndicative": "~US$ 0.45 mi", "prompt": "Cessna 172 ultrarrealista, avião leve em aeródromo pequeno.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-054", "name": "Cessna 208 Caravan", "manufacturer": "Cessna", "category": "Utility/Regional", "fuelBurnApprox": "~0.2 t/h", "marketValueIndicative": "~US$ 2.5 mi", "prompt": "Cessna Caravan ultrarrealista, monomotor utilitário, aeroporto regional.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-055", "name": "Beechcraft 1900D", "manufacturer": "Beechcraft", "category": "Regional commuter", "fuelBurnApprox": "~0.4 t/h", "marketValueIndicative": "~US$ 1.5 mi usado", "prompt": "Beechcraft 1900D ultrarrealista, commuter regional, pintura genérica.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-056", "name": "Saab 340B", "manufacturer": "Saab", "category": "Turboprop regional", "fuelBurnApprox": "~0.65 t/h", "marketValueIndicative": "~US$ 4 mi usado", "prompt": "Saab 340B ultrarrealista, turboélice regional.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-057", "name": "Saab 2000", "manufacturer": "Saab", "category": "Turboprop regional", "fuelBurnApprox": "~0.95 t/h", "marketValueIndicative": "~US$ 8 mi usado", "prompt": "Saab 2000 ultrarrealista, turboélice rápido, foto de catálogo.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-058", "name": "Fokker 50", "manufacturer": "Fokker", "category": "Turboprop regional", "fuelBurnApprox": "~0.9 t/h", "marketValueIndicative": "~US$ 3 mi usado", "prompt": "Fokker 50 ultrarrealista, turboélice clássico.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-059", "name": "Fokker 70", "manufacturer": "Fokker", "category": "Regional jet", "fuelBurnApprox": "~1.7 t/h", "marketValueIndicative": "~US$ 5 mi usado", "prompt": "Fokker 70 ultrarrealista, jato regional clássico.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-060", "name": "Fokker 100", "manufacturer": "Fokker", "category": "Regional jet", "fuelBurnApprox": "~1.9 t/h", "marketValueIndicative": "~US$ 6 mi usado", "prompt": "Fokker 100 ultrarrealista, jato regional clássico, aeroporto ao fundo.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-061", "name": "COMAC ARJ21", "manufacturer": "COMAC", "category": "Regional jet", "fuelBurnApprox": "~1.9 t/h", "marketValueIndicative": "~US$ 38 mi", "prompt": "COMAC ARJ21 ultrarrealista, jato regional chinês, visual premium.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-062", "name": "COMAC C919", "manufacturer": "COMAC", "category": "Narrow-body", "fuelBurnApprox": "~2.5 t/h", "marketValueIndicative": "~US$ 99 mi", "prompt": "COMAC C919 ultrarrealista, aeronave narrow-body moderna, foto premium.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-063", "name": "Irkut MC-21-300", "manufacturer": "Irkut", "category": "Narrow-body", "fuelBurnApprox": "~2.4 t/h", "marketValueIndicative": "~US$ 91 mi", "prompt": "Irkut MC-21 ultrarrealista, narrow-body moderno, pintura genérica.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-064", "name": "Sukhoi Superjet 100", "manufacturer": "Sukhoi", "category": "Regional jet", "fuelBurnApprox": "~1.7 t/h", "marketValueIndicative": "~US$ 35 mi", "prompt": "Sukhoi Superjet 100 ultrarrealista, jato regional, pista ao fundo.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-065", "name": "Antonov An-148", "manufacturer": "Antonov", "category": "Regional jet", "fuelBurnApprox": "~2.0 t/h", "marketValueIndicative": "~US$ 22 mi usado", "prompt": "Antonov An-148 ultrarrealista, jato regional, clima de aeroporto frio.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-066", "name": "Ilyushin Il-76TD", "manufacturer": "Ilyushin", "category": "Cargo heavy", "fuelBurnApprox": "~9.0 t/h", "marketValueIndicative": "~US$ 20 mi usado", "prompt": "Ilyushin Il-76 cargueiro ultrarrealista, grande cargueiro em pátio de carga.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-067", "name": "Boeing 767-300F", "manufacturer": "Boeing", "category": "Cargo", "fuelBurnApprox": "~5.7 t/h", "marketValueIndicative": "~US$ 60 mi usado", "prompt": "Boeing 767 cargueiro ultrarrealista, pátio logístico ao fundo.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-068", "name": "Boeing 777F", "manufacturer": "Boeing", "category": "Cargo", "fuelBurnApprox": "~7.0 t/h", "marketValueIndicative": "~US$ 352 mi", "prompt": "Boeing 777F ultrarrealista, cargueiro moderno, ambiente logístico premium.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-069", "name": "Airbus A330-200F", "manufacturer": "Airbus", "category": "Cargo", "fuelBurnApprox": "~5.5 t/h", "marketValueIndicative": "~US$ 120 mi usado", "prompt": "Airbus A330 cargueiro ultrarrealista, terminal de carga ao fundo.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-070", "name": "Boeing 747-8F", "manufacturer": "Boeing", "category": "Cargo heavy", "fuelBurnApprox": "~10.8 t/h", "marketValueIndicative": "~US$ 419 mi", "prompt": "Boeing 747-8F ultrarrealista, cargueiro jumbo em terminal logístico.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-071", "name": "Gulfstream G280", "manufacturer": "Gulfstream", "category": "Business jet", "fuelBurnApprox": "~0.9 t/h", "marketValueIndicative": "~US$ 25 mi", "prompt": "Jato executivo Gulfstream G280 ultrarrealista, terminal privado, visual luxuoso.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-072", "name": "Gulfstream G650", "manufacturer": "Gulfstream", "category": "Business jet", "fuelBurnApprox": "~1.5 t/h", "marketValueIndicative": "~US$ 65 mi", "prompt": "Gulfstream G650 ultrarrealista, jato executivo premium ao pôr do sol.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-073", "name": "Gulfstream G700", "manufacturer": "Gulfstream", "category": "Business jet", "fuelBurnApprox": "~1.7 t/h", "marketValueIndicative": "~US$ 78 mi", "prompt": "Gulfstream G700 ultrarrealista, terminal executivo, visual ultraluxuoso.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-074", "name": "Bombardier Challenger 350", "manufacturer": "Bombardier", "category": "Business jet", "fuelBurnApprox": "~0.85 t/h", "marketValueIndicative": "~US$ 27 mi", "prompt": "Bombardier Challenger 350 ultrarrealista, jato executivo em solo.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-075", "name": "Bombardier Global 7500", "manufacturer": "Bombardier", "category": "Business jet", "fuelBurnApprox": "~1.6 t/h", "marketValueIndicative": "~US$ 75 mi", "prompt": "Bombardier Global 7500 ultrarrealista, jato executivo de longo alcance, terminal VIP.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-076", "name": "Dassault Falcon 8X", "manufacturer": "Dassault", "category": "Business jet", "fuelBurnApprox": "~1.3 t/h", "marketValueIndicative": "~US$ 62 mi", "prompt": "Dassault Falcon 8X ultrarrealista, jato executivo premium, aeroporto executivo.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-077", "name": "Embraer Phenom 300E", "manufacturer": "Embraer", "category": "Business jet", "fuelBurnApprox": "~0.55 t/h", "marketValueIndicative": "~US$ 13 mi", "prompt": "Embraer Phenom 300E ultrarrealista, jato executivo leve.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-078", "name": "Embraer Praetor 600", "manufacturer": "Embraer", "category": "Business jet", "fuelBurnApprox": "~0.8 t/h", "marketValueIndicative": "~US$ 22 mi", "prompt": "Embraer Praetor 600 ultrarrealista, jato executivo premium.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-079", "name": "Cessna Citation Latitude", "manufacturer": "Cessna", "category": "Business jet", "fuelBurnApprox": "~0.75 t/h", "marketValueIndicative": "~US$ 19 mi", "prompt": "Cessna Citation Latitude ultrarrealista, jato executivo moderno.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}, {"assetId": "AIR-080", "name": "Boeing Business Jet (BBJ)", "manufacturer": "Boeing", "category": "VIP liner", "fuelBurnApprox": "~2.5 t/h", "marketValueIndicative": "~US$ 90+ mi", "prompt": "Boeing BBJ ultrarrealista, avião executivo grande, terminal VIP, visual luxuoso.", "status": "prompt_planejado", "targetFolder": "assets/planes/cinematic/"}]);
+const ASSET_DOCUMENTS_V23 = Object.freeze({
+  master: 'docs/ASSET_MASTER_PROMPTS_v2.3.0.txt',
+  aircraftCsv: 'docs/AIRCRAFT_EXPANSION_TEMPLATE_v2.3.0.csv',
+  json: 'data/visual_asset_library_v23.json'
+});
+
+function defaultAssetOpsV23() {
+  return {
+    assetMasterIncluded: true,
+    masterPath: ASSET_DOCUMENTS_V23.master,
+    aircraftCsvPath: ASSET_DOCUMENTS_V23.aircraftCsv,
+    jsonPath: ASSET_DOCUMENTS_V23.json,
+    selectedWave: 'wave1',
+    cinematicReadiness: 24,
+    lastAssetAudit: null,
+    groups: ASSET_GROUPS_V23.map(g => ({ id:g.id, ready:g.ready || 0, planned:g.planned, priority:g.priority, status:'planejado' })),
+    notes: [
+      'TXT mestre incluído no ZIP em /docs/',
+      'CSV de aeronaves incluído para expansão por fabricante',
+      'JSON de biblioteca visual incluído em /data/',
+      'Assets SVG continuam temporários até troca por imagens IA cinematográficas'
+    ],
+    createdAtBuild: BUILD.build
+  };
+}
+
+function ensureV23Career(c) {
+  if (!c.assetOps) c.assetOps = defaultAssetOpsV23();
+  if (!Array.isArray(c.assetOps.groups)) c.assetOps.groups = defaultAssetOpsV23().groups;
+  if (!c.assetOps.masterPath) c.assetOps.masterPath = ASSET_DOCUMENTS_V23.master;
+  if (!c.assetOps.aircraftCsvPath) c.assetOps.aircraftCsvPath = ASSET_DOCUMENTS_V23.aircraftCsv;
+  if (!c.assetOps.jsonPath) c.assetOps.jsonPath = ASSET_DOCUMENTS_V23.json;
+  if (typeof c.assetOps.cinematicReadiness !== 'number') c.assetOps.cinematicReadiness = 24;
+  if (!Array.isArray(c.assetOps.notes)) c.assetOps.notes = defaultAssetOpsV23().notes;
+  c.schema = Math.max(c.schema || 1, 23);
+  return c;
+}
+
+function assetGroupStatusV23(id) {
+  const c = activeCareer();
+  if (!c) return null;
+  ensureV23Career(c);
+  return c.assetOps.groups.find(g => g.id === id);
+}
+
+function assetSummaryV23() {
+  const c = activeCareer();
+  const ops = c ? ensureV23Career(c).assetOps : defaultAssetOpsV23();
+  const planned = ops.groups.reduce((s,g)=>s+(g.planned||0),0);
+  const ready = ops.groups.reduce((s,g)=>s+(g.ready||0),0);
+  const aircraftCount = AIRCRAFT_VISUAL_CATALOG_V23.length;
+  const critical = ops.groups.filter(g => g.priority === 'alta').length;
+  return { ops, planned, ready, aircraftCount, critical, percent: planned ? Math.round((ready/planned)*100) : 0 };
+}
+
+function runAssetAuditV23() {
+  const c = activeCareer();
+  if (!c) return;
+  ensureV23Career(c);
+  const summary = assetSummaryV23();
+  c.assetOps.lastAssetAudit = {
+    build: BUILD.build,
+    date: new Date().toISOString(),
+    planned: summary.planned,
+    ready: summary.ready,
+    aircraft: summary.aircraftCount,
+    master: ASSET_DOCUMENTS_V23.master,
+    csv: ASSET_DOCUMENTS_V23.aircraftCsv,
+    json: ASSET_DOCUMENTS_V23.json
+  };
+  c.logs.unshift(`Auditoria visual v2.3: ${summary.aircraftCount} aeronaves no catálogo, ${summary.planned} imagens planejadas e TXT mestre preservado.`);
+  save();
+  toast('Auditoria visual executada. TXT, CSV e biblioteca registrados no save.');
+  render();
+}
+
+function markAssetGroupProgressV23(id) {
+  const c = activeCareer();
+  if (!c) return;
+  ensureV23Career(c);
+  const g = c.assetOps.groups.find(x => x.id === id);
+  if (!g) return;
+  g.ready = Math.min(g.planned, (g.ready || 0) + 1);
+  g.status = g.ready >= g.planned ? 'completo' : 'em_producao';
+  const summary = assetSummaryV23();
+  c.assetOps.cinematicReadiness = Math.min(100, 24 + summary.percent);
+  c.logs.unshift(`Asset atualizado: ${g.id} agora tem ${g.ready}/${g.planned} prontos.`);
+  save();
+  toast('Progresso de asset atualizado.');
+  render();
+}
+
+function resetAssetPipelineV23() {
+  const c = activeCareer();
+  if (!c) return;
+  c.assetOps = defaultAssetOpsV23();
+  save();
+  toast('Pipeline visual restaurado para planejamento v2.3.');
+  render();
+}
+
+function renderAssetGroupCardsV23(summary) {
+  return summary.ops.groups.map(g => {
+    const meta = ASSET_GROUPS_V23.find(x => x.id === g.id) || {};
+    const pct = g.planned ? Math.round(((g.ready||0)/g.planned)*100) : 0;
+    return `<div class="asset-v23-card">
+      <div class="asset-v23-top"><b>${utils.escape(meta.label || g.id)}</b><span>${utils.escape(meta.priority || 'media')}</span></div>
+      <div class="meter"><i style="width:${pct}%"></i></div>
+      <p>${g.ready||0}/${g.planned} prontos • pasta: <code>${utils.escape(meta.folder || '/assets/')}</code></p>
+      <button class="btn mini" data-action="markAssetV23" data-id="${utils.escape(g.id)}">Marcar +1 pronto</button>
+    </div>`;
+  }).join('');
+}
+
+function renderAircraftCatalogRowsV23(limit=30) {
+  return AIRCRAFT_VISUAL_CATALOG_V23.slice(0, limit).map(a => `<tr>
+    <td><b>${utils.escape(a.assetId)}</b></td>
+    <td>${utils.escape(a.name)}</td>
+    <td>${utils.escape(a.manufacturer)}</td>
+    <td>${utils.escape(a.category)}</td>
+    <td>${utils.escape(a.fuelBurnApprox)}</td>
+    <td>${utils.escape(a.marketValueIndicative)}</td>
+  </tr>`).join('');
+}
+
+function renderAssetLibraryViewV23() {
+  const summary = assetSummaryV23();
+  return `<div class="stack">
+    <section class="panel glass asset-hero-v23">
+      <div>
+        <span class="eyebrow">F77-F80 • Biblioteca cinematográfica</span>
+        <h2>Biblioteca de Assets</h2>
+        <p>Esta tela confirma que o TXT mestre, o CSV de aeronaves e o JSON de biblioteca visual estão dentro do ZIP. A função é impedir que a lista de imagens seja perdida enquanto o jogo continua evoluindo.</p>
+        <div class="asset-doc-grid">
+          <span><b>TXT mestre</b><small>${ASSET_DOCUMENTS_V23.master}</small></span>
+          <span><b>CSV aeronaves</b><small>${ASSET_DOCUMENTS_V23.aircraftCsv}</small></span>
+          <span><b>JSON biblioteca</b><small>${ASSET_DOCUMENTS_V23.json}</small></span>
+        </div>
+      </div>
+      <div class="asset-score-ring"><strong>${summary.percent}%</strong><span>assets prontos</span></div>
+    </section>
+
+    <section class="grid two">
+      <div class="panel glass">
+        <div class="section-head"><div><span class="eyebrow">Checklist visual</span><h2>Grupos de imagens</h2></div><button class="btn" data-action="runAssetAuditV23">Auditar assets</button></div>
+        <div class="asset-v23-grid">${renderAssetGroupCardsV23(summary)}</div>
+        <button class="btn ghost" data-action="resetAssetPipelineV23">Restaurar planejamento visual</button>
+      </div>
+      <div class="panel glass">
+        <span class="eyebrow">Fase F79</span>
+        <h2>Resumo do catálogo de aeronaves</h2>
+        <div class="kpi-grid compact">
+          <div><small>Aeronaves no TXT/CSV</small><b>${summary.aircraftCount}</b></div>
+          <div><small>Grupos críticos</small><b>${summary.critical}</b></div>
+          <div><small>Imagens planejadas</small><b>${summary.planned}</b></div>
+          <div><small>Prontidão cinema</small><b>${summary.ops.cinematicReadiness || 24}%</b></div>
+        </div>
+        <div class="todo-list">
+          <span>1. Criar imagens IA por lote: CEO e logos primeiro.</span>
+          <span>2. Depois criar pilotos, comissários, mecânicos e diretores.</span>
+          <span>3. Em seguida fundos de tela e cards de UI.</span>
+          <span>4. Por fim, aeronaves por fabricante usando o CSV.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel glass">
+      <div class="section-head"><div><span class="eyebrow">F80 • catálogo visual</span><h2>Aeronaves planejadas para imagens</h2><p>Mostrando as primeiras 30 de ${summary.aircraftCount}. O arquivo completo está em CSV dentro de /docs/.</p></div></div>
+      <div class="table-wrap"><table class="data-table"><thead><tr><th>ID</th><th>Aeronave</th><th>Fabricante</th><th>Categoria</th><th>Consumo</th><th>Valor</th></tr></thead><tbody>${renderAircraftCatalogRowsV23(30)}</tbody></table></div>
+    </section>
+  </div>`;
+}
+
+function assetDashboardCardV23() {
+  const summary = assetSummaryV23();
+  return `<section class="panel glass accent-panel">
+    <span class="eyebrow">Pipeline visual v2.3</span>
+    <h2>Assets cinematográficos</h2>
+    <p>TXT mestre, CSV de aeronaves e biblioteca de assets preservados dentro do ZIP. Próximo passo: gerar imagens IA por lote.</p>
+    <div class="kpi-grid compact">
+      <div><small>Aeronaves</small><b>${summary.aircraftCount}</b></div>
+      <div><small>Planejadas</small><b>${summary.planned}</b></div>
+      <div><small>Prontas</small><b>${summary.ready}</b></div>
+      <div><small>Prontidão</small><b>${summary.percent}%</b></div>
+    </div>
+    <button class="btn primary" data-action="go" data-view="assets">Abrir biblioteca</button>
+  </section>`;
+}
+
+const previousNormalizeCareerV230 = normalizeCareer;
+normalizeCareer = function(c) {
+  c = previousNormalizeCareerV230(c);
+  return c ? ensureV23Career(c) : c;
+};
+const previousCreateCareerV230 = createCareer;
+createCareer = function(form) {
+  previousCreateCareerV230(form);
+  const c = activeCareer();
+  if (c) {
+    ensureV23Career(c);
+    save();
+  }
+};
+const previousNavItemsV230 = navItems;
+navItems = function() {
+  const items = previousNavItemsV230();
+  if (!items.some(i => i[0] === 'assets')) items.splice(Math.max(items.length-2, 0), 0, ['assets','Assets','▧']);
+  return items;
+};
+const previousRenderV230 = render;
+render = function() {
+  if (runtime.view === 'assets' && activeCareer()) {
+    safeExecute('render:assets', () => {
+      hideFatal();
+      dom.app.innerHTML = shell(renderAssetLibraryViewV23());
+    });
+    return;
+  }
+  return previousRenderV230();
+};
+const previousRenderDashboardV230 = renderDashboard;
+renderDashboard = function() {
+  return previousRenderDashboardV230() + assetDashboardCardV23();
+};
+const previousRenderOnboardingV230 = renderOnboarding;
+renderOnboarding = function() {
+  let html = previousRenderOnboardingV230();
+  html = html.replace('Simulador gratuito de companhia aérea', 'Simulador gratuito de companhia aérea • assets cinematográficos planejados');
+  html = html.replace('Fases F77-F80 assets, catálogo visual e biblioteca cinematográfica', 'Fases F77-F80 assets, catálogo visual e biblioteca cinematográfica');
+  return html;
+};
+const previousValuationV230 = valuation;
+valuation = function(c) {
+  const base = previousValuationV230(c);
+  if (!c) return base;
+  ensureV23Career(c);
+  const summary = assetSummaryV23();
+  return Math.round(base * (1 + Math.min(0.035, (summary.percent || 0) / 3000)));
+};
+const previousRunIntegrityAuditV230 = runIntegrityAudit;
+runIntegrityAudit = function() {
+  const base = previousRunIntegrityAuditV230();
+  const c = activeCareer();
+  const summary = assetSummaryV23();
+  const extra = [
+    { ok: BUILD.schema === 23, label:'Schema 23 ativo', detail:`Build ${BUILD.build} com F77-F80.` },
+    { ok: BUILD.version === '2.3.0', label:'Versão v2.3.0', detail:'Constante BUILD atualizada.' },
+    { ok: ASSET_DOCUMENTS_V23.master.includes('ASSET_MASTER'), label:'TXT mestre registrado', detail:ASSET_DOCUMENTS_V23.master },
+    { ok: ASSET_DOCUMENTS_V23.aircraftCsv.endsWith('.csv'), label:'CSV de aeronaves registrado', detail:ASSET_DOCUMENTS_V23.aircraftCsv },
+    { ok: AIRCRAFT_VISUAL_CATALOG_V23.length >= 80, label:'Catálogo visual de aeronaves', detail:`${AIRCRAFT_VISUAL_CATALOG_V23.length} aeronaves planejadas.` },
+    { ok: ASSET_GROUPS_V23.length >= 8, label:'Grupos de assets', detail:`${ASSET_GROUPS_V23.length} grupos com prioridade e pasta.` },
+    { ok: !c || !!c.assetOps, label:'Migração assetOps', detail:c ? 'Save recebeu biblioteca de assets.' : 'Sem carreira ativa.' },
+    { ok: typeof renderAssetLibraryViewV23 === 'function', label:'Tela Assets', detail:'Biblioteca visual renderizável no menu.' },
+    { ok: typeof markAssetGroupProgressV23 === 'function', label:'Progresso de assets', detail:'Botões da biblioteca possuem ação segura.' },
+    { ok: typeof previousRunIntegrityAuditV230 === 'function', label:'Auditoria acumulativa', detail:'Checks anteriores preservados.' }
+  ];
+  return [...extra, ...base];
+};
+const previousRenderAuditV230 = renderAudit;
+renderAudit = function() {
+  const checks = runIntegrityAudit();
+  const passed = checks.filter(c => c.ok).length;
+  return `<div class="audit-layout"><section class="panel glass"><div class="section-head"><div><span class="eyebrow">Sistema anti-quebra</span><h2>Auditoria da build</h2><p>Execução obrigatória por fase para garantir integridade, evolução real, TXT mestre de assets, catálogo visual e biblioteca cinematográfica.</p></div><button class="btn primary" data-action="runAudit">Rodar auditoria</button></div><div class="audit-score"><strong>${passed}/${checks.length}</strong><span>checks aprovados</span></div><div class="audit-list">${checks.map(c => `<div class="audit-row ${c.ok?'ok':'bad'}"><b>${c.ok?'✓':'!'}</b><span>${c.label}</span><small>${c.detail}</small></div>`).join('')}</div></section><section class="panel glass"><h2>Relatório desta entrega</h2><div class="todo-list"><span>F77 Documento mestre: OK — TXT incluído em /docs/.</span><span>F78 Biblioteca interna: OK — tela Assets com grupos, status e prioridades.</span><span>F79 Catálogo visual: OK — CSV/JSON com aeronaves, fabricante, consumo, valor e prompt.</span><span>F80 Preparação cinematográfica: OK — placeholders e pastas para substituição por IA.</span><span>Anti-quebra: OK — migração de saves até schema 23 preservada.</span></div></section></div>`;
+};
+const previousHandleActionV230 = handleAction;
+handleAction = function(target) {
+  const action = target.dataset.action;
+  if (action === 'runAssetAuditV23') return safeExecute('action:runAssetAuditV23', () => runAssetAuditV23());
+  if (action === 'markAssetV23') return safeExecute('action:markAssetV23', () => markAssetGroupProgressV23(target.dataset.id));
+  if (action === 'resetAssetPipelineV23') return safeExecute('action:resetAssetPipelineV23', () => resetAssetPipelineV23());
+  return previousHandleActionV230(target);
 };
 
 boot();

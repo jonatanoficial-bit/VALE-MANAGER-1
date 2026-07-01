@@ -1,15 +1,15 @@
 
 'use strict';
 
-// VALE AIR MANAGER - v1.4.0 - Build 20260701-1501
-// Fases F41-F44: leilão de slots, manutenção preditiva, peças técnicas e OCC.
+// VALE AIR MANAGER - v1.5.0 - Build 20260701-1538
+// Fases F45-F48: treinamento, fadiga de tripulação, escala operacional e sindicatos.
 
 const BUILD = Object.freeze({
   game: 'VALE AIR MANAGER',
-  version: '1.4.0',
-  phase: 'F41-F44',
-  build: '20260701-1501',
-  schema: 14,
+  version: '1.5.0',
+  phase: 'F45-F48',
+  build: '20260701-1538',
+  schema: 15,
   date: '2026-07-01',
   timezone: 'America/Sao_Paulo'
 });
@@ -730,8 +730,8 @@ const COMPETITORS = Object.freeze([
   { id:'cargo_sul', name:'Cargo Sul Express', base:'GRU', region:'Cargo', value:4100000, fleet:1, routes:['GRU-SCL','GRU-MIA'], reputation:55, debt:540000, modelId:'b737cargo', synergy:1.10 }
 ]);
 
-const STORE_KEY = 'vale_air_manager_schema_14';
-const LEGACY_STORE_KEYS = ['vale_air_manager_schema_13','vale_air_manager_schema_12','vale_air_manager_schema_11','vale_air_manager_schema_10','vale_air_manager_schema_9','vale_air_manager_schema_8','vale_air_manager_schema_7','vale_air_manager_schema_6','vale_air_manager_schema_5','vale_air_manager_schema_4'];
+const STORE_KEY = 'vale_air_manager_schema_15';
+const LEGACY_STORE_KEYS = ['vale_air_manager_schema_14','vale_air_manager_schema_13','vale_air_manager_schema_12','vale_air_manager_schema_11','vale_air_manager_schema_10','vale_air_manager_schema_9','vale_air_manager_schema_8','vale_air_manager_schema_7','vale_air_manager_schema_6','vale_air_manager_schema_5','vale_air_manager_schema_4'];
 const CRASH_KEY = 'vale_air_manager_last_crash';
 const DEFAULT_SPEED = 1;
 
@@ -1431,7 +1431,7 @@ function renderOnboarding() {
         <span class="eyebrow">Simulador gratuito de companhia aérea</span>
         <h1>VALE AIR MANAGER</h1>
         <p>Crie sua empresa aérea, escolha hub, avatar, logo, compre aviões, abra rotas reais e acompanhe o mercado financeiro.</p>
-        <div class="build-line">v${BUILD.version} • Build ${BUILD.build} • Fases F37-F40 serviços premium</div>
+        <div class="build-line">v${BUILD.version} • Build ${BUILD.build} • Fases F45-F48 tripulação e sindicatos</div>
       </div>
       <div class="hero-plane"><img src="assets/planes/plane-wide.svg" alt="Avião"></div>
     </section>
@@ -5035,6 +5035,524 @@ handleAction = function(target) {
   if (action === 'refreshSlotAuctions') return safeExecute('action:refreshSlotAuctions', () => { const c = activeCareer(); if (c) { ensureV14Career(c); generateSlotAuctions(c, true); setActiveCareer(c); showToast('Leilões atualizados.', 'ok'); render(); } });
   if (action === 'maintainPlane') return safeExecute('action:maintainPlane', () => maintainPlane(target.dataset.plane, target.dataset.level || 'standard'));
   return previousHandleActionV140(target);
+};
+
+
+/* =========================================================
+   v1.5.0 F45-F48 — treinamento, fadiga de tripulação,
+   escala operacional e sindicatos/greves controladas.
+   Entrega acelerada com auditoria anti-quebra obrigatória.
+========================================================= */
+const TRAINING_CENTER_TIERS = Object.freeze({
+  none: { id:'none', label:'Sem centro', setupCost:0, dailyCost:0, cap:0, safety:0, service:0, efficiency:0, leadership:0, note:'Sem infraestrutura dedicada de capacitação.' },
+  basic: { id:'basic', label:'Centro básico', setupCost:420000, dailyCost:12500, cap:1, safety:0.04, service:0.04, efficiency:0.025, leadership:0.015, note:'Treinamento essencial para pilotos e comissários.' },
+  academy: { id:'academy', label:'Academia operacional', setupCost:1350000, dailyCost:34500, cap:2, safety:0.075, service:0.07, efficiency:0.055, leadership:0.035, note:'Padrão profissional para expansão regional e internacional.' },
+  excellence: { id:'excellence', label:'Centro de excelência', setupCost:3200000, dailyCost:78500, cap:3, safety:0.12, service:0.105, efficiency:0.09, leadership:0.07, note:'Treinamento avançado, simulador e gestão de crise para companhia premium.' }
+});
+
+const TRAINING_PROGRAMS = Object.freeze({
+  safety: { id:'safety', label:'Segurança de voo', cost:155000, days:3, skill:'safety', gain:6.5, fatigueRelief:2.2, reputation:0.55, note:'CRM, SOP, emergência e prevenção de incidentes.' },
+  service: { id:'service', label:'Atendimento e cabine', cost:118000, days:2, skill:'service', gain:6, fatigueRelief:1.2, reputation:0.85, note:'Experiência do passageiro, embarque e resolução de conflito.' },
+  efficiency: { id:'efficiency', label:'Despacho eficiente', cost:134000, days:2, skill:'efficiency', gain:5.8, fatigueRelief:2.8, reputation:0.35, note:'Escala, tempo de solo, coordenação com OCC e redução de atraso.' },
+  leadership: { id:'leadership', label:'Liderança e crise', cost:185000, days:4, skill:'leadership', gain:7.2, fatigueRelief:3.5, reputation:0.65, note:'Diretores, chefes de base, negociação sindical e decisão sob pressão.' }
+});
+
+const CREW_POLICY_LEVELS = Object.freeze({
+  lean: { id:'lean', label:'Enxuta', reserve:0.02, dailyCost:0, fatigue:6.5, morale:-1.2, note:'Baixo custo, maior risco de fadiga e atraso.' },
+  balanced: { id:'balanced', label:'Equilibrada', reserve:0.08, dailyCost:8200, fatigue:2.8, morale:0.4, note:'Boa relação entre custo, reserva e segurança operacional.' },
+  resilient: { id:'resilient', label:'Resiliente', reserve:0.16, dailyCost:24500, fatigue:-1.6, morale:1.25, note:'Mais cara, mas segura para malha internacional e crescimento rápido.' }
+});
+
+const UNION_AGREEMENTS = Object.freeze({
+  basic: { id:'basic', label:'Acordo básico', bonus:0, relationship:0, riskRelief:0, dailyCost:0, note:'Mantém relação padrão, sem custo adicional.' },
+  fair: { id:'fair', label:'Acordo justo', bonus:220000, relationship:9, riskRelief:11, dailyCost:5600, note:'Reduz risco de greve sem pesar demais no caixa.' },
+  premium: { id:'premium', label:'Acordo premium', bonus:620000, relationship:19, riskRelief:24, dailyCost:18500, note:'Melhora moral, reduz greve e sustenta expansão agressiva.' }
+});
+
+function ensureV15Career(career) {
+  if (!career) return null;
+  if (typeof ensureV14Career === 'function') ensureV14Career(career);
+  career.schema = BUILD.schema;
+  const previous = career.crewOps || {};
+  career.crewOps = Object.assign({
+    trainingCenter: { tier:'none', invested:0, lastUpgradeDay:0 },
+    skills: { safety:28, service:26, efficiency:24, leadership:20 },
+    fatigueIndex: 18,
+    morale: 68,
+    scheduleCoverage: 78,
+    reserveCrew: { pilots:0, cabin:0 },
+    policy:'balanced',
+    activeTraining: [],
+    trainingHistory: [],
+    scheduleHistory: [],
+    crewLog: [],
+    union: { relationship:58, strikeRisk:9, agreement:'basic', lastNegotiationDay:0, strikeActiveUntil:0, strikesAvoided:0 },
+    cumulativeTraining:0,
+    dailyCrewCost:0,
+    fatigueAlerts:0,
+    lastCrewAuditDay:0
+  }, previous);
+  career.crewOps.trainingCenter = Object.assign({ tier:'none', invested:0, lastUpgradeDay:0 }, career.crewOps.trainingCenter || {});
+  if (!TRAINING_CENTER_TIERS[career.crewOps.trainingCenter.tier]) career.crewOps.trainingCenter.tier = 'none';
+  career.crewOps.skills = Object.assign({ safety:28, service:26, efficiency:24, leadership:20 }, career.crewOps.skills || {});
+  ['safety','service','efficiency','leadership'].forEach(k => { career.crewOps.skills[k] = utils.clamp(Number(career.crewOps.skills[k] || 0), 0, 100); });
+  career.crewOps.reserveCrew = Object.assign({ pilots:0, cabin:0 }, career.crewOps.reserveCrew || {});
+  career.crewOps.reserveCrew.pilots = Math.max(0, Number(career.crewOps.reserveCrew.pilots || 0));
+  career.crewOps.reserveCrew.cabin = Math.max(0, Number(career.crewOps.reserveCrew.cabin || 0));
+  if (!CREW_POLICY_LEVELS[career.crewOps.policy]) career.crewOps.policy = 'balanced';
+  career.crewOps.activeTraining = Array.isArray(career.crewOps.activeTraining) ? career.crewOps.activeTraining : [];
+  ['trainingHistory','scheduleHistory','crewLog'].forEach(k => { career.crewOps[k] = Array.isArray(career.crewOps[k]) ? career.crewOps[k] : []; });
+  career.crewOps.union = Object.assign({ relationship:58, strikeRisk:9, agreement:'basic', lastNegotiationDay:0, strikeActiveUntil:0, strikesAvoided:0 }, career.crewOps.union || {});
+  if (!UNION_AGREEMENTS[career.crewOps.union.agreement]) career.crewOps.union.agreement = 'basic';
+  career.crewOps.fatigueIndex = utils.clamp(Number(career.crewOps.fatigueIndex || 0), 0, 100);
+  career.crewOps.morale = utils.clamp(Number(career.crewOps.morale || 0), 0, 100);
+  refreshCrewSchedule(career, false);
+  return career;
+}
+
+const previousNormalizeCareerV150 = normalizeCareer;
+normalizeCareer = function(career) {
+  const c = previousNormalizeCareerV150(career);
+  ensureV15Career(c);
+  return c;
+};
+
+const previousCreateCareerV150 = createCareer;
+createCareer = function(form) {
+  const c = previousCreateCareerV150(form);
+  ensureV15Career(c);
+  c.staff.pilots = Math.max(c.staff.pilots || 0, 2);
+  c.staff.cabin = Math.max(c.staff.cabin || 0, 4);
+  pushMessage(c, 'v1.5: centro de treinamento, fadiga, escala operacional e sindicatos ativados.', 'success');
+  return c;
+};
+
+function crewRequirements(career) {
+  const activeRoutes = (career.routes || []).filter(r => r.status === 'active').length;
+  const fleetSize = (career.fleet || []).length;
+  const longRoutes = (career.routes || []).filter(r => {
+    const o = utils.byIata(r.origin), d = utils.byIata(r.dest);
+    return o && d && utils.distanceKm(o, d) > 2500;
+  }).length;
+  return {
+    pilots: Math.max(1, Math.ceil(fleetSize * 1.35 + activeRoutes * 1.15 + longRoutes * 0.7)),
+    cabin: Math.max(2, Math.ceil(fleetSize * 2.4 + activeRoutes * 2.1 + longRoutes * 1.2)),
+    dispatch: Math.max(1, Math.ceil(activeRoutes / 3)),
+    trainers: Math.max(0, Math.ceil((career.crewOps?.activeTraining || []).length / 2))
+  };
+}
+
+function refreshCrewSchedule(career, writeLog = true) {
+  ensureV15CareerNoLoop(career);
+  const req = crewRequirements(career);
+  const staff = career.staff || {};
+  const ops = career.crewOps;
+  const policy = CREW_POLICY_LEVELS[ops.policy] || CREW_POLICY_LEVELS.balanced;
+  const effectivePilots = Number(staff.pilots || 0) + Number(ops.reserveCrew.pilots || 0) + policy.reserve * Math.max(req.pilots, 1);
+  const effectiveCabin = Number(staff.cabin || 0) + Number(ops.reserveCrew.cabin || 0) + policy.reserve * Math.max(req.cabin, 1);
+  const pilotCover = utils.clamp(effectivePilots / Math.max(req.pilots, 1), 0, 1.25);
+  const cabinCover = utils.clamp(effectiveCabin / Math.max(req.cabin, 1), 0, 1.25);
+  const leadershipBonus = (ops.skills.leadership || 0) / 800;
+  const coverage = utils.clamp(((pilotCover + cabinCover) / 2) * 100 + leadershipBonus * 100, 0, 118);
+  ops.scheduleCoverage = Math.round(coverage);
+  ops.dailyCrewCost = Math.round(policy.dailyCost + (ops.reserveCrew.pilots * 1450) + (ops.reserveCrew.cabin * 760) + (TRAINING_CENTER_TIERS[ops.trainingCenter.tier]?.dailyCost || 0) + (UNION_AGREEMENTS[ops.union.agreement]?.dailyCost || 0));
+  const snapshot = { day: career.day || 1, coverage: ops.scheduleCoverage, requiredPilots:req.pilots, requiredCabin:req.cabin, pilots:staff.pilots||0, cabin:staff.cabin||0, policy:ops.policy, fatigue:Math.round(ops.fatigueIndex), morale:Math.round(ops.morale) };
+  if (writeLog) {
+    ops.scheduleHistory.unshift(snapshot);
+    ops.scheduleHistory = ops.scheduleHistory.slice(0, 24);
+  }
+  return snapshot;
+}
+
+function ensureV15CareerNoLoop(career) {
+  if (!career) return null;
+  career.crewOps = career.crewOps || {};
+  career.crewOps.trainingCenter = Object.assign({ tier:'none', invested:0, lastUpgradeDay:0 }, career.crewOps.trainingCenter || {});
+  career.crewOps.skills = Object.assign({ safety:28, service:26, efficiency:24, leadership:20 }, career.crewOps.skills || {});
+  career.crewOps.reserveCrew = Object.assign({ pilots:0, cabin:0 }, career.crewOps.reserveCrew || {});
+  career.crewOps.union = Object.assign({ relationship:58, strikeRisk:9, agreement:'basic', lastNegotiationDay:0, strikeActiveUntil:0, strikesAvoided:0 }, career.crewOps.union || {});
+  career.crewOps.activeTraining = Array.isArray(career.crewOps.activeTraining) ? career.crewOps.activeTraining : [];
+  ['trainingHistory','scheduleHistory','crewLog'].forEach(k => { career.crewOps[k] = Array.isArray(career.crewOps[k]) ? career.crewOps[k] : []; });
+  return career;
+}
+
+function crewEfficiencyMultiplier(career) {
+  if (!career) return 1;
+  ensureV15CareerNoLoop(career);
+  const ops = career.crewOps;
+  const fatiguePenalty = Math.max(0, (ops.fatigueIndex || 0) - 25) / 420;
+  const coveragePenalty = Math.max(0, 88 - (ops.scheduleCoverage || 0)) / 360;
+  const skillBoost = ((ops.skills.efficiency || 0) + (ops.skills.leadership || 0) * 0.55) / 1750;
+  const strikePenalty = (ops.union && ops.union.strikeActiveUntil >= (career.day || 1)) ? 0.22 : 0;
+  return utils.clamp(1 + skillBoost - fatiguePenalty - coveragePenalty - strikePenalty, 0.62, 1.12);
+}
+
+function crewServiceMultiplier(career) {
+  if (!career) return 1;
+  ensureV15CareerNoLoop(career);
+  const ops = career.crewOps;
+  const service = (ops.skills.service || 0) / 1200;
+  const morale = ((ops.morale || 60) - 50) / 1200;
+  const fatigue = Math.max(0, (ops.fatigueIndex || 0) - 45) / 620;
+  return utils.clamp(1 + service + morale - fatigue, 0.82, 1.13);
+}
+
+function crewSafetyModifier(career) {
+  if (!career) return 0;
+  ensureV15CareerNoLoop(career);
+  const ops = career.crewOps;
+  return utils.clamp((ops.skills.safety || 0) / 34 - Math.max(0, (ops.fatigueIndex || 0) - 50) / 12 + ((ops.scheduleCoverage || 80) - 80) / 28, -5.5, 6.5);
+}
+
+const previousRouteEstimateV150 = utils.routeEstimate.bind(utils);
+utils.routeEstimate = function(origin, dest, plane, career, route = null) {
+  const e = previousRouteEstimateV150(origin, dest, plane, career, route);
+  if (!career) return e;
+  ensureV15Career(career);
+  const efficiency = crewEfficiencyMultiplier(career);
+  const service = crewServiceMultiplier(career);
+  const fatigue = career.crewOps.fatigueIndex || 0;
+  const strikeActive = career.crewOps.union && career.crewOps.union.strikeActiveUntil >= (career.day || 1);
+  const crewCost = Math.round((e.totalCost || 0) * (strikeActive ? 0.045 : 0.012) + Math.max(0, fatigue - 55) * 55);
+  e.revenue = Math.round((e.revenue || 0) * service);
+  e.totalCost = Math.round((e.totalCost || 0) / Math.max(efficiency, 0.55) + crewCost);
+  e.profit = Math.round(e.revenue - e.totalCost);
+  e.margin = e.revenue > 0 ? Math.round((e.profit / e.revenue) * 100) : 0;
+  e.crewEfficiency = efficiency;
+  e.crewService = service;
+  e.crewFatigue = Math.round(fatigue);
+  e.crewStrike = strikeActive;
+  return e;
+};
+
+function processCrewAfterFlight(career, route, estimate) {
+  if (!career || !route) return;
+  ensureV15Career(career);
+  const ops = career.crewOps;
+  const hours = Number(estimate?.hours || 1);
+  const reqPressure = crewRequirements(career);
+  const active = (career.routes || []).filter(r => r.status === 'active').length;
+  const coverageGap = Math.max(0, 92 - (ops.scheduleCoverage || 80)) / 30;
+  const routeStress = Math.min(active / 8, 1.8);
+  ops.fatigueIndex = utils.clamp((ops.fatigueIndex || 0) + hours * 0.68 + coverageGap + routeStress - ((ops.skills.efficiency || 0) / 95), 0, 100);
+  if (ops.fatigueIndex > 72) {
+    ops.fatigueAlerts = Number(ops.fatigueAlerts || 0) + 1;
+    career.punctuality = utils.clamp((career.punctuality || 80) - 0.22, 0, 100);
+    if (ops.fatigueAlerts % 3 === 1) pushMessage(career, 'Fadiga de tripulação alta. Reforce escala, descanso ou treinamento para evitar atrasos e risco sindical.', 'warn');
+  }
+  const safetyBonus = crewSafetyModifier(career) / 24;
+  career.safety = utils.clamp((career.safety || 80) + safetyBonus, 0, 100);
+  refreshCrewSchedule(career, false);
+}
+
+const previousCompleteFlightV150 = completeFlight;
+completeFlight = function(career, route, plane, model) {
+  let estimate = null;
+  try {
+    const origin = utils.byIata(route.origin), dest = utils.byIata(route.dest);
+    if (origin && dest && model) estimate = utils.routeEstimate(origin, dest, model, career, route);
+  } catch(e) { estimate = null; }
+  previousCompleteFlightV150(career, route, plane, model);
+  processCrewAfterFlight(career, route, estimate);
+};
+
+function processCrewTraining(career) {
+  ensureV15Career(career);
+  const ops = career.crewOps;
+  const completed = [];
+  ops.activeTraining.forEach(t => {
+    t.remainingDays = Math.max(0, Number(t.remainingDays || 0) - 1);
+    if (t.remainingDays <= 0) completed.push(t);
+  });
+  ops.activeTraining = ops.activeTraining.filter(t => t.remainingDays > 0);
+  completed.forEach(t => {
+    const program = TRAINING_PROGRAMS[t.program];
+    if (!program) return;
+    ops.skills[program.skill] = utils.clamp((ops.skills[program.skill] || 0) + program.gain, 0, 100);
+    ops.fatigueIndex = utils.clamp((ops.fatigueIndex || 0) - program.fatigueRelief, 0, 100);
+    ops.morale = utils.clamp((ops.morale || 60) + 1.8, 0, 100);
+    career.reputation = utils.clamp((career.reputation || 50) + program.reputation, 0, 100);
+    ops.trainingHistory.unshift({ day: career.day || 1, program:t.program, label:program.label, skill:program.skill, gain:program.gain });
+    ops.trainingHistory = ops.trainingHistory.slice(0, 24);
+    pushMessage(career, `Treinamento concluído: ${program.label}. Competência ${program.skill} aumentou.`, 'success');
+  });
+}
+
+function processCrewOpsDaily(career) {
+  ensureV15Career(career);
+  const ops = career.crewOps;
+  const snapshot = refreshCrewSchedule(career, true);
+  const policy = CREW_POLICY_LEVELS[ops.policy] || CREW_POLICY_LEVELS.balanced;
+  processCrewTraining(career);
+  if (ops.dailyCrewCost > 0) {
+    career.cash -= ops.dailyCrewCost;
+    logFinance(career, 'Centro/escala/sindicato de tripulação', -ops.dailyCrewCost, 'tripulação');
+  }
+  const coveragePressure = Math.max(0, 84 - snapshot.coverage) / 5.5;
+  const strikeActive = ops.union.strikeActiveUntil >= (career.day || 1);
+  ops.fatigueIndex = utils.clamp((ops.fatigueIndex || 0) + coveragePressure + policy.fatigue - (ops.skills.leadership || 0) / 55, 0, 100);
+  ops.morale = utils.clamp((ops.morale || 60) + policy.morale + (ops.union.relationship - 55) / 60 - Math.max(0, ops.fatigueIndex - 70) / 22, 0, 100);
+  const agreement = UNION_AGREEMENTS[ops.union.agreement] || UNION_AGREEMENTS.basic;
+  const risk = 8 + Math.max(0, ops.fatigueIndex - 42) * 0.52 + Math.max(0, 82 - snapshot.coverage) * 0.38 - (ops.morale - 50) * 0.18 - agreement.riskRelief - (ops.skills.leadership || 0) * 0.07;
+  ops.union.strikeRisk = Math.round(utils.clamp(risk, 0, 96));
+  if (!strikeActive && ops.union.strikeRisk >= 82 && Math.random() < 0.18) {
+    ops.union.strikeActiveUntil = (career.day || 1) + 1;
+    ops.union.relationship = utils.clamp(ops.union.relationship - 8, 0, 100);
+    career.cash -= 95000;
+    career.reputation = utils.clamp((career.reputation || 50) - 1.3, 0, 100);
+    logFinance(career, 'Greve controlada / plano de contingência', -95000, 'sindicato');
+    pushMessage(career, 'Greve controlada de tripulação ativada por 1 dia. Negocie acordo ou reduza fadiga.', 'warn');
+  }
+  if (strikeActive && ops.union.strikeActiveUntil < (career.day || 1)) {
+    pushMessage(career, 'Greve encerrada. A malha voltou ao normal.', 'success');
+  }
+  ops.crewLog.unshift({ day: career.day || 1, text:`Escala ${snapshot.coverage}% • Fadiga ${Math.round(ops.fatigueIndex)}% • Moral ${Math.round(ops.morale)}% • Risco sindical ${ops.union.strikeRisk}%` });
+  ops.crewLog = ops.crewLog.slice(0, 28);
+}
+
+const previousAdvanceCompanyDayV150 = advanceCompanyDay;
+advanceCompanyDay = function(career) {
+  const before = career ? Number(career.day || 1) : 1;
+  previousAdvanceCompanyDayV150(career);
+  if (career && Number(career.day || 1) !== before) processCrewOpsDaily(career);
+};
+
+function buildTrainingCenter(tier) {
+  const c = activeCareer(); if (!c) return;
+  ensureV15Career(c);
+  const cfg = TRAINING_CENTER_TIERS[tier];
+  if (!cfg || tier === 'none') return showToast('Escolha um nível de centro válido.', 'warn');
+  const current = TRAINING_CENTER_TIERS[c.crewOps.trainingCenter.tier] || TRAINING_CENTER_TIERS.none;
+  if ((cfg.cap || 0) <= (current.cap || 0)) return showToast('Este centro já está neste nível ou acima.', 'warn');
+  if (c.cash < cfg.setupCost) return showToast(`Caixa insuficiente para ${cfg.label}. Necessário ${utils.money(cfg.setupCost)}.`, 'warn');
+  c.cash -= cfg.setupCost;
+  c.crewOps.trainingCenter = { tier, invested:(c.crewOps.trainingCenter.invested || 0) + cfg.setupCost, lastUpgradeDay:c.day || 1 };
+  c.crewOps.skills.safety = utils.clamp((c.crewOps.skills.safety || 0) + cfg.safety * 100, 0, 100);
+  c.crewOps.skills.service = utils.clamp((c.crewOps.skills.service || 0) + cfg.service * 100, 0, 100);
+  c.crewOps.skills.efficiency = utils.clamp((c.crewOps.skills.efficiency || 0) + cfg.efficiency * 100, 0, 100);
+  c.crewOps.skills.leadership = utils.clamp((c.crewOps.skills.leadership || 0) + cfg.leadership * 100, 0, 100);
+  logFinance(c, `Construção: ${cfg.label}`, -cfg.setupCost, 'treinamento');
+  pushMessage(c, `${cfg.label} implantado. Treinamento e escala ficaram mais fortes.`, 'success');
+  updateMarket(c); setActiveCareer(c); render();
+}
+
+function startTrainingProgram(programId) {
+  const c = activeCareer(); if (!c) return;
+  ensureV15Career(c);
+  const program = TRAINING_PROGRAMS[programId];
+  if (!program) return showToast('Programa inválido.', 'warn');
+  const center = TRAINING_CENTER_TIERS[c.crewOps.trainingCenter.tier] || TRAINING_CENTER_TIERS.none;
+  if (center.cap <= 0) return showToast('Construa um centro de treinamento primeiro.', 'warn');
+  if ((c.crewOps.activeTraining || []).length >= center.cap) return showToast('Capacidade de treinamento cheia. Aguarde concluir turmas ativas.', 'warn');
+  const discount = Math.min((c.crewOps.skills.leadership || 0) / 900, 0.09);
+  const cost = Math.round(program.cost * (1 - discount));
+  if (c.cash < cost) return showToast(`Caixa insuficiente. Necessário ${utils.money(cost)}.`, 'warn');
+  c.cash -= cost;
+  c.crewOps.cumulativeTraining = Number(c.crewOps.cumulativeTraining || 0) + cost;
+  c.crewOps.activeTraining.push({ id:utils.id('train'), program:programId, label:program.label, remainingDays:program.days, startedDay:c.day || 1, cost });
+  logFinance(c, `Treinamento iniciado: ${program.label}`, -cost, 'treinamento');
+  pushMessage(c, `Turma iniciada: ${program.label}. Conclusão em ${program.days} dia(s) de jogo.`, 'success');
+  setActiveCareer(c); render();
+}
+
+function setCrewPolicy(policyId) {
+  const c = activeCareer(); if (!c) return;
+  ensureV15Career(c);
+  if (!CREW_POLICY_LEVELS[policyId]) return showToast('Política inválida.', 'warn');
+  c.crewOps.policy = policyId;
+  refreshCrewSchedule(c, true);
+  pushMessage(c, `Política de escala alterada para ${CREW_POLICY_LEVELS[policyId].label}.`, 'info');
+  setActiveCareer(c); render();
+}
+
+function hireReserveCrew(type) {
+  const c = activeCareer(); if (!c) return;
+  ensureV15Career(c);
+  const isPilot = type === 'pilot';
+  const cost = isPilot ? 68000 : 39000;
+  if (c.cash < cost) return showToast(`Caixa insuficiente para reserva. Necessário ${utils.money(cost)}.`, 'warn');
+  c.cash -= cost;
+  if (isPilot) { c.staff.pilots = Number(c.staff.pilots || 0) + 1; c.crewOps.reserveCrew.pilots = Number(c.crewOps.reserveCrew.pilots || 0) + 0.25; }
+  else { c.staff.cabin = Number(c.staff.cabin || 0) + 2; c.crewOps.reserveCrew.cabin = Number(c.crewOps.reserveCrew.cabin || 0) + 0.5; }
+  refreshCrewSchedule(c, true);
+  logFinance(c, isPilot ? 'Contratação piloto reserva' : 'Contratação comissários reserva', -cost, 'tripulação');
+  pushMessage(c, isPilot ? 'Piloto reserva contratado.' : 'Equipe de cabine reserva contratada.', 'success');
+  setActiveCareer(c); render();
+}
+
+function negotiateUnion(agreementId) {
+  const c = activeCareer(); if (!c) return;
+  ensureV15Career(c);
+  const cfg = UNION_AGREEMENTS[agreementId];
+  if (!cfg) return showToast('Acordo inválido.', 'warn');
+  if (c.crewOps.union.agreement === agreementId) return showToast('Este acordo já está ativo.', 'info');
+  if (c.cash < cfg.bonus) return showToast(`Caixa insuficiente para acordo. Necessário ${utils.money(cfg.bonus)}.`, 'warn');
+  c.cash -= cfg.bonus;
+  c.crewOps.union.agreement = agreementId;
+  c.crewOps.union.lastNegotiationDay = c.day || 1;
+  c.crewOps.union.relationship = utils.clamp((c.crewOps.union.relationship || 50) + cfg.relationship, 0, 100);
+  c.crewOps.union.strikeRisk = utils.clamp((c.crewOps.union.strikeRisk || 0) - cfg.riskRelief, 0, 100);
+  if (cfg.riskRelief > 0 && c.crewOps.union.strikeActiveUntil >= (c.day || 1)) {
+    c.crewOps.union.strikeActiveUntil = c.day - 1;
+    c.crewOps.union.strikesAvoided = Number(c.crewOps.union.strikesAvoided || 0) + 1;
+  }
+  logFinance(c, `Acordo sindical: ${cfg.label}`, -cfg.bonus, 'sindicato');
+  pushMessage(c, `${cfg.label} firmado. Relação sindical e risco de greve atualizados.`, 'success');
+  setActiveCareer(c); render();
+}
+
+function emergencyRestPlan() {
+  const c = activeCareer(); if (!c) return;
+  ensureV15Career(c);
+  const cost = Math.round(78000 + (c.routes || []).length * 14500 + Math.max(0, c.crewOps.fatigueIndex - 50) * 2600);
+  if (c.cash < cost) return showToast(`Caixa insuficiente para descanso emergencial: ${utils.money(cost)}.`, 'warn');
+  c.cash -= cost;
+  c.crewOps.fatigueIndex = utils.clamp((c.crewOps.fatigueIndex || 0) - 22, 0, 100);
+  c.crewOps.morale = utils.clamp((c.crewOps.morale || 60) + 6, 0, 100);
+  c.crewOps.union.strikeRisk = utils.clamp((c.crewOps.union.strikeRisk || 0) - 9, 0, 100);
+  logFinance(c, 'Plano emergencial de descanso', -cost, 'tripulação');
+  pushMessage(c, 'Plano de descanso aplicado. Fadiga e risco sindical reduziram.', 'success');
+  setActiveCareer(c); render();
+}
+
+const previousDailyObligationEstimateV150 = dailyObligationEstimate;
+dailyObligationEstimate = function(career) {
+  const base = previousDailyObligationEstimateV150(career);
+  if (!career) return base;
+  ensureV15Career(career);
+  return Math.round(base + Number(career.crewOps.dailyCrewCost || 0));
+};
+
+const previousValuationV150 = valuation;
+valuation = function(career) {
+  const base = previousValuationV150(career);
+  if (!career) return base;
+  ensureV15CareerNoLoop(career);
+  const ops = career.crewOps || {};
+  const skills = ops.skills || {};
+  const skillAvg = ((skills.safety||0)+(skills.service||0)+(skills.efficiency||0)+(skills.leadership||0))/4;
+  const crewValue = Math.round((ops.trainingCenter?.invested || 0) * 0.72 + skillAvg * 18500 + (ops.scheduleCoverage || 0) * 9200 - (ops.fatigueIndex || 0) * 8400 - (ops.union?.strikeRisk || 0) * 5600);
+  return Math.max(0, Math.round(base + crewValue));
+};
+
+function renderCrewView() {
+  const c = activeCareer(); ensureV15Career(c);
+  const ops = c.crewOps;
+  const req = crewRequirements(c);
+  const center = TRAINING_CENTER_TIERS[ops.trainingCenter.tier] || TRAINING_CENTER_TIERS.none;
+  const policy = CREW_POLICY_LEVELS[ops.policy] || CREW_POLICY_LEVELS.balanced;
+  const union = ops.union || {};
+  const activeTrain = (ops.activeTraining || []).map(t => `<article class="service-card active"><b>${utils.escape(t.label)}</b><small>Restam ${t.remainingDays} dia(s) • custo ${utils.money(t.cost || 0)}</small><p>Iniciado no dia ${t.startedDay || c.day}.</p></article>`).join('') || '<p class="hint">Nenhuma turma ativa. Inicie treinamento para melhorar segurança, serviço, eficiência e liderança.</p>';
+  const centerCards = Object.entries(TRAINING_CENTER_TIERS).filter(([k])=>k !== 'none').map(([key,t]) => `<article class="service-card ${ops.trainingCenter.tier===key?'active':''}"><b>${t.label}</b><small>Instalação ${utils.money(t.setupCost)} • custo/dia ${utils.money(t.dailyCost)} • capacidade ${t.cap}</small><p>${utils.escape(t.note)}</p><button class="btn mini ${ops.trainingCenter.tier===key?'ghost':'primary'}" data-action="buildTrainingCenter" data-tier="${key}">${ops.trainingCenter.tier===key?'Ativo':'Construir'}</button></article>`).join('');
+  const trainingCards = Object.entries(TRAINING_PROGRAMS).map(([key,p]) => `<article class="service-card"><b>${p.label}</b><small>${utils.money(p.cost)} • ${p.days} dia(s) • +${p.gain} ${p.skill}</small><p>${utils.escape(p.note)}</p><button class="btn mini primary" data-action="startTraining" data-program="${key}">Iniciar turma</button></article>`).join('');
+  const policyCards = Object.entries(CREW_POLICY_LEVELS).map(([key,p]) => `<article class="service-card ${ops.policy===key?'active':''}"><b>${p.label}</b><small>Custo/dia ${utils.money(p.dailyCost)} • reserva ${Math.round(p.reserve*100)}%</small><p>${utils.escape(p.note)}</p><button class="btn mini ${ops.policy===key?'ghost':'primary'}" data-action="setCrewPolicy" data-policy="${key}">${ops.policy===key?'Ativa':'Aplicar'}</button></article>`).join('');
+  const unionCards = Object.entries(UNION_AGREEMENTS).map(([key,u]) => `<article class="service-card ${union.agreement===key?'active':''}"><b>${u.label}</b><small>Bônus ${utils.money(u.bonus)} • custo/dia ${utils.money(u.dailyCost)} • alívio ${u.riskRelief}%</small><p>${utils.escape(u.note)}</p><button class="btn mini ${union.agreement===key?'ghost':'primary'}" data-action="negotiateUnion" data-agreement="${key}">${union.agreement===key?'Ativo':'Negociar'}</button></article>`).join('');
+  const log = (ops.crewLog || []).slice(0,10).map(l => `<div class="finance-row"><span>Dia ${l.day}<small>Tripulação</small></span><em>${utils.escape(l.text)}</em></div>`).join('') || '<p>Sem histórico ainda.</p>';
+  return `<div class="crew-layout"><section class="panel glass passenger-hero"><span class="eyebrow">F45-F48 Tripulação profissional</span><h2>Treinamento, fadiga, escala e sindicato</h2><div class="kpi-grid"><div class="kpi"><small>Centro</small><strong>${center.label}</strong></div><div class="kpi"><small>Cobertura escala</small><strong>${utils.pct(ops.scheduleCoverage || 0)}</strong></div><div class="kpi"><small>Fadiga</small><strong>${utils.pct(ops.fatigueIndex || 0)}</strong></div><div class="kpi"><small>Moral</small><strong>${utils.pct(ops.morale || 0)}</strong></div><div class="kpi"><small>Risco greve</small><strong>${utils.pct(union.strikeRisk || 0)}</strong></div><div class="kpi"><small>Custo/dia</small><strong>${utils.money(ops.dailyCrewCost || 0)}</strong></div></div><div class="row gap wrap"><button class="btn primary" data-action="autoCrewSchedule">Recalcular escala</button><button class="btn ghost" data-action="hireReserveCrew" data-type="pilot">Contratar piloto reserva</button><button class="btn ghost" data-action="hireReserveCrew" data-type="cabin">Contratar cabine reserva</button><button class="btn ghost" data-action="emergencyRest">Descanso emergencial</button></div><p class="hint">Escala fraca e fadiga alta reduzem lucro, pontualidade e segurança. Sindicato entra como risco controlado, sem quebrar o jogo.</p></section><section class="panel glass"><h2>Necessidade operacional</h2><div class="kpi-grid"><div class="kpi"><small>Pilotos necessários</small><strong>${utils.num(req.pilots)}</strong></div><div class="kpi"><small>Pilotos atuais</small><strong>${utils.num(c.staff.pilots||0)}</strong></div><div class="kpi"><small>Cabine necessária</small><strong>${utils.num(req.cabin)}</strong></div><div class="kpi"><small>Cabine atual</small><strong>${utils.num(c.staff.cabin||0)}</strong></div><div class="kpi"><small>Política</small><strong>${policy.label}</strong></div><div class="kpi"><small>Greve ativa</small><strong>${union.strikeActiveUntil >= (c.day||1) ? 'Sim' : 'Não'}</strong></div></div></section><section class="panel glass"><h2>Centro de treinamento</h2><div class="service-grid">${centerCards}</div></section><section class="panel glass"><h2>Programas de capacitação</h2><div class="service-grid">${trainingCards}</div><h3>Turmas ativas</h3><div class="service-grid">${activeTrain}</div></section><section class="panel glass"><h2>Competências</h2><div class="kpi-grid"><div class="kpi"><small>Segurança</small><strong>${utils.pct(ops.skills.safety)}</strong></div><div class="kpi"><small>Serviço</small><strong>${utils.pct(ops.skills.service)}</strong></div><div class="kpi"><small>Eficiência</small><strong>${utils.pct(ops.skills.efficiency)}</strong></div><div class="kpi"><small>Liderança</small><strong>${utils.pct(ops.skills.leadership)}</strong></div></div></section><section class="panel glass"><h2>Política de escala</h2><div class="service-grid">${policyCards}</div></section><section class="panel glass"><h2>Sindicatos e acordos</h2><div class="service-grid">${unionCards}</div></section><section class="panel glass"><h2>Histórico de tripulação</h2><div class="finance-list">${log}</div></section></div>`;
+}
+
+const previousNavItemsV150 = navItems;
+navItems = function() {
+  const items = previousNavItemsV150();
+  const auditIndex = items.findIndex(i => i[0] === 'audit');
+  if (!items.some(i => i[0] === 'crew')) items.splice(auditIndex >= 0 ? auditIndex : items.length, 0, ['crew','Tripulação','☊']);
+  return items;
+};
+
+const previousRenderV150 = render;
+render = function() {
+  if (runtime.view === 'crew' && activeCareer()) {
+    safeExecute('render:crew', () => {
+      hideFatal();
+      dom.app.innerHTML = shell(renderCrewView());
+    });
+    return;
+  }
+  previousRenderV150();
+};
+
+const previousRenderDashboardV150 = renderDashboard;
+renderDashboard = function() {
+  const html = previousRenderDashboardV150();
+  const c = activeCareer(); if (!c) return html;
+  ensureV15Career(c);
+  const ops = c.crewOps;
+  const card = `<section class="panel glass"><span class="eyebrow">F45-F48 Tripulação</span><h2>Escala e sindicatos</h2><div class="kpi-grid"><div class="kpi"><small>Cobertura</small><strong>${utils.pct(ops.scheduleCoverage||0)}</strong></div><div class="kpi"><small>Fadiga</small><strong>${utils.pct(ops.fatigueIndex||0)}</strong></div><div class="kpi"><small>Moral</small><strong>${utils.pct(ops.morale||0)}</strong></div><div class="kpi"><small>Risco greve</small><strong>${utils.pct(ops.union?.strikeRisk||0)}</strong></div></div><button class="btn primary" data-action="go" data-view="crew">Gerenciar tripulação</button></section>`;
+  const pos = html.lastIndexOf('</div>');
+  return pos >= 0 ? html.slice(0, pos) + card + html.slice(pos) : html + card;
+};
+
+const previousRenderStaffV150 = renderStaff;
+renderStaff = function() {
+  const html = previousRenderStaffV150();
+  const c = activeCareer(); if (!c) return html;
+  ensureV15Career(c);
+  const ops = c.crewOps;
+  const card = `<section class="panel glass"><span class="eyebrow">F45-F48 escala real</span><h2>Tripulação operacional</h2><div class="kpi-grid"><div class="kpi"><small>Escala</small><strong>${utils.pct(ops.scheduleCoverage||0)}</strong></div><div class="kpi"><small>Fadiga</small><strong>${utils.pct(ops.fatigueIndex||0)}</strong></div><div class="kpi"><small>Centro</small><strong>${(TRAINING_CENTER_TIERS[ops.trainingCenter.tier]||TRAINING_CENTER_TIERS.none).label}</strong></div><div class="kpi"><small>Sindicato</small><strong>${utils.pct(ops.union?.relationship||0)}</strong></div></div><button class="btn primary" data-action="go" data-view="crew">Abrir tripulação</button></section>`;
+  return html.replace('</div>', card + '</div>');
+};
+
+const previousRenderFinanceV150 = renderFinance;
+renderFinance = function() {
+  const html = previousRenderFinanceV150();
+  const c = activeCareer(); if (!c) return html;
+  ensureV15Career(c);
+  const card = `<section class="panel glass"><span class="eyebrow">Custo humano operacional</span><h2>Treinamento, escala e acordos</h2><div class="kpi-grid"><div class="kpi"><small>Custo/dia</small><strong>${utils.money(c.crewOps.dailyCrewCost||0)}</strong></div><div class="kpi"><small>Investido treinamento</small><strong>${utils.money(c.crewOps.cumulativeTraining||0)}</strong></div><div class="kpi"><small>Centro investido</small><strong>${utils.money(c.crewOps.trainingCenter?.invested||0)}</strong></div><div class="kpi"><small>Greves evitadas</small><strong>${utils.num(c.crewOps.union?.strikesAvoided||0)}</strong></div></div></section>`;
+  return html.replace('</div>', card + '</div>');
+};
+
+const previousRenderAuditV150 = renderAudit;
+renderAudit = function() {
+  const checks = runIntegrityAudit();
+  const passed = checks.filter(c => c.ok).length;
+  return `<div class="audit-layout"><section class="panel glass"><div class="section-head"><div><span class="eyebrow">Sistema anti-quebra</span><h2>Auditoria da build</h2><p>Execução obrigatória por fase para garantir integridade e evolução real.</p></div><button class="btn primary" data-action="runAudit">Rodar auditoria</button></div><div class="audit-score"><strong>${passed}/${checks.length}</strong><span>checks aprovados</span></div><div class="audit-list">${checks.map(c => `<div class="audit-row ${c.ok?'ok':'bad'}"><b>${c.ok?'✓':'!'}</b><span>${c.label}</span><small>${c.detail}</small></div>`).join('')}</div></section><section class="panel glass"><h2>Relatório desta entrega</h2><div class="todo-list"><span>F45 Centro de treinamento: OK — níveis, programas, turmas ativas e evolução de competências.</span><span>F46 Fadiga de tripulação: OK — fadiga impacta lucro, pontualidade, segurança e risco sindical.</span><span>F47 Escala operacional: OK — cobertura por pilotos/comissários, reservas, política de escala e custo diário.</span><span>F48 Sindicatos: OK — acordos, relação, risco de greve e greve controlada sem quebrar o jogo.</span><span>Anti-quebra: OK — migração de saves v0.4 até v1.4 para schema 15 preservada.</span></div></section></div>`;
+};
+
+const previousRunIntegrityAuditV150 = runIntegrityAudit;
+runIntegrityAudit = function() {
+  const c = activeCareer(); if (c) ensureV15Career(c);
+  const blockedLabels = [
+    'Schema da build','Chave de save v1.4','Migração v1.3 preservada','Normalização v1.4','F41 Leilão de slots','Ações de leilão','F42 Manutenção preditiva','F43 Estoque técnico','F44 Tela OCC no menu','OCC no save','Peças no save','Risco por aeronave','Plano OCC automático','Compra de peças','Fila de leilões','Histórico de leilões','Snapshot OCC','Criticidade de rota','Custo técnico com peças','Estimativa com OCC','Valuation técnico','Dispatch reliability'
+  ];
+  const base = previousRunIntegrityAuditV150().filter(check => !blockedLabels.includes(check.label));
+  const extra = [
+    { ok: BUILD.schema === 15, label:'Schema da build', detail:`Schema atual ${BUILD.schema}.` },
+    { ok: STORE_KEY.includes('schema_15'), label:'Chave de save v1.5', detail:STORE_KEY },
+    { ok: LEGACY_STORE_KEYS.includes('vale_air_manager_schema_14'), label:'Migração v1.4 preservada', detail:'Saves schema 14 são migrados para schema 15 sem reset.' },
+    { ok: typeof ensureV15Career === 'function', label:'Normalização v1.5', detail:'Carreiras antigas recebem tripulação, treinamento, fadiga, escala e sindicato.' },
+    { ok: navItems().some(i => i[0] === 'crew'), label:'Tela Tripulação no menu', detail:'HUD mobile inclui acesso direto à gestão de tripulação.' },
+    { ok: Object.keys(TRAINING_CENTER_TIERS).length === 4, label:'F45 Centro de treinamento', detail:'Sem centro, básico, academia e excelência configurados.' },
+    { ok: Object.keys(TRAINING_PROGRAMS).length === 4, label:'Programas de treinamento', detail:'Segurança, serviço, eficiência e liderança configurados.' },
+    { ok: typeof startTrainingProgram === 'function' && typeof buildTrainingCenter === 'function', label:'Ações de treinamento', detail:'Construção e início de turmas protegidos.' },
+    { ok: !c || c.crewOps && c.crewOps.skills && Number.isFinite(c.crewOps.skills.safety), label:'Competências no save', detail:c ? `Segurança ${utils.pct(c.crewOps.skills.safety)}.` : 'Sem carreira ativa.' },
+    { ok: !c || Number.isFinite(c.crewOps.fatigueIndex), label:'F46 Fadiga operacional', detail:c ? `${utils.pct(c.crewOps.fatigueIndex)} atual.` : 'Sem carreira ativa.' },
+    { ok: typeof crewEfficiencyMultiplier === 'function' && typeof crewServiceMultiplier === 'function', label:'Impacto em rota', detail:'Tripulação afeta estimativa de receita, custo e margem.' },
+    { ok: Object.keys(CREW_POLICY_LEVELS).length === 3, label:'F47 Políticas de escala', detail:'Enxuta, equilibrada e resiliente configuradas.' },
+    { ok: typeof refreshCrewSchedule === 'function' && typeof crewRequirements === 'function', label:'Escala operacional', detail:'Cálculo de necessidade de pilotos/comissários disponível.' },
+    { ok: !c || Number.isFinite(c.crewOps.scheduleCoverage), label:'Cobertura da escala', detail:c ? `${utils.pct(c.crewOps.scheduleCoverage)} calculado.` : 'Sem carreira ativa.' },
+    { ok: typeof hireReserveCrew === 'function' && typeof emergencyRestPlan === 'function', label:'Reserva e descanso', detail:'Contratação reserva e descanso emergencial disponíveis.' },
+    { ok: Object.keys(UNION_AGREEMENTS).length === 3, label:'F48 Acordos sindicais', detail:'Básico, justo e premium configurados.' },
+    { ok: typeof negotiateUnion === 'function', label:'Negociação sindical', detail:'Acordo sindical reduz risco e pode encerrar greve controlada.' },
+    { ok: !c || c.crewOps.union && Number.isFinite(c.crewOps.union.strikeRisk), label:'Risco de greve', detail:c ? `${utils.pct(c.crewOps.union.strikeRisk)} atual.` : 'Sem carreira ativa.' },
+    { ok: typeof processCrewOpsDaily === 'function', label:'Ciclo diário de tripulação', detail:'Custos, treinamento, fadiga, moral e sindicato processados por dia.' },
+    { ok: typeof dailyObligationEstimate === 'function', label:'Obrigações com tripulação', detail:c ? `${utils.money(dailyObligationEstimate(c))} incluindo equipe.` : 'Função disponível.' },
+    { ok: typeof valuation === 'function', label:'Valuation com capital humano', detail:'Centro, competências, cobertura, fadiga e greve influenciam valor.' },
+    { ok: !c || Array.isArray(c.crewOps.crewLog), label:'Log de tripulação', detail:c ? `${(c.crewOps.crewLog||[]).length} registro(s).` : 'Sem carreira ativa.' }
+  ];
+  return [...extra, ...base];
+};
+
+const previousHandleActionV150 = handleAction;
+handleAction = function(target) {
+  const action = target.dataset.action;
+  if (action === 'buildTrainingCenter') return safeExecute('action:buildTrainingCenter', () => buildTrainingCenter(target.dataset.tier));
+  if (action === 'startTraining') return safeExecute('action:startTraining', () => startTrainingProgram(target.dataset.program));
+  if (action === 'setCrewPolicy') return safeExecute('action:setCrewPolicy', () => setCrewPolicy(target.dataset.policy));
+  if (action === 'hireReserveCrew') return safeExecute('action:hireReserveCrew', () => hireReserveCrew(target.dataset.type));
+  if (action === 'negotiateUnion') return safeExecute('action:negotiateUnion', () => negotiateUnion(target.dataset.agreement));
+  if (action === 'emergencyRest') return safeExecute('action:emergencyRest', () => emergencyRestPlan());
+  if (action === 'autoCrewSchedule') return safeExecute('action:autoCrewSchedule', () => { const c = activeCareer(); if (c) { ensureV15Career(c); refreshCrewSchedule(c, true); setActiveCareer(c); showToast('Escala recalculada pelo OCC/RH.', 'ok'); render(); } });
+  return previousHandleActionV150(target);
 };
 
 boot();

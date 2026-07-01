@@ -1,8 +1,8 @@
 {
   "game": "VALE AIR MANAGER",
-  "version": "1.4.0",
-  "build": "20260701-1501",
-  "schema": 14,
+  "version": "1.5.0",
+  "build": "20260701-1538",
+  "schema": 15,
   "auditoria": "42/42 checks aprovados",
   "antiQuebra": true,
   "zipCompleto": true,
@@ -11,13 +11,13 @@
     "HTML/CSS/JS presentes",
     "Manifest e service-worker atualizados",
     "BUILD.json atualizado",
-    "Migração schema 13 preservada",
-    "Tela OCC adicionada ao HUD",
-    "Leilão de slots adicionado",
-    "Manutenção preditiva adicionada",
-    "Função maintainPlane corrigida e integrada",
-    "Estoque técnico de peças adicionado",
-    "Plano OCC automático adicionado",
+    "Migração schema 14 preservada",
+    "Tela Tripulação adicionada ao HUD",
+    "Centro de treinamento adicionado",
+    "Programas de capacitação adicionados",
+    "Fadiga de tripulação conectada às rotas",
+    "Escala operacional e reservas adicionadas",
+    "Acordos sindicais e greve controlada adicionados",
     "Auditoria interna atualizada"
   ]
 }

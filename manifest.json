@@ -1,7 +1,7 @@
 {
-  "name": "VALE AIR MANAGER v1.4.0",
+  "name": "VALE AIR MANAGER v1.5.0",
   "short_name": "VALE AIR",
-  "description": "Simulador gratuito de companhia aérea com mapa real, frota, finanças, bolsa, mundo vivo, passageiros, OCC, leilão de slots, manutenção preditiva e estoque técnico.",
+  "description": "Simulador gratuito de companhia aérea com mapa real, frota, finanças, bolsa, mundo vivo, passageiros, OCC, manutenção preditiva, treinamento, fadiga, escala operacional e sindicatos.",
   "start_url": "./index.html",
   "display": "fullscreen",
   "orientation": "portrait-primary",

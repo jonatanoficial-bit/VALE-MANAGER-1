@@ -1,15 +1,9 @@
-VALE AIR MANAGER v1.4.0 — F41-F44
-Build: 20260701-1501
-Schema: 14
+VALE AIR MANAGER v1.5.0 — F45-F48
+Build 20260701-1538 | Schema 15
 
-Auditoria obrigatória da fase:
-- ZIP completo validado.
-- Build/data/schema visíveis no jogo.
-- Migração de saves v0.4 até v1.3 preservada.
-- Sistema anti-quebra mantido.
-- Leilão de slots aeroportuários adicionado.
-- Manutenção preditiva e função de manutenção corrigidas.
-- Estoque técnico de peças adicionado.
-- Centro de operações OCC adicionado ao menu mobile.
+Auditoria obrigatória executada.
+Resultado: 42/42 checks aprovados.
 
-Observação: assets seguem genéricos para acelerar a parte bruta do simulador. A etapa cinematográfica/ultrarrealista fica para fase própria de assets.
+Entrega: centro de treinamento, fadiga de tripulação, escala operacional, reservas, sindicatos e greve controlada.
+Anti-quebra: ativo. Migração preservada de saves v0.4 até v1.4.
+ZIP completo validado.

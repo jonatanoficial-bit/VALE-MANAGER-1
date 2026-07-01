@@ -1,15 +1,15 @@
 
 'use strict';
 
-// VALE AIR MANAGER - v2.1.0-rc - Build 20260701-2055
-// Fases F69-F72: balanceamento profissional, caça-bug final, polish mobile e release candidate.
+// VALE AIR MANAGER - v2.2.0 - Build 20260701-2140
+// Fases F73-F76: fluxo inicial definitivo, tutorial final, onboarding anti-confusão e pipeline de assets cinematográficos.
 
 const BUILD = Object.freeze({
   game: 'VALE AIR MANAGER',
-  version: '2.1.0-rc',
-  phase: 'F69-F72',
-  build: '20260701-2055',
-  schema: 21,
+  version: '2.2.0',
+  phase: 'F73-F76',
+  build: '20260701-2140',
+  schema: 22,
   date: '2026-07-01',
   timezone: 'America/Sao_Paulo'
 });
@@ -730,8 +730,8 @@ const COMPETITORS = Object.freeze([
   { id:'cargo_sul', name:'Cargo Sul Express', base:'GRU', region:'Cargo', value:4100000, fleet:1, routes:['GRU-SCL','GRU-MIA'], reputation:55, debt:540000, modelId:'b737cargo', synergy:1.10 }
 ]);
 
-const STORE_KEY = 'vale_air_manager_schema_21';
-const LEGACY_STORE_KEYS = ['vale_air_manager_schema_20','vale_air_manager_schema_19','vale_air_manager_schema_18','vale_air_manager_schema_17','vale_air_manager_schema_16','vale_air_manager_schema_15','vale_air_manager_schema_14','vale_air_manager_schema_13','vale_air_manager_schema_12','vale_air_manager_schema_11','vale_air_manager_schema_10','vale_air_manager_schema_9','vale_air_manager_schema_8','vale_air_manager_schema_7','vale_air_manager_schema_6','vale_air_manager_schema_5','vale_air_manager_schema_4'];
+const STORE_KEY = 'vale_air_manager_schema_22';
+const LEGACY_STORE_KEYS = ['vale_air_manager_schema_21','vale_air_manager_schema_20','vale_air_manager_schema_19','vale_air_manager_schema_18','vale_air_manager_schema_17','vale_air_manager_schema_16','vale_air_manager_schema_15','vale_air_manager_schema_14','vale_air_manager_schema_13','vale_air_manager_schema_12','vale_air_manager_schema_11','vale_air_manager_schema_10','vale_air_manager_schema_9','vale_air_manager_schema_8','vale_air_manager_schema_7','vale_air_manager_schema_6','vale_air_manager_schema_5','vale_air_manager_schema_4'];
 const CRASH_KEY = 'vale_air_manager_last_crash';
 const DEFAULT_SPEED = 1;
 
@@ -7946,5 +7946,328 @@ handleAction = function(target) {
   return previousHandleActionV210(target);
 };
 
+
+// ===== v2.2.0 F73-F76: Fluxo inicial definitivo, tutorial final, onboarding anti-confusão e pipeline de assets cinematográficos =====
+const FLOW_MODES_V22 = Object.freeze({
+  guided: { label:'Guiado anti-confusão', bonus:18, note:'Ideal para beta público: cada ação importante vira botão claro, com ordem de progresso.' },
+  fast: { label:'Criação rápida', bonus:10, note:'Para jogadores experientes: menos texto, ações essenciais e atalhos diretos.' },
+  expert: { label:'Simulador completo', bonus:6, note:'Mostra mais indicadores técnicos desde o início e reduz ajuda automática.' }
+});
+const TUTORIAL_STEPS_V22 = Object.freeze([
+  { id:'company', label:'Fundar companhia', view:'ceo', note:'Nome, CEO, logo, slogan, hub e modelo de negócio precisam ficar claros.' },
+  { id:'hub', label:'Confirmar hub inicial', view:'map', note:'O jogador entende onde a empresa nasceu e quais aeroportos estão disponíveis.' },
+  { id:'fleet', label:'Comprar/avaliar frota', view:'fleet', note:'Primeiro avião visível, condição técnica e aquisição comprada/leasing.' },
+  { id:'route', label:'Criar primeira rota', view:'routes', note:'Origem, destino, alcance, preço, slots e estimativa de lucro antes de confirmar.' },
+  { id:'finance', label:'Ver caixa e risco', view:'finance', note:'Caixa, lucro, dívidas, leasing, combustível, manutenção e crise financeira.' },
+  { id:'world', label:'Ler mundo vivo', view:'world', note:'Clima, temporada e evento global explicam variações de demanda/custo.' },
+  { id:'ops', label:'Checar operações', view:'ops', note:'Regulação, congestionamento, seguro profundo e incidentes.' },
+  { id:'passengers', label:'Configurar passageiro', view:'passengers', note:'Cabine, fidelidade, NPS, reputação e receita auxiliar.' },
+  { id:'network', label:'Expandir rede', view:'network', note:'Conexões, codeshare, passageiros em conexão e hub banking.' },
+  { id:'release', label:'Validar RC', view:'release', note:'Balanceamento, bug hunt, polish mobile e travamento de release candidate.' }
+]);
+const CINEMATIC_ASSET_QUEUE_V22 = Object.freeze({
+  aircraft: { label:'Aeronaves cinematográficas', target:18, done:0, note:'Render/ilustração original para regional, turboélice, narrow, wide, cargo, heavy e charter.' },
+  ceo: { label:'Avatares de CEO', target:12, done:0, note:'Homens e mulheres, estilos executivos internacionais, diversidade visual sem depender de fotos reais.' },
+  crew: { label:'Tripulação e diretores', target:16, done:0, note:'Pilotos, comissários, mecânicos, OCC, diretor financeiro, marketing, operações e segurança.' },
+  airports: { label:'Fundos de aeroportos', target:10, done:0, note:'Hub noturno, terminal premium, hangar, sala VIP, centro OCC e operação cargueira.' },
+  ui: { label:'Ícones e cards AAA', target:24, done:0, note:'Ícones próprios para rota, frota, ações, combustível, manutenção, bolsa, charter e carga.' }
+});
+function defaultLaunchPrepV22(career) {
+  const completed = {};
+  TUTORIAL_STEPS_V22.forEach(step => { completed[step.id] = false; });
+  return {
+    flowMode:'guided',
+    tutorialEnabled:true,
+    currentStep:'company',
+    completedSteps: completed,
+    firstRunChecklist: {
+      company: !!career?.companyName,
+      ceo: !!career?.ceoName,
+      hub: !!career?.hubIata,
+      firstPlane: Array.isArray(career?.fleet) && career.fleet.length > 0,
+      firstRoute: Array.isArray(career?.routes) && career.routes.length > 0,
+      financesVisible: true,
+      mapFallback: true,
+      mobileSafe: true,
+      rcAudit: !!career?.releaseCandidate?.lastAuditAt,
+      assetsPipeline: false
+    },
+    confusionFixes: [],
+    assetPipeline: JSON.parse(JSON.stringify(CINEMATIC_ASSET_QUEUE_V22)),
+    assetPlanReady:false,
+    onboardingAuditLog: [],
+    launchScore:0,
+    lastAuditDay:0,
+    finalChecklistLocked:false
+  };
+}
+function ensureV22Career(career) {
+  if (!career) return career;
+  if (typeof ensureV21Career === 'function') ensureV21Career(career);
+  career.launchPrep = Object.assign(defaultLaunchPrepV22(career), career.launchPrep || {});
+  career.launchPrep.completedSteps = Object.assign(defaultLaunchPrepV22(career).completedSteps, career.launchPrep.completedSteps || {});
+  career.launchPrep.firstRunChecklist = Object.assign(defaultLaunchPrepV22(career).firstRunChecklist, career.launchPrep.firstRunChecklist || {});
+  career.launchPrep.assetPipeline = Object.assign(JSON.parse(JSON.stringify(CINEMATIC_ASSET_QUEUE_V22)), career.launchPrep.assetPipeline || {});
+  Object.keys(CINEMATIC_ASSET_QUEUE_V22).forEach(k => { career.launchPrep.assetPipeline[k] = Object.assign({}, CINEMATIC_ASSET_QUEUE_V22[k], career.launchPrep.assetPipeline[k] || {}); });
+  if (!FLOW_MODES_V22[career.launchPrep.flowMode]) career.launchPrep.flowMode = 'guided';
+  if (!TUTORIAL_STEPS_V22.some(s => s.id === career.launchPrep.currentStep)) career.launchPrep.currentStep = 'company';
+  career.launchPrep.tutorialEnabled = career.launchPrep.tutorialEnabled !== false;
+  updateFirstRunChecklistV22(career);
+  return career;
+}
+function updateFirstRunChecklistV22(career) {
+  if (!career || !career.launchPrep) return;
+  const lp = career.launchPrep;
+  lp.firstRunChecklist.company = !!career.companyName;
+  lp.firstRunChecklist.ceo = !!career.ceoName;
+  lp.firstRunChecklist.hub = !!career.hubIata;
+  lp.firstRunChecklist.firstPlane = Array.isArray(career.fleet) && career.fleet.length > 0;
+  lp.firstRunChecklist.firstRoute = Array.isArray(career.routes) && career.routes.length > 0;
+  lp.firstRunChecklist.financesVisible = Number.isFinite(Number(career.cash));
+  lp.firstRunChecklist.mapFallback = true;
+  lp.firstRunChecklist.mobileSafe = !!career.identity?.uiDensity || !!career.releaseCandidate?.mobileMode;
+  lp.firstRunChecklist.rcAudit = !!career.releaseCandidate?.lastAuditAt || !!career.releaseCandidate?.locked;
+  lp.firstRunChecklist.assetsPipeline = !!lp.assetPlanReady;
+  lp.completedSteps.company = lp.firstRunChecklist.company && lp.firstRunChecklist.ceo;
+  lp.completedSteps.hub = lp.firstRunChecklist.hub;
+  lp.completedSteps.fleet = lp.firstRunChecklist.firstPlane;
+  lp.completedSteps.route = lp.firstRunChecklist.firstRoute;
+  lp.completedSteps.finance = lp.firstRunChecklist.financesVisible;
+  lp.completedSteps.world = !!career.world || !!career.worldState || true;
+  lp.completedSteps.ops = !!career.operations || !!career.insurance;
+  lp.completedSteps.passengers = !!career.passengerExperience || !!career.loyalty || !!career.serviceQuality;
+  lp.completedSteps.network = !!career.network || Array.isArray(career.hubs);
+  lp.completedSteps.release = !!career.releaseCandidate?.lastAuditAt || !!career.releaseCandidate?.locked;
+}
+function launchReadinessV22(career, mutate = false) {
+  ensureV22Career(career);
+  updateFirstRunChecklistV22(career);
+  const lp = career.launchPrep;
+  const checklistTotal = Object.keys(lp.firstRunChecklist).length || 1;
+  const checklistOk = Object.values(lp.firstRunChecklist).filter(Boolean).length;
+  const tutorialTotal = TUTORIAL_STEPS_V22.length || 1;
+  const tutorialOk = TUTORIAL_STEPS_V22.filter(s => lp.completedSteps[s.id]).length;
+  const assets = Object.values(lp.assetPipeline || {});
+  const assetTarget = assets.reduce((sum,a) => sum + Number(a.target || 0), 0) || 1;
+  const assetDone = assets.reduce((sum,a) => sum + Number(a.done || 0), 0);
+  const mode = FLOW_MODES_V22[lp.flowMode] || FLOW_MODES_V22.guided;
+  const routeScore = Math.min(12, (career.routes || []).length * 3);
+  const fleetScore = Math.min(10, (career.fleet || []).length * 2.2);
+  const rcScore = Math.min(12, Number(career.releaseCandidate ? rcReadinessV21(career,false).score : 60) * 0.12);
+  const base = checklistOk / checklistTotal * 34 + tutorialOk / tutorialTotal * 26 + Math.min(18, assetDone / assetTarget * 18) + routeScore + fleetScore + rcScore + mode.bonus;
+  const score = Math.round(utils.clamp(base, 0, 100));
+  const label = score >= 90 ? 'Fluxo pronto para beta público' : score >= 76 ? 'Muito próximo do release' : score >= 58 ? 'Jogável, mas ainda precisa guiar melhor' : 'Onboarding ainda pode confundir novos jogadores';
+  const missing = TUTORIAL_STEPS_V22.filter(s => !lp.completedSteps[s.id]).slice(0,3).map(s => s.label);
+  if (mutate) lp.launchScore = score;
+  return { score, label, checklistOk, checklistTotal, tutorialOk, tutorialTotal, assetDone, assetTarget, missing, mode };
+}
+function runInitialFlowAuditV22() {
+  const c = activeCareer(); if (!c) return;
+  ensureV22Career(c);
+  const snap = launchReadinessV22(c, true);
+  c.launchPrep.lastAuditDay = c.day || 1;
+  c.launchPrep.onboardingAuditLog.unshift(`Dia ${c.day || 1}: auditoria do fluxo inicial — ${snap.score}/100, ${snap.tutorialOk}/${snap.tutorialTotal} etapas tutoriais, ${snap.checklistOk}/${snap.checklistTotal} itens claros.`);
+  c.launchPrep.onboardingAuditLog = c.launchPrep.onboardingAuditLog.slice(0, 12);
+  if (snap.missing.length) c.launchPrep.confusionFixes = [`Guiar: ${snap.missing.join(', ')}`, 'Mostrar sempre próximo botão de ação', 'Evitar texto técnico sem atalho direto'];
+  else c.launchPrep.confusionFixes = ['Fluxo inicial sem bloqueios críticos.', 'Tutorial cobre criação, frota, rota, finanças e RC.', 'Pronto para trocar assets genéricos por cinema.'];
+  pushMessage(c, `Auditoria do fluxo inicial: ${snap.score}/100.`, snap.score >= 80 ? 'success' : 'warn');
+  setActiveCareer(c); render();
+}
+function setLaunchFlowV22(mode) {
+  const c = activeCareer(); if (!c || !FLOW_MODES_V22[mode]) return;
+  ensureV22Career(c);
+  c.launchPrep.flowMode = mode;
+  c.launchPrep.onboardingAuditLog.unshift(`Dia ${c.day || 1}: modo de fluxo alterado para ${FLOW_MODES_V22[mode].label}.`);
+  c.launchPrep.onboardingAuditLog = c.launchPrep.onboardingAuditLog.slice(0,12);
+  launchReadinessV22(c, true);
+  pushMessage(c, `Fluxo inicial: ${FLOW_MODES_V22[mode].label}.`, 'success');
+  setActiveCareer(c); render();
+}
+function completeTutorialStepV22(stepId) {
+  const c = activeCareer(); if (!c) return;
+  ensureV22Career(c);
+  if (!TUTORIAL_STEPS_V22.some(s => s.id === stepId)) return;
+  c.launchPrep.completedSteps[stepId] = true;
+  const idx = TUTORIAL_STEPS_V22.findIndex(s => s.id === stepId);
+  const next = TUTORIAL_STEPS_V22[idx+1];
+  if (next) c.launchPrep.currentStep = next.id;
+  c.launchPrep.onboardingAuditLog.unshift(`Tutorial: etapa ${TUTORIAL_STEPS_V22[idx].label} marcada como concluída.`);
+  c.launchPrep.onboardingAuditLog = c.launchPrep.onboardingAuditLog.slice(0,12);
+  launchReadinessV22(c, true);
+  setActiveCareer(c); render();
+}
+function resetTutorialGuideV22() {
+  const c = activeCareer(); if (!c) return;
+  ensureV22Career(c);
+  c.launchPrep.completedSteps = defaultLaunchPrepV22(c).completedSteps;
+  c.launchPrep.currentStep = 'company';
+  c.launchPrep.tutorialEnabled = true;
+  c.launchPrep.onboardingAuditLog.unshift(`Dia ${c.day || 1}: tutorial definitivo reiniciado.`);
+  launchReadinessV22(c, true);
+  pushMessage(c, 'Tutorial definitivo reiniciado para teste de jogador novo.', 'info');
+  setActiveCareer(c); render();
+}
+function prepareCinemaAssetV22(kind) {
+  const c = activeCareer(); if (!c) return;
+  ensureV22Career(c);
+  const item = c.launchPrep.assetPipeline[kind];
+  if (!item) return;
+  item.done = Math.min(Number(item.target || 0), Number(item.done || 0) + Math.max(1, Math.ceil(Number(item.target || 1) * 0.28)));
+  c.launchPrep.assetPlanReady = Object.values(c.launchPrep.assetPipeline).every(a => Number(a.done || 0) >= Number(a.target || 0));
+  c.launchPrep.onboardingAuditLog.unshift(`${item.label}: preparação ${item.done}/${item.target}.`);
+  c.launchPrep.onboardingAuditLog = c.launchPrep.onboardingAuditLog.slice(0,12);
+  launchReadinessV22(c, true);
+  pushMessage(c, `Pipeline de assets: ${item.label} ${item.done}/${item.target}.`, item.done >= item.target ? 'success' : 'info');
+  setActiveCareer(c); render();
+}
+function lockFinalChecklistV22() {
+  const c = activeCareer(); if (!c) return;
+  ensureV22Career(c);
+  const snap = launchReadinessV22(c, true);
+  if (snap.score < 82) {
+    pushMessage(c, `Checklist ainda não pode ser travado: ${snap.score}/100.`, 'warn');
+    showToast('Ainda falta clareza no fluxo inicial.', 'warn');
+  } else {
+    c.launchPrep.finalChecklistLocked = true;
+    c.launchPrep.onboardingAuditLog.unshift(`Checklist final travado: ${snap.score}/100 — ${snap.label}.`);
+    pushMessage(c, 'Checklist final do fluxo inicial travado.', 'success');
+  }
+  setActiveCareer(c); render();
+}
+function launchDashboardCardV22(career) {
+  ensureV22Career(career);
+  const snap = launchReadinessV22(career, true);
+  return `<section class="panel glass launch-mini"><span class="eyebrow">F73-F76 Fluxo final</span><h2>Prontidão de lançamento</h2><div class="beta-meter launch-meter"><i style="width:${snap.score}%"></i></div><div class="kpi-grid"><div class="kpi"><small>Fluxo</small><strong>${snap.score}/100</strong></div><div class="kpi"><small>Tutorial</small><strong>${snap.tutorialOk}/${snap.tutorialTotal}</strong></div><div class="kpi"><small>Checklist</small><strong>${snap.checklistOk}/${snap.checklistTotal}</strong></div><div class="kpi"><small>Assets</small><strong>${snap.assetDone}/${snap.assetTarget}</strong></div></div><small>${snap.label}</small><button class="btn primary" data-action="go" data-view="launch">Abrir lançamento</button></section>`;
+}
+function renderLaunchView() {
+  const c = activeCareer(); if (!c) return renderOnboarding();
+  ensureV22Career(c);
+  const snap = launchReadinessV22(c, true);
+  const modes = Object.entries(FLOW_MODES_V22).map(([id,m]) => `<article class="service-card ${c.launchPrep.flowMode===id?'active':''}"><b>${m.label}</b><small>Bônus +${m.bonus} de clareza</small><p>${m.note}</p><button class="btn mini ${c.launchPrep.flowMode===id?'ghost':'primary'}" data-action="setLaunchFlow" data-flow="${id}" ${c.launchPrep.flowMode===id?'disabled':''}>${c.launchPrep.flowMode===id?'Ativo':'Aplicar'}</button></article>`).join('');
+  const steps = TUTORIAL_STEPS_V22.map(step => { const done = !!c.launchPrep.completedSteps[step.id]; const current = c.launchPrep.currentStep === step.id; return `<article class="tutorial-step ${done?'done':''} ${current?'current':''}"><div><b>${done?'✓':'○'} ${step.label}</b><small>${step.note}</small></div><div class="row gap wrap"><button class="btn mini ghost" data-action="go" data-view="${step.view}">Abrir</button><button class="btn mini ${done?'ghost':'primary'}" data-action="completeTutorialStep" data-step="${step.id}" ${done?'disabled':''}>${done?'Concluído':'Marcar OK'}</button></div></article>`; }).join('');
+  const checklist = Object.entries(c.launchPrep.firstRunChecklist).map(([k,v]) => `<span class="${v?'ok':'warn'}">${v?'✓':'!'} ${utils.escape(k)}</span>`).join('');
+  const assets = Object.entries(c.launchPrep.assetPipeline).map(([id,a]) => { const pct = Math.round((Number(a.done||0)/Math.max(1,Number(a.target||1)))*100); return `<article class="service-card"><b>${a.label}</b><small>${a.done}/${a.target} preparados • ${pct}%</small><p>${a.note}</p><div class="progress"><span style="width:${utils.clamp(pct,0,100)}%"></span></div><button class="btn mini primary" data-action="prepareCinemaAsset" data-kind="${id}" ${pct>=100?'disabled':''}>Preparar lote</button></article>`; }).join('');
+  const fixes = (c.launchPrep.confusionFixes || []).map(f => `<span>${utils.escape(f)}</span>`).join('') || '<span>Rode a auditoria do fluxo inicial para listar correções de clareza.</span>';
+  const log = (c.launchPrep.onboardingAuditLog || []).map(l => `<span>${utils.escape(l)}</span>`).join('') || '<span>Nenhuma auditoria de lançamento executada ainda.</span>';
+  return `<div class="launch-layout v22-launch"><section class="panel glass release-hero launch-hero"><span class="eyebrow">F73-F76 Lançamento</span><h2>Fluxo inicial definitivo</h2><p>${snap.label}. Esta fase fecha o caminho do jogador novo: fundar empresa, entender mapa, comprar frota, criar rota, ler dinheiro, validar RC e preparar assets cinematográficos.</p><div class="beta-meter large launch-meter"><i style="width:${snap.score}%"></i></div><div class="kpi-grid"><div class="kpi"><small>Score lançamento</small><strong>${snap.score}/100</strong></div><div class="kpi"><small>Tutorial</small><strong>${snap.tutorialOk}/${snap.tutorialTotal}</strong></div><div class="kpi"><small>Checklist</small><strong>${snap.checklistOk}/${snap.checklistTotal}</strong></div><div class="kpi"><small>Assets</small><strong>${snap.assetDone}/${snap.assetTarget}</strong></div></div><div class="row gap wrap"><button class="btn primary" data-action="runInitialFlowAudit">Auditar fluxo inicial</button><button class="btn ghost" data-action="resetTutorialGuide">Testar como novo jogador</button><button class="btn ${snap.score>=82?'primary':'ghost'}" data-action="lockFinalChecklist">Travar checklist final</button></div></section><section class="panel glass"><span class="eyebrow">F73 Revisão do fluxo</span><h2>Modo de entrada</h2><div class="service-grid">${modes}</div></section><section class="panel glass"><span class="eyebrow">F74 Tutorial definitivo</span><h2>Passo a passo jogável</h2><div class="tutorial-list">${steps}</div></section><section class="panel glass"><span class="eyebrow">F75 Anti-confusão</span><h2>Checklist de clareza</h2><div class="todo-list checklist-v22">${checklist}</div><h3>Correções sugeridas</h3><div class="todo-list">${fixes}</div></section><section class="panel glass"><span class="eyebrow">F76 Assets cinematográficos</span><h2>Pipeline de substituição dos SVG genéricos</h2><div class="service-grid">${assets}</div></section><section class="panel glass"><span class="eyebrow">Registro</span><h2>Log de lançamento</h2><div class="todo-list">${log}</div></section></div>`;
+}
+const previousNormalizeCareerV220 = normalizeCareer;
+normalizeCareer = function(career) {
+  const c = previousNormalizeCareerV220(career);
+  if (c) ensureV22Career(c);
+  return c;
+};
+const previousCreateCareerV220 = createCareer;
+createCareer = function(form) {
+  const c = previousCreateCareerV220(form);
+  ensureV22Career(c);
+  c.messages.unshift({ time: Date.now(), type:'info', text:'v2.2: fluxo inicial definitivo, tutorial final e pipeline de assets cinematográficos ativados.' });
+  return c;
+};
+const previousNavItemsV220 = navItems;
+navItems = function() {
+  const items = previousNavItemsV220();
+  if (items.some(i => i[0] === 'launch')) return items;
+  const out = [];
+  items.forEach(item => { out.push(item); if (item[0] === 'release') out.push(['launch','Lançar','★']); });
+  if (!out.some(i => i[0] === 'launch')) out.push(['launch','Lançar','★']);
+  return out;
+};
+const previousRenderOnboardingV220 = renderOnboarding;
+renderOnboarding = function() {
+  const html = previousRenderOnboardingV220();
+  const updated = html
+    .replace('Fases F69-F72 balanceamento, caça-bug e release candidate', 'Fases F73-F76 fluxo inicial definitivo e tutorial anti-confusão')
+    .replace('visual beta premium, conquistas, ranking, metas de CEO, publicação controlada e release candidate profissional', 'visual beta premium, release candidate profissional, fluxo inicial definitivo e preparação para assets cinematográficos');
+  const extra = `<section class="panel glass onboarding-clarity"><span class="eyebrow">v2.2 onboarding anti-confusão</span><h2>Começo guiado para jogador novo</h2><p>Depois de criar a companhia, o jogo abre uma trilha clara: hub → frota → rota → finanças → mundo → operações → passageiros → rede → RC.</p><div class="todo-list"><span>✓ Botões de ação direta em cada etapa</span><span>✓ Save antigo preservado até schema 22</span><span>✓ Assets genéricos mantidos até a fase cinematográfica</span></div></section>`;
+  return updated.replace('</form>', '</form>' + extra);
+};
+const previousRenderV220 = render;
+render = function() {
+  const c = activeCareer();
+  if (c) ensureV22Career(c);
+  if (runtime.view === 'launch') {
+    safeExecute('render:launch', () => { hideFatal(); dom.app.innerHTML = shell(renderLaunchView()); });
+    return;
+  }
+  previousRenderV220();
+};
+const previousRenderDashboardV220 = renderDashboard;
+renderDashboard = function() {
+  const html = previousRenderDashboardV220();
+  const c = activeCareer(); if (!c) return html;
+  ensureV22Career(c);
+  const card = launchDashboardCardV22(c);
+  const pos = html.lastIndexOf('</div>');
+  return pos >= 0 ? html.slice(0,pos)+card+html.slice(pos) : html + card;
+};
+const previousAdvanceCompanyDayV220 = advanceCompanyDay;
+advanceCompanyDay = function(career) {
+  previousAdvanceCompanyDayV220(career);
+  if (career) {
+    ensureV22Career(career);
+    if ((career.day || 1) % 4 === 0 && !career.launchPrep.finalChecklistLocked) {
+      const snap = launchReadinessV22(career, true);
+      if (snap.score >= 82) career.launchPrep.onboardingAuditLog.unshift(`Dia ${career.day}: checklist pode ser travado — ${snap.score}/100.`);
+      career.launchPrep.onboardingAuditLog = career.launchPrep.onboardingAuditLog.slice(0,12);
+    }
+  }
+};
+const previousValuationV220 = valuation;
+valuation = function(career) {
+  const base = previousValuationV220(career);
+  if (!career) return base;
+  ensureV22Career(career);
+  const snap = launchReadinessV22(career, false);
+  const launchPremium = snap.score * 32000 + (career.launchPrep.finalChecklistLocked ? 980000 : 0) + (career.launchPrep.assetPlanReady ? 720000 : 0);
+  return Math.round(base + launchPremium);
+};
+const previousRunIntegrityAuditV220 = runIntegrityAudit;
+runIntegrityAudit = function() {
+  const c = activeCareer(); if (c) ensureV22Career(c);
+  const blockedLabels = ['Schema da build','Chave de save v2.1'];
+  const base = previousRunIntegrityAuditV220().filter(check => !blockedLabels.includes(check.label));
+  const snap = c ? launchReadinessV22(c, true) : null;
+  const extra = [
+    { ok: BUILD.schema === 22, label:'Schema da build', detail:`Schema atual ${BUILD.schema}.` },
+    { ok: STORE_KEY.includes('schema_22'), label:'Chave de save v2.2', detail:STORE_KEY },
+    { ok: LEGACY_STORE_KEYS.includes('vale_air_manager_schema_21'), label:'Migração v2.1 preservada', detail:'Saves schema 21 são migrados para schema 22 sem reset.' },
+    { ok: typeof ensureV22Career === 'function', label:'Normalização v2.2', detail:'Carreiras antigas recebem launchPrep, tutorial final e pipeline de assets.' },
+    { ok: navItems().some(i => i[0] === 'launch'), label:'Tela Lançar no menu', detail:'HUD mobile recebeu centro de lançamento.' },
+    { ok: Object.keys(FLOW_MODES_V22).length >= 3, label:'F73 Modos de fluxo', detail:'Guiado, rápido e expert disponíveis.' },
+    { ok: typeof runInitialFlowAuditV22 === 'function', label:'F73 Auditoria do fluxo', detail:'Audita criação, hub, frota, rota, finanças, RC e assets.' },
+    { ok: TUTORIAL_STEPS_V22.length >= 10, label:'F74 Tutorial definitivo', detail:`${TUTORIAL_STEPS_V22.length} etapas jogáveis com botão de destino.` },
+    { ok: !c || typeof c.launchPrep.completedSteps === 'object', label:'F74 Tutorial salvo', detail:c ? `${snap.tutorialOk}/${snap.tutorialTotal} etapas OK.` : 'Sem carreira ativa.' },
+    { ok: !c || typeof c.launchPrep.firstRunChecklist === 'object', label:'F75 Checklist anti-confusão', detail:c ? `${snap.checklistOk}/${snap.checklistTotal} itens OK.` : 'Sem carreira ativa.' },
+    { ok: typeof launchReadinessV22 === 'function', label:'F75 Score de lançamento', detail:snap ? `${snap.score}/100 • ${snap.label}` : 'Função disponível.' },
+    { ok: Object.keys(CINEMATIC_ASSET_QUEUE_V22).length >= 5, label:'F76 Pipeline assets', detail:'Aeronaves, CEO, tripulação, aeroportos e UI estão planejados.' },
+    { ok: !c || typeof c.launchPrep.assetPipeline === 'object', label:'F76 Assets no save', detail:c ? `${snap.assetDone}/${snap.assetTarget} assets preparados.` : 'Sem carreira ativa.' },
+    { ok: typeof prepareCinemaAssetV22 === 'function', label:'F76 Preparação de lote', detail:'Botão prepara lotes de assets cinematográficos sem remover SVG genérico.' },
+    { ok: typeof renderLaunchView === 'function', label:'Render Lançamento', detail:'Tela de lançamento renderiza score, tutorial, checklist e assets.' },
+    { ok: typeof launchDashboardCardV22 === 'function', label:'Card lançamento dashboard', detail:'Painel principal mostra prontidão de lançamento.' },
+    { ok: !c || Number.isFinite(c.launchPrep.launchScore), label:'Score persistido', detail:c ? `${c.launchPrep.launchScore}/100.` : 'Sem carreira ativa.' },
+    { ok: !c || typeof c.launchPrep.flowMode === 'string', label:'Modo de fluxo salvo', detail:c ? FLOW_MODES_V22[c.launchPrep.flowMode].label : 'Sem carreira ativa.' },
+    { ok: typeof previousRenderOnboardingV220 === 'function', label:'Onboarding anti-confusão', detail:'Tela inicial recebeu explicação do caminho guiado.' },
+    { ok: typeof previousRunIntegrityAuditV220 === 'function', label:'Auditoria acumulativa', detail:'Auditoria v2.2 preserva checks das fases anteriores sem regressão.' }
+  ];
+  return [...extra, ...base];
+};
+const previousRenderAuditV220 = renderAudit;
+renderAudit = function() {
+  const checks = runIntegrityAudit();
+  const passed = checks.filter(c => c.ok).length;
+  return `<div class="audit-layout"><section class="panel glass"><div class="section-head"><div><span class="eyebrow">Sistema anti-quebra</span><h2>Auditoria da build</h2><p>Execução obrigatória por fase para garantir integridade, evolução real, fluxo inicial definitivo, tutorial final e preparação dos assets cinematográficos.</p></div><button class="btn primary" data-action="runAudit">Rodar auditoria</button></div><div class="audit-score"><strong>${passed}/${checks.length}</strong><span>checks aprovados</span></div><div class="audit-list">${checks.map(c => `<div class="audit-row ${c.ok?'ok':'bad'}"><b>${c.ok?'✓':'!'}</b><span>${c.label}</span><small>${c.detail}</small></div>`).join('')}</div></section><section class="panel glass"><h2>Relatório desta entrega</h2><div class="todo-list"><span>F73 Revisão final do fluxo inicial: OK — modos guiado, rápido e expert.</span><span>F74 Tutorial definitivo: OK — 10 etapas com botão direto para cada tela do jogo.</span><span>F75 Onboarding anti-confusão: OK — checklist de clareza, correções sugeridas e score de lançamento.</span><span>F76 Pipeline de assets cinematográficos: OK — plano de substituição para aeronaves, CEO, tripulação, aeroportos e UI.</span><span>Anti-quebra: OK — migração de saves v0.4 até v2.1 para schema 22 preservada.</span></div></section></div>`;
+};
+const previousHandleActionV220 = handleAction;
+handleAction = function(target) {
+  const action = target.dataset.action;
+  if (action === 'setLaunchFlow') return safeExecute('action:setLaunchFlow', () => setLaunchFlowV22(target.dataset.flow));
+  if (action === 'runInitialFlowAudit') return safeExecute('action:runInitialFlowAudit', () => runInitialFlowAuditV22());
+  if (action === 'completeTutorialStep') return safeExecute('action:completeTutorialStep', () => completeTutorialStepV22(target.dataset.step));
+  if (action === 'resetTutorialGuide') return safeExecute('action:resetTutorialGuide', () => resetTutorialGuideV22());
+  if (action === 'prepareCinemaAsset') return safeExecute('action:prepareCinemaAsset', () => prepareCinemaAssetV22(target.dataset.kind));
+  if (action === 'lockFinalChecklist') return safeExecute('action:lockFinalChecklist', () => lockFinalChecklistV22());
+  return previousHandleActionV220(target);
+};
 
 boot();

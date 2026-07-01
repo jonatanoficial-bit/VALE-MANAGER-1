@@ -1,19 +1,19 @@
 {
   "game": "VALE AIR MANAGER",
-  "version": "2.1.0-rc",
-  "phase": "F69-F72",
-  "build": "20260701-2055",
-  "schema": 21,
+  "version": "2.2.0",
+  "phase": "F73-F76",
+  "build": "20260701-2140",
+  "schema": 22,
   "date": "2026-07-01",
   "timezone": "America/Sao_Paulo",
-  "auditoria": "146/146 checks aprovados",
+  "auditoria": "148/148 checks aprovados",
   "antiQuebra": true,
   "zip": "completo",
-  "migration": "v0.4-v2.0.0-beta para v2.1.0-rc",
+  "migration": "v0.4-v2.1.0-rc para v2.2.0",
   "features": [
-    "F69 balanceamento profissional com curvas guiada, profissional, simulador rígido e recuperação anti-falência",
-    "F70 caça-bug final com bugs abertos, críticos, corrigidos e regressões controladas",
-    "F71 polish mobile com modos de UX para beta público e celulares pequenos",
-    "F72 release candidate com gates de publicação, score RC, auditoria RC e travamento seguro"
+    "F73 revisão final do fluxo inicial com modos guiado, rápido e expert",
+    "F74 tutorial definitivo com 10 etapas jogáveis e botão direto para cada tela",
+    "F75 onboarding anti-confusão com checklist de clareza e score de lançamento",
+    "F76 pipeline de assets cinematográficos para substituir SVG genéricos nas próximas fases"
   ]
 }

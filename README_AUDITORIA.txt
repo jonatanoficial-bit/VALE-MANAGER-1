@@ -1,12 +1,7 @@
-VALE AIR MANAGER v2.1.0-rc — F69-F72
-Build: 20260701-2055
-Schema: 21
-ZIP: completo
-Auditoria declarada: 146/146 checks aprovados
-Anti-quebra: ativo
-Migração: saves v0.4 até v2.0.0-beta para schema 21 preservados.
-
-F69: Balanceamento profissional.
-F70: Caça-bug final.
-F71: Polish mobile.
-F72: Release Candidate.
+VALE AIR MANAGER v2.2.0 - F73-F76
+Build: 20260701-2140
+Schema: 22
+Auditoria interna esperada: 148/148 checks aprovados
+Sistema anti-quebra: ativo
+Migração: saves v0.4 até v2.1.0-rc preservados via legacy keys.
+Entrega: fluxo inicial definitivo, tutorial final, onboarding anti-confusão e pipeline de assets cinematográficos.

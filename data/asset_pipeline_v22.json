@@ -1,0 +1,26 @@
+{
+  "version": "2.2.0",
+  "build": "20260701-2140",
+  "packs": {
+    "aircraft": {
+      "target": 18,
+      "description": "Aeronaves cinematográficas originais para frota comercial, carga e charter."
+    },
+    "ceo": {
+      "target": 12,
+      "description": "Avatares executivos selecionáveis para o jogador."
+    },
+    "crew": {
+      "target": 16,
+      "description": "Pilotos, comissários, mecânicos, OCC e diretores."
+    },
+    "airports": {
+      "target": 10,
+      "description": "Fundos de aeroportos, hangar, sala VIP, terminal e OCC."
+    },
+    "ui": {
+      "target": 24,
+      "description": "Ícones e cards premium para mobile/desktop."
+    }
+  }
+}

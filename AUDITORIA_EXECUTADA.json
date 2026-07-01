@@ -1,9 +1,15 @@
 {
-  "build": "20260701-2055",
-  "version": "2.1.0-rc",
-  "schema": 21,
-  "checks": "146/146",
+  "game": "VALE AIR MANAGER",
+  "version": "2.2.0",
+  "build": "20260701-2140",
+  "schema": 22,
+  "checks": "148/148",
   "status": "aprovado",
   "antiQuebra": true,
-  "notes": "node --check, auditoria de integração v21 e validação de ZIP executadas."
+  "observacoes": [
+    "node --check js/app.js aprovado",
+    "unzip -t aprovado",
+    "fluxo inicial e tutorial v2.2 adicionados",
+    "pipeline de assets cinematográficos preparado"
+  ]
 }

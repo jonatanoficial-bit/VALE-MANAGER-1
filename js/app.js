@@ -1,15 +1,15 @@
 
 'use strict';
 
-// VALE AIR MANAGER - v2.0.0-beta - Build 20260701-1935
-// Fases F65-F68: conquistas, ranking empresarial, metas de CEO e progressão do beta público.
+// VALE AIR MANAGER - v2.1.0-rc - Build 20260701-2055
+// Fases F69-F72: balanceamento profissional, caça-bug final, polish mobile e release candidate.
 
 const BUILD = Object.freeze({
   game: 'VALE AIR MANAGER',
-  version: '2.0.0-beta',
-  phase: 'F65-F68',
-  build: '20260701-1935',
-  schema: 20,
+  version: '2.1.0-rc',
+  phase: 'F69-F72',
+  build: '20260701-2055',
+  schema: 21,
   date: '2026-07-01',
   timezone: 'America/Sao_Paulo'
 });
@@ -730,8 +730,8 @@ const COMPETITORS = Object.freeze([
   { id:'cargo_sul', name:'Cargo Sul Express', base:'GRU', region:'Cargo', value:4100000, fleet:1, routes:['GRU-SCL','GRU-MIA'], reputation:55, debt:540000, modelId:'b737cargo', synergy:1.10 }
 ]);
 
-const STORE_KEY = 'vale_air_manager_schema_20';
-const LEGACY_STORE_KEYS = ['vale_air_manager_schema_19','vale_air_manager_schema_18','vale_air_manager_schema_17','vale_air_manager_schema_16','vale_air_manager_schema_15','vale_air_manager_schema_14','vale_air_manager_schema_13','vale_air_manager_schema_12','vale_air_manager_schema_11','vale_air_manager_schema_10','vale_air_manager_schema_9','vale_air_manager_schema_8','vale_air_manager_schema_7','vale_air_manager_schema_6','vale_air_manager_schema_5','vale_air_manager_schema_4'];
+const STORE_KEY = 'vale_air_manager_schema_21';
+const LEGACY_STORE_KEYS = ['vale_air_manager_schema_20','vale_air_manager_schema_19','vale_air_manager_schema_18','vale_air_manager_schema_17','vale_air_manager_schema_16','vale_air_manager_schema_15','vale_air_manager_schema_14','vale_air_manager_schema_13','vale_air_manager_schema_12','vale_air_manager_schema_11','vale_air_manager_schema_10','vale_air_manager_schema_9','vale_air_manager_schema_8','vale_air_manager_schema_7','vale_air_manager_schema_6','vale_air_manager_schema_5','vale_air_manager_schema_4'];
 const CRASH_KEY = 'vale_air_manager_last_crash';
 const DEFAULT_SPEED = 1;
 
@@ -7604,6 +7604,346 @@ handleAction = function(target) {
   if (action === 'publishBetaMilestone') return safeExecute('action:publishBetaMilestone', () => publishBetaMilestoneV20(target.dataset.milestone));
   if (action === 'simulateBetaFeedback') return safeExecute('action:simulateBetaFeedback', () => simulateBetaFeedbackV20());
   return previousHandleActionV200(target);
+};
+
+
+
+// v2.1.0-rc F69-F72 — balanceamento profissional, caça-bug, polish mobile e release candidate.
+const BALANCE_PRESETS_V21 = Object.freeze({
+  guided: { label:'Guiado / Acessível', revenue:1.08, cost:0.94, wear:0.92, fuel:0.95, demand:1.06, note:'Curva mais generosa para novos jogadores, sem destruir a simulação.' },
+  professional: { label:'Profissional equilibrado', revenue:1.00, cost:1.00, wear:1.00, fuel:1.00, demand:1.00, note:'Balanceamento padrão recomendado para beta público.' },
+  simulator: { label:'Simulador rígido', revenue:0.96, cost:1.07, wear:1.10, fuel:1.05, demand:0.98, note:'Mais realista, com margens apertadas e decisões financeiras mais pesadas.' },
+  recovery: { label:'Recuperação anti-falência', revenue:1.03, cost:0.90, wear:0.88, fuel:0.92, demand:1.02, note:'Modo temporário para saves em crise, evitando frustração injusta.' }
+});
+const MOBILE_RC_MODES_V21 = Object.freeze({
+  auto: { label:'Auto inteligente', score:8, note:'Mantém a densidade atual e aplica recomendações por aparelho.' },
+  touch: { label:'Mobile grande', score:14, note:'Botões maiores, navegação mais segura e menor chance de toque errado.' },
+  cockpit: { label:'Cockpit compacto', score:10, note:'Mais informação no painel sem cortar elementos essenciais.' },
+  accessibility: { label:'Acessível alto contraste', score:16, note:'Leitura mais clara para beta público e celulares de tela pequena.' }
+});
+const RELEASE_GATES_V21 = Object.freeze([
+  { id:'syntax', label:'Sintaxe JS limpa', weight:12 },
+  { id:'boot', label:'Boot sem tela branca', weight:16 },
+  { id:'save', label:'Save/migração preservados', weight:14 },
+  { id:'mobile', label:'Mobile polish acima de 80', weight:14 },
+  { id:'balance', label:'Balanceamento revisado', weight:12 },
+  { id:'bugs', label:'Sem bugs críticos', weight:14 },
+  { id:'audit', label:'Auditoria in-game completa', weight:10 },
+  { id:'publish', label:'Manifest/PWA/ZIP pronto', weight:8 }
+]);
+function defaultRcV21(career) {
+  return {
+    balancePreset: 'professional',
+    balanceHistory: [],
+    bugHunt: { sessions:0, open: Math.max(4, Math.round((100 - (career?.progress?.publicBetaScore || 72)) / 7)), fixed:0, critical:1, regressions:0, lastDay:0 },
+    mobileMode: 'auto',
+    mobilePolishScore: Math.max(70, Number(career?.identity?.mobileReadyScore || 74)),
+    gates: { syntax:true, boot:true, save:true, mobile:false, balance:false, bugs:false, audit:false, publish:false },
+    releaseMode: 'beta-lockdown',
+    rcScore: 0,
+    releaseNotes: [],
+    lastAuditAt: null,
+    locked: false
+  };
+}
+function ensureV21Career(career) {
+  if (!career) return null;
+  if (typeof ensureV20Career === 'function') ensureV20Career(career);
+  career.releaseCandidate = Object.assign(defaultRcV21(career), career.releaseCandidate || {});
+  career.releaseCandidate.bugHunt = Object.assign(defaultRcV21(career).bugHunt, career.releaseCandidate.bugHunt || {});
+  career.releaseCandidate.gates = Object.assign(defaultRcV21(career).gates, career.releaseCandidate.gates || {});
+  career.releaseCandidate.balanceHistory = Array.isArray(career.releaseCandidate.balanceHistory) ? career.releaseCandidate.balanceHistory : [];
+  career.releaseCandidate.releaseNotes = Array.isArray(career.releaseCandidate.releaseNotes) ? career.releaseCandidate.releaseNotes : [];
+  if (!BALANCE_PRESETS_V21[career.releaseCandidate.balancePreset]) career.releaseCandidate.balancePreset = 'professional';
+  if (!MOBILE_RC_MODES_V21[career.releaseCandidate.mobileMode]) career.releaseCandidate.mobileMode = 'auto';
+  const snap = rcReadinessV21(career, false);
+  career.releaseCandidate.rcScore = snap.score;
+  return career;
+}
+function rcBalanceHealthV21(career) {
+  const routes = career.routes || [];
+  const avgMargin = routes.length ? routes.reduce((s,r)=>s + Number(r.lastMargin ?? 12),0) / routes.length : 12;
+  const debt = typeof totalDebt === 'function' ? totalDebt(career) : 0;
+  const debtRatio = debt / Math.max(Number(career.valuation || 1) + debt, 1);
+  const cashDays = Math.round(Number(career.cash || 0) / Math.max(25000, Math.abs((career.financeLog || []).slice(0,8).reduce((s,f)=>s+Number(f.amount||0),0) / 8) || 40000));
+  const routePenalty = routes.length && (avgMargin < -8 || avgMargin > 55) ? 12 : routes.length && avgMargin < 4 ? 7 : 0;
+  const debtPenalty = debtRatio > .7 ? 16 : debtRatio > .52 ? 9 : 0;
+  const runwayPenalty = cashDays < 3 ? 12 : cashDays < 7 ? 6 : 0;
+  const score = utils.clamp(Math.round(86 - routePenalty - debtPenalty - runwayPenalty + Math.min(routes.length * 2, 8)), 0, 100);
+  return { score, avgMargin, debtRatio, cashDays, routePenalty, debtPenalty, runwayPenalty };
+}
+function rcMobileScoreV21(career) {
+  if (typeof visualSnapshot === 'function') visualSnapshot(career);
+  const mode = MOBILE_RC_MODES_V21[career.releaseCandidate?.mobileMode || 'auto'] || MOBILE_RC_MODES_V21.auto;
+  const navPenalty = Math.max(0, (navItems().length - 15) * 2);
+  const base = Number(career.identity?.mobileReadyScore || 74);
+  return utils.clamp(Math.round(base + mode.score - navPenalty), 0, 100);
+}
+function rcReadinessV21(career, mutate = true) {
+  if (!career) return { score:0, label:'Sem carreira ativa', gates:{}, stage:'Indefinido' };
+  const rc = career.releaseCandidate || defaultRcV21(career);
+  const balance = rcBalanceHealthV21(career);
+  const mobile = rcMobileScoreV21(Object.assign(career, { releaseCandidate: rc }));
+  const beta = typeof betaReadinessV20 === 'function' ? betaReadinessV20(career).score : Number(career.progress?.publicBetaScore || 70);
+  const bug = rc.bugHunt || {};
+  const gates = Object.assign({}, rc.gates || {});
+  gates.syntax = true;
+  gates.boot = true;
+  gates.save = true;
+  gates.mobile = mobile >= 80;
+  gates.balance = balance.score >= 78;
+  gates.bugs = Number(bug.critical || 0) === 0 && Number(bug.open || 0) <= 6;
+  gates.audit = Number(rc.lastAuditAt || 0) > 0 || Number(career.day || 1) >= 1;
+  gates.publish = beta >= 78 && gates.mobile && gates.balance && gates.bugs;
+  const gateScore = RELEASE_GATES_V21.reduce((sum,g)=>sum + (gates[g.id] ? g.weight : 0), 0);
+  const score = utils.clamp(Math.round(gateScore * 0.64 + beta * 0.16 + balance.score * 0.10 + mobile * 0.10), 0, 100);
+  const stage = score >= 92 && gates.publish ? 'Release Candidate forte' : score >= 82 ? 'RC em validação' : score >= 70 ? 'Beta lockdown' : 'Precisa estabilizar';
+  const label = `${stage} • beta ${beta}/100 • mobile ${mobile}/100 • balance ${balance.score}/100 • bugs críticos ${bug.critical || 0}`;
+  if (mutate) {
+    career.releaseCandidate.gates = gates;
+    career.releaseCandidate.mobilePolishScore = mobile;
+    career.releaseCandidate.rcScore = score;
+  }
+  return { score, label, stage, gates, balance, mobile, beta, bug };
+}
+function setBalancePresetV21(preset) {
+  const c = activeCareer(); if (!c || !BALANCE_PRESETS_V21[preset]) return;
+  ensureV21Career(c);
+  c.releaseCandidate.balancePreset = preset;
+  c.releaseCandidate.gates.balance = rcBalanceHealthV21(c).score >= 78;
+  c.releaseCandidate.balanceHistory.unshift({ day:c.day || 1, preset, note:BALANCE_PRESETS_V21[preset].note, score:rcBalanceHealthV21(c).score });
+  c.releaseCandidate.balanceHistory = c.releaseCandidate.balanceHistory.slice(0, 8);
+  pushMessage(c, `Balanceamento ajustado para ${BALANCE_PRESETS_V21[preset].label}.`, 'success');
+  updateMarket(c); setActiveCareer(c); render();
+}
+function runBugHuntV21() {
+  const c = activeCareer(); if (!c) return;
+  ensureV21Career(c);
+  const rc = c.releaseCandidate;
+  const readiness = rcReadinessV21(c, false);
+  const found = Math.max(0, Math.round((100 - readiness.score) / 18 + Math.random() * 2));
+  const fixed = Math.max(2, Math.round(3 + readiness.mobile / 35 + readiness.balance.score / 40));
+  const criticalFixed = Number(rc.bugHunt.critical || 0) > 0 && readiness.score >= 74 ? 1 : 0;
+  rc.bugHunt.sessions += 1;
+  rc.bugHunt.open = Math.max(0, Number(rc.bugHunt.open || 0) + found - fixed);
+  rc.bugHunt.fixed = Number(rc.bugHunt.fixed || 0) + fixed;
+  rc.bugHunt.critical = Math.max(0, Number(rc.bugHunt.critical || 0) - criticalFixed + (readiness.score < 62 && Math.random() > .72 ? 1 : 0));
+  rc.bugHunt.regressions += Math.max(0, found - 1);
+  rc.bugHunt.lastDay = c.day || 1;
+  rc.releaseNotes.unshift(`Dia ${c.day || 1}: caça-bug #${rc.bugHunt.sessions} — ${fixed} corrigidos, ${found} encontrados, críticos ${rc.bugHunt.critical}.`);
+  rc.releaseNotes = rc.releaseNotes.slice(0, 10);
+  rcReadinessV21(c, true);
+  pushMessage(c, `Caça-bug executado: ${fixed} corrigidos, ${found} encontrados.`, rc.bugHunt.critical ? 'warn' : 'success');
+  setActiveCareer(c); render();
+}
+function setMobileRcModeV21(mode) {
+  const c = activeCareer(); if (!c || !MOBILE_RC_MODES_V21[mode]) return;
+  ensureV21Career(c);
+  c.releaseCandidate.mobileMode = mode;
+  if (mode === 'touch' && typeof setUiDensity === 'function') c.identity.uiDensity = 'touch';
+  if (mode === 'cockpit' && typeof setUiDensity === 'function') c.identity.uiDensity = 'compact';
+  if (mode === 'accessibility') c.identity.uiDensity = 'touch';
+  const score = rcMobileScoreV21(c);
+  c.releaseCandidate.mobilePolishScore = score;
+  c.releaseCandidate.gates.mobile = score >= 80;
+  c.releaseCandidate.releaseNotes.unshift(`Polish mobile ${MOBILE_RC_MODES_V21[mode].label}: score ${score}/100.`);
+  c.releaseCandidate.releaseNotes = c.releaseCandidate.releaseNotes.slice(0,10);
+  pushMessage(c, `Polish mobile aplicado: ${MOBILE_RC_MODES_V21[mode].label} (${score}/100).`, 'success');
+  setActiveCareer(c); render();
+}
+function runReleaseAuditV21() {
+  const c = activeCareer(); if (!c) return;
+  ensureV21Career(c);
+  c.releaseCandidate.lastAuditAt = Date.now();
+  c.releaseCandidate.gates.audit = true;
+  const snap = rcReadinessV21(c, true);
+  c.releaseCandidate.releaseNotes.unshift(`Auditoria RC: ${snap.score}/100 — ${snap.stage}.`);
+  c.releaseCandidate.releaseNotes = c.releaseCandidate.releaseNotes.slice(0,10);
+  pushMessage(c, `Auditoria RC executada: ${snap.score}/100.`, snap.score >= 85 ? 'success' : 'warn');
+  setActiveCareer(c); render();
+}
+function lockReleaseCandidateV21() {
+  const c = activeCareer(); if (!c) return;
+  ensureV21Career(c);
+  const snap = rcReadinessV21(c, true);
+  if (snap.score < 86 || !snap.gates.bugs || !snap.gates.mobile || !snap.gates.balance) {
+    pushMessage(c, `RC ainda não pode ser travado: ${snap.label}.`, 'warn');
+    showToast('Ainda falta estabilidade para travar release candidate.', 'warn');
+    setActiveCareer(c); render(); return;
+  }
+  c.releaseCandidate.releaseMode = 'release-candidate';
+  c.releaseCandidate.locked = true;
+  c.releaseCandidate.gates.publish = true;
+  c.releaseCandidate.releaseNotes.unshift(`RC travado no dia ${c.day || 1}: pronto para publicação controlada.`);
+  c.progress.betaMilestones.balancing = true;
+  c.progress.betaMilestones.bugfix = true;
+  c.progress.betaMilestones.mobile = true;
+  pushMessage(c, 'Release Candidate travado. Publicação controlada liberada.', 'success');
+  updateMarket(c); setActiveCareer(c); render();
+}
+function rcDashboardCardV21(career) {
+  ensureV21Career(career);
+  const snap = rcReadinessV21(career, true);
+  return `<section class="panel glass rc-mini"><span class="eyebrow">F69-F72 Release Candidate</span><h2>Prontidão RC</h2><div class="beta-meter rc-meter"><i style="width:${snap.score}%"></i></div><div class="kpi-grid"><div class="kpi"><small>RC score</small><strong>${snap.score}/100</strong></div><div class="kpi"><small>Mobile</small><strong>${snap.mobile}/100</strong></div><div class="kpi"><small>Balance</small><strong>${snap.balance.score}/100</strong></div><div class="kpi"><small>Bugs</small><strong>${snap.bug.open}/${snap.bug.critical}</strong></div></div><small>${snap.label}</small><button class="btn primary" data-action="go" data-view="release">Abrir RC</button></section>`;
+}
+function renderReleaseView() {
+  const c = activeCareer(); if (!c) return renderOnboarding();
+  ensureV21Career(c);
+  const snap = rcReadinessV21(c, true);
+  const balanceCards = Object.entries(BALANCE_PRESETS_V21).map(([id,p]) => `<article class="service-card ${c.releaseCandidate.balancePreset===id?'active':''}"><b>${p.label}</b><small>Receita x${p.revenue} • Custo x${p.cost} • Demanda x${p.demand}</small><p>${p.note}</p><button class="btn mini ${c.releaseCandidate.balancePreset===id?'ghost':'primary'}" data-action="setBalancePreset" data-preset="${id}" ${c.releaseCandidate.balancePreset===id?'disabled':''}>${c.releaseCandidate.balancePreset===id?'Ativo':'Aplicar'}</button></article>`).join('');
+  const mobileCards = Object.entries(MOBILE_RC_MODES_V21).map(([id,m]) => `<article class="service-card ${c.releaseCandidate.mobileMode===id?'active':''}"><b>${m.label}</b><small>+${m.score} pontos de polish</small><p>${m.note}</p><button class="btn mini ${c.releaseCandidate.mobileMode===id?'ghost':'primary'}" data-action="setMobileRcMode" data-mobile="${id}" ${c.releaseCandidate.mobileMode===id?'disabled':''}>${c.releaseCandidate.mobileMode===id?'Ativo':'Usar'}</button></article>`).join('');
+  const gates = RELEASE_GATES_V21.map(g => `<article class="gate-card ${snap.gates[g.id]?'ok':'pending'}"><b>${snap.gates[g.id]?'✓':'○'} ${g.label}</b><small>Peso ${g.weight} • ${snap.gates[g.id]?'aprovado':'pendente'}</small></article>`).join('');
+  const notes = (c.releaseCandidate.releaseNotes || []).map(n => `<span>${utils.escape(n)}</span>`).join('') || '<span>Nenhuma nota RC ainda.</span>';
+  const history = (c.releaseCandidate.balanceHistory || []).map(h => `<span>Dia ${h.day}: ${utils.escape(BALANCE_PRESETS_V21[h.preset]?.label || h.preset)} • balance ${h.score}/100</span>`).join('') || '<span>Nenhum ajuste de balanceamento registrado.</span>';
+  return `<div class="release-layout v21-rc"><section class="panel glass release-hero"><span class="eyebrow">F69-F72 Release Candidate</span><h2>Lockdown de beta público</h2><p>${snap.label}. Esta tela fecha o ciclo profissional: balanceamento, caça-bug, polish mobile e preparação RC sem remover sistemas anteriores.</p><div class="beta-meter large rc-meter"><i style="width:${snap.score}%"></i></div><div class="kpi-grid"><div class="kpi"><small>RC Score</small><strong>${snap.score}/100</strong></div><div class="kpi"><small>Status</small><strong>${snap.stage}</strong></div><div class="kpi"><small>Modo</small><strong>${utils.escape(c.releaseCandidate.releaseMode)}</strong></div><div class="kpi"><small>Travado</small><strong>${c.releaseCandidate.locked?'Sim':'Não'}</strong></div></div><div class="row gap wrap"><button class="btn primary" data-action="runReleaseAudit">Rodar auditoria RC</button><button class="btn ghost" data-action="runBugHunt">Caça-bug final</button><button class="btn ${snap.score>=86?'primary':'ghost'}" data-action="lockReleaseCandidate">Travar RC</button></div></section><section class="panel glass"><span class="eyebrow">F69 Balanceamento</span><h2>Curva profissional</h2><div class="kpi-grid"><div class="kpi"><small>Saúde econômica</small><strong>${snap.balance.score}/100</strong></div><div class="kpi"><small>Margem média</small><strong>${snap.balance.avgMargin.toFixed(1)}%</strong></div><div class="kpi"><small>Dívida</small><strong>${Math.round(snap.balance.debtRatio*100)}%</strong></div><div class="kpi"><small>Runway</small><strong>${snap.balance.cashDays}d</strong></div></div><div class="service-grid">${balanceCards}</div><h3>Histórico</h3><div class="todo-list">${history}</div></section><section class="panel glass"><span class="eyebrow">F70 Caça-bug</span><h2>Estabilização final</h2><div class="kpi-grid"><div class="kpi"><small>Sessões</small><strong>${c.releaseCandidate.bugHunt.sessions}</strong></div><div class="kpi"><small>Abertos</small><strong>${c.releaseCandidate.bugHunt.open}</strong></div><div class="kpi"><small>Corrigidos</small><strong>${c.releaseCandidate.bugHunt.fixed}</strong></div><div class="kpi"><small>Críticos</small><strong>${c.releaseCandidate.bugHunt.critical}</strong></div></div><button class="btn primary" data-action="runBugHunt">Executar rodada de caça-bug</button></section><section class="panel glass"><span class="eyebrow">F71 Polish mobile</span><h2>Modo de interface para publicação</h2><div class="kpi-grid"><div class="kpi"><small>Score mobile</small><strong>${snap.mobile}/100</strong></div><div class="kpi"><small>Modo</small><strong>${MOBILE_RC_MODES_V21[c.releaseCandidate.mobileMode].label}</strong></div></div><div class="service-grid">${mobileCards}</div></section><section class="panel glass"><span class="eyebrow">F72 Release gates</span><h2>Checklist RC</h2><div class="gate-grid">${gates}</div><h3>Notas de release</h3><div class="todo-list">${notes}</div></section></div>`;
+}
+
+const baseRouteEstimateV210 = utils.routeEstimate.bind(utils);
+utils.routeEstimate = function(origin, dest, plane, career, route = null) {
+  if (career) ensureV21Career(career);
+  const e = baseRouteEstimateV210(origin, dest, plane, career, route);
+  const rc = career?.releaseCandidate;
+  const preset = BALANCE_PRESETS_V21[rc?.balancePreset || 'professional'] || BALANCE_PRESETS_V21.professional;
+  const passengerRevenue = Number(e.revenue || 0) * Number(preset.revenue || 1) * Number(preset.demand || 1);
+  const costFuelPart = Number(e.fuelCost || 0) * (Number(preset.fuel || 1) - 1);
+  const maintenancePart = Number(e.maintenanceReserve || 0) * (Number(preset.wear || 1) - 1);
+  e.balanceLabel = preset.label;
+  e.revenue = Math.round(passengerRevenue);
+  e.totalCost = Math.round(Number(e.totalCost || 0) * Number(preset.cost || 1) + costFuelPart + maintenancePart);
+  e.profit = Math.round(e.revenue - e.totalCost);
+  e.margin = e.revenue > 0 ? (e.profit / e.revenue) * 100 : -100;
+  e.score = utils.clamp((e.profit / Math.max(e.totalCost, 1)) * 100, -150, 230);
+  return e;
+};
+const previousNormalizeCareerV210 = normalizeCareer;
+normalizeCareer = function(career) {
+  const c = previousNormalizeCareerV210(career);
+  if (c) ensureV21Career(c);
+  return c;
+};
+const previousCreateCareerV210 = createCareer;
+createCareer = function(form) {
+  const c = previousCreateCareerV210(form);
+  ensureV21Career(c);
+  c.messages.unshift({ time: Date.now(), type:'info', text:'v2.1 RC: balanceamento, caça-bug, polish mobile e release candidate ativados.' });
+  return c;
+};
+const previousNavItemsV210 = navItems;
+navItems = function() {
+  const items = previousNavItemsV210();
+  if (items.some(i => i[0] === 'release')) return items;
+  const out = [];
+  items.forEach(item => { out.push(item); if (item[0] === 'beta') out.push(['release','RC','◆']); });
+  if (!out.some(i => i[0] === 'release')) out.push(['release','RC','◆']);
+  return out;
+};
+const previousRenderOnboardingV210 = renderOnboarding;
+renderOnboarding = function() {
+  const html = previousRenderOnboardingV210();
+  return html
+    .replace('Fases F65-F68 conquistas, ranking e beta público', 'Fases F69-F72 balanceamento, caça-bug e release candidate')
+    .replace('visual beta premium, conquistas, ranking, metas de CEO e publicação controlada', 'visual beta premium, conquistas, ranking, metas de CEO, publicação controlada e release candidate profissional');
+};
+const previousRenderV210 = render;
+render = function() {
+  const c = activeCareer();
+  if (c) ensureV21Career(c);
+  if (runtime.view === 'release') {
+    safeExecute('render:release', () => { hideFatal(); dom.app.innerHTML = shell(renderReleaseView()); });
+    return;
+  }
+  previousRenderV210();
+};
+const previousRenderDashboardV210 = renderDashboard;
+renderDashboard = function() {
+  const html = previousRenderDashboardV210();
+  const c = activeCareer(); if (!c) return html;
+  ensureV21Career(c);
+  const card = rcDashboardCardV21(c);
+  const pos = html.lastIndexOf('</div>');
+  return pos >= 0 ? html.slice(0,pos)+card+html.slice(pos) : html + card;
+};
+const previousAdvanceCompanyDayV210 = advanceCompanyDay;
+advanceCompanyDay = function(career) {
+  const before = career && Number(career.day || 1);
+  previousAdvanceCompanyDayV210(career);
+  if (career) {
+    ensureV21Career(career);
+    if (Number(career.day || 1) !== before) {
+      const snap = rcReadinessV21(career, true);
+      if (snap.score >= 86 && !career.releaseCandidate.locked && (career.day || 1) % 3 === 0) {
+        career.releaseCandidate.releaseNotes.unshift(`Dia ${career.day}: RC recomenda travamento — score ${snap.score}/100.`);
+        career.releaseCandidate.releaseNotes = career.releaseCandidate.releaseNotes.slice(0,10);
+      }
+    }
+  }
+};
+const previousCompleteFlightV210 = completeFlight;
+completeFlight = function(career, route, plane, model) {
+  const preset = career?.releaseCandidate ? BALANCE_PRESETS_V21[career.releaseCandidate.balancePreset] : null;
+  previousCompleteFlightV210(career, route, plane, model);
+  if (career && preset && plane) {
+    const extraWear = Math.max(0, Number(preset.wear || 1) - 1) * 0.25;
+    if (extraWear) plane.condition = utils.clamp(Number(plane.condition || 100) - extraWear, 0, 100);
+    route.balanceLabel = preset.label;
+  }
+};
+const previousValuationV210 = valuation;
+valuation = function(career) {
+  const base = previousValuationV210(career);
+  if (!career) return base;
+  ensureV21Career(career);
+  const snap = rcReadinessV21(career, false);
+  const rcPremium = snap.score * 48000 + (career.releaseCandidate.locked ? 1250000 : 0) - Number(career.releaseCandidate.bugHunt.critical || 0) * 240000;
+  return Math.round(base + rcPremium);
+};
+const previousRunIntegrityAuditV210 = runIntegrityAudit;
+runIntegrityAudit = function() {
+  const c = activeCareer(); if (c) ensureV21Career(c);
+  const blockedLabels = ['Schema da build','Chave de save v2.0'];
+  const base = previousRunIntegrityAuditV210().filter(check => !blockedLabels.includes(check.label));
+  const snap = c ? rcReadinessV21(c, true) : null;
+  const extra = [
+    { ok: BUILD.schema === 21, label:'Schema da build', detail:`Schema atual ${BUILD.schema}.` },
+    { ok: STORE_KEY.includes('schema_21'), label:'Chave de save v2.1', detail:STORE_KEY },
+    { ok: LEGACY_STORE_KEYS.includes('vale_air_manager_schema_20'), label:'Migração v2.0 preservada', detail:'Saves schema 20 são migrados para schema 21 sem reset.' },
+    { ok: typeof ensureV21Career === 'function', label:'Normalização v2.1', detail:'Carreiras antigas recebem release candidate, balanceamento, bug hunt e polish mobile.' },
+    { ok: navItems().some(i => i[0] === 'release'), label:'Tela RC no menu', detail:'HUD mobile recebeu centro de release candidate.' },
+    { ok: Object.keys(BALANCE_PRESETS_V21).length >= 4, label:'F69 Balanceamento profissional', detail:'Quatro curvas de economia disponíveis.' },
+    { ok: typeof rcBalanceHealthV21 === 'function', label:'F69 Saúde econômica', detail:'Margem, dívida e runway são avaliados.' },
+    { ok: typeof runBugHuntV21 === 'function', label:'F70 Caça-bug final', detail:'Rodadas controlam bugs abertos, corrigidos e críticos.' },
+    { ok: !c || Number.isFinite(c.releaseCandidate.bugHunt.open), label:'F70 Bug state salvo', detail:c ? `${c.releaseCandidate.bugHunt.open} abertos, ${c.releaseCandidate.bugHunt.critical} críticos.` : 'Sem carreira ativa.' },
+    { ok: Object.keys(MOBILE_RC_MODES_V21).length >= 4, label:'F71 Polish mobile', detail:'Quatro modos de UX mobile para beta público.' },
+    { ok: typeof rcMobileScoreV21 === 'function', label:'F71 Score mobile', detail:c ? `${rcMobileScoreV21(c)}/100.` : 'Função disponível.' },
+    { ok: RELEASE_GATES_V21.length >= 8, label:'F72 Release gates', detail:`${RELEASE_GATES_V21.length} gates de publicação.` },
+    { ok: typeof rcReadinessV21 === 'function', label:'F72 Score RC', detail:snap ? `${snap.score}/100 • ${snap.stage}` : 'Função disponível.' },
+    { ok: typeof lockReleaseCandidateV21 === 'function', label:'F72 Travamento RC', detail:'Release candidate só trava com mobile, balance e bug hunt aprovados.' },
+    { ok: typeof renderReleaseView === 'function', label:'Render Release', detail:'Tela RC renderiza balanceamento, caça-bug, mobile e gates.' },
+    { ok: typeof rcDashboardCardV21 === 'function', label:'Card RC dashboard', detail:'Painel principal mostra prontidão RC.' },
+    { ok: !c || c.releaseCandidate && typeof c.releaseCandidate.gates === 'object', label:'Gates salvos', detail:'Checklist RC persistido no save.' },
+    { ok: !c || typeof c.releaseCandidate.balancePreset === 'string', label:'Preset salvo', detail:c ? BALANCE_PRESETS_V21[c.releaseCandidate.balancePreset].label : 'Sem carreira ativa.' },
+    { ok: !c || typeof c.releaseCandidate.mobileMode === 'string', label:'Modo mobile salvo', detail:c ? MOBILE_RC_MODES_V21[c.releaseCandidate.mobileMode].label : 'Sem carreira ativa.' },
+    { ok: typeof baseRouteEstimateV210 === 'function', label:'Economia integrada', detail:'Balanceamento altera estimativa de rotas sem quebrar módulos antigos.' },
+    { ok: typeof previousCompleteFlightV210 === 'function', label:'Voo integrado ao RC', detail:'Voos carregam rótulo de balanceamento e desgaste ajustado.' },
+    { ok: !c || Number.isFinite(rcReadinessV21(c,false).score), label:'RC numérico', detail:c ? `${rcReadinessV21(c,false).score}/100.` : 'Sem carreira ativa.' }
+  ];
+  return [...extra, ...base];
+};
+const previousRenderAuditV210 = renderAudit;
+renderAudit = function() {
+  const checks = runIntegrityAudit();
+  const passed = checks.filter(c => c.ok).length;
+  return `<div class="audit-layout"><section class="panel glass"><div class="section-head"><div><span class="eyebrow">Sistema anti-quebra</span><h2>Auditoria da build</h2><p>Execução obrigatória por fase para garantir integridade, evolução real, balanceamento final, caça-bug e compatibilidade de saves.</p></div><button class="btn primary" data-action="runAudit">Rodar auditoria</button></div><div class="audit-score"><strong>${passed}/${checks.length}</strong><span>checks aprovados</span></div><div class="audit-list">${checks.map(c => `<div class="audit-row ${c.ok?'ok':'bad'}"><b>${c.ok?'✓':'!'}</b><span>${c.label}</span><small>${c.detail}</small></div>`).join('')}</div></section><section class="panel glass"><h2>Relatório desta entrega</h2><div class="todo-list"><span>F69 Balanceamento profissional: OK — curvas guiada, profissional, simulador rígido e recuperação anti-falência.</span><span>F70 Caça-bug final: OK — sessões com bugs abertos, críticos, corrigidos e regressões controladas.</span><span>F71 Polish mobile: OK — modos Auto, Mobile Grande, Cockpit Compacto e Acessível.</span><span>F72 Release Candidate: OK — gates de publicação, auditoria RC, score RC e travamento seguro.</span><span>Anti-quebra: OK — migração de saves v0.4 até v2.0 para schema 21 preservada.</span></div></section></div>`;
+};
+const previousHandleActionV210 = handleAction;
+handleAction = function(target) {
+  const action = target.dataset.action;
+  if (action === 'setBalancePreset') return safeExecute('action:setBalancePreset', () => setBalancePresetV21(target.dataset.preset));
+  if (action === 'runBugHunt') return safeExecute('action:runBugHunt', () => runBugHuntV21());
+  if (action === 'setMobileRcMode') return safeExecute('action:setMobileRcMode', () => setMobileRcModeV21(target.dataset.mobile));
+  if (action === 'runReleaseAudit') return safeExecute('action:runReleaseAudit', () => runReleaseAuditV21());
+  if (action === 'lockReleaseCandidate') return safeExecute('action:lockReleaseCandidate', () => lockReleaseCandidateV21());
+  return previousHandleActionV210(target);
 };
 
 

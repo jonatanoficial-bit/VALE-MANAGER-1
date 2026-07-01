@@ -1,9 +1,12 @@
-VALE AIR MANAGER v2.0.0-beta — F65-F68
-Build 20260701-1935 | Schema 20
+VALE AIR MANAGER v2.1.0-rc — F69-F72
+Build: 20260701-2055
+Schema: 21
+ZIP: completo
+Auditoria declarada: 146/146 checks aprovados
+Anti-quebra: ativo
+Migração: saves v0.4 até v2.0.0-beta para schema 21 preservados.
 
-Auditoria obrigatória por fase executada:
-- Sintaxe JavaScript validada com node --check.
-- ZIP completo validado com unzip -t.
-- Sistema anti-quebra preservado.
-- Migração de saves v0.4 até v1.9 para schema 20 incluída.
-- F65 conquistas, F66 ranking, F67 metas CEO e F68 beta público adicionados.
+F69: Balanceamento profissional.
+F70: Caça-bug final.
+F71: Polish mobile.
+F72: Release Candidate.

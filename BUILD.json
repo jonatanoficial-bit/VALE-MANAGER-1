@@ -1,19 +1,19 @@
 {
   "game": "VALE AIR MANAGER",
-  "version": "2.0.0-beta",
-  "phase": "F65-F68",
-  "build": "20260701-1935",
-  "schema": 20,
+  "version": "2.1.0-rc",
+  "phase": "F69-F72",
+  "build": "20260701-2055",
+  "schema": 21,
   "date": "2026-07-01",
   "timezone": "America/Sao_Paulo",
-  "auditoria": "126/126 checks aprovados",
+  "auditoria": "146/146 checks aprovados",
   "antiQuebra": true,
   "zip": "completo",
-  "migration": "v0.4-v1.9 para v2.0.0-beta",
+  "migration": "v0.4-v2.0.0-beta para v2.1.0-rc",
   "features": [
-    "F65 conquistas com XP, bônus e resgate dentro do jogo",
-    "F66 ranking empresarial dinâmico comparando a companhia com rivais",
-    "F67 metas de CEO com objetivos estratégicos e recompensas",
-    "F68 progressão de beta público com score de prontidão, canais de teste, feedback e marcos de publicação"
+    "F69 balanceamento profissional com curvas guiada, profissional, simulador rígido e recuperação anti-falência",
+    "F70 caça-bug final com bugs abertos, críticos, corrigidos e regressões controladas",
+    "F71 polish mobile com modos de UX para beta público e celulares pequenos",
+    "F72 release candidate com gates de publicação, score RC, auditoria RC e travamento seguro"
   ]
 }

@@ -1,10 +1,9 @@
 {
+  "build": "20260701-2055",
+  "version": "2.1.0-rc",
+  "schema": 21,
+  "checks": "146/146",
   "status": "aprovado",
-  "checks": "126/126",
-  "build": "20260701-1935",
-  "version": "2.0.0-beta",
-  "schema": 20,
   "antiQuebra": true,
-  "nodeCheck": "ok",
-  "zipTest": "ok"
+  "notes": "node --check, auditoria de integração v21 e validação de ZIP executadas."
 }

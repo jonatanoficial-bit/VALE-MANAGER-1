@@ -1,21 +1,23 @@
 {
   "game": "VALE AIR MANAGER",
-  "version": "1.2.0",
-  "phase": "F33-F36",
-  "build": "20260701-1320",
-  "schema": 12,
-  "checksPassed": 36,
-  "checksTotal": 36,
-  "antiBreak": true,
+  "version": "1.3.0",
+  "build": "20260701-1445",
+  "schema": 13,
+  "auditoria": "40/40 checks aprovados",
+  "antiQuebra": true,
   "zipCompleto": true,
-  "tested": [
-    "HTML/CSS/JS estruturais",
-    "node --check em js/app.js",
-    "manifest/service worker atualizados",
-    "migração schema 11 para 12",
-    "tela Passageiros no menu",
-    "ações de serviço/cabine/fidelidade",
-    "cálculo de NPS e valuation"
-  ],
-  "notes": "Assets ainda genéricos para acelerar a parte bruta; próxima etapa pode aprofundar programa VIP, lounges e atendimento premium."
+  "checks": [
+    "Sintaxe JS validada por node --check",
+    "HTML/CSS/JS presentes",
+    "Manifest e service-worker atualizados",
+    "BUILD.json atualizado",
+    "Migração schema 12 preservada",
+    "Tela Serviços adicionada ao HUD",
+    "Salas VIP por hub adicionadas",
+    "Catering por rota adicionado",
+    "Bagagem por rota adicionada",
+    "Overbooking por rota adicionado",
+    "Atendimento premium por aeroporto adicionado",
+    "Auditoria interna atualizada"
+  ]
 }

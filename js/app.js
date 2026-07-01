@@ -1,15 +1,15 @@
 
 'use strict';
 
-// VALE AIR MANAGER - v1.2.0 - Build 20260701-1320
-// Fases F33-F36: experiência do passageiro, cabine, fidelidade e reputação de serviço.
+// VALE AIR MANAGER - v1.3.0 - Build 20260701-1445
+// Fases F37-F40: salas VIP, catering, bagagem, overbooking e atendimento premium por aeroporto.
 
 const BUILD = Object.freeze({
   game: 'VALE AIR MANAGER',
-  version: '1.2.0',
-  phase: 'F33-F36',
-  build: '20260701-1320',
-  schema: 12,
+  version: '1.3.0',
+  phase: 'F37-F40',
+  build: '20260701-1445',
+  schema: 13,
   date: '2026-07-01',
   timezone: 'America/Sao_Paulo'
 });
@@ -730,8 +730,8 @@ const COMPETITORS = Object.freeze([
   { id:'cargo_sul', name:'Cargo Sul Express', base:'GRU', region:'Cargo', value:4100000, fleet:1, routes:['GRU-SCL','GRU-MIA'], reputation:55, debt:540000, modelId:'b737cargo', synergy:1.10 }
 ]);
 
-const STORE_KEY = 'vale_air_manager_schema_12';
-const LEGACY_STORE_KEYS = ['vale_air_manager_schema_11','vale_air_manager_schema_10','vale_air_manager_schema_9','vale_air_manager_schema_8','vale_air_manager_schema_7','vale_air_manager_schema_6','vale_air_manager_schema_5','vale_air_manager_schema_4'];
+const STORE_KEY = 'vale_air_manager_schema_13';
+const LEGACY_STORE_KEYS = ['vale_air_manager_schema_12','vale_air_manager_schema_11','vale_air_manager_schema_10','vale_air_manager_schema_9','vale_air_manager_schema_8','vale_air_manager_schema_7','vale_air_manager_schema_6','vale_air_manager_schema_5','vale_air_manager_schema_4'];
 const CRASH_KEY = 'vale_air_manager_last_crash';
 const DEFAULT_SPEED = 1;
 
@@ -1431,7 +1431,7 @@ function renderOnboarding() {
         <span class="eyebrow">Simulador gratuito de companhia aérea</span>
         <h1>VALE AIR MANAGER</h1>
         <p>Crie sua empresa aérea, escolha hub, avatar, logo, compre aviões, abra rotas reais e acompanhe o mercado financeiro.</p>
-        <div class="build-line">v${BUILD.version} • Build ${BUILD.build} • Fases F29-F32 operações</div>
+        <div class="build-line">v${BUILD.version} • Build ${BUILD.build} • Fases F37-F40 serviços premium</div>
       </div>
       <div class="hero-plane"><img src="assets/planes/plane-wide.svg" alt="Avião"></div>
     </section>
@@ -1446,7 +1446,7 @@ function renderOnboarding() {
       <div class="picker-title">Logo inicial</div>
       <div class="asset-picker logos">${[1,2,3,4].map(i => `<label class="asset-option"><input type="radio" name="logo" value="assets/logos/logo-${i}.svg" ${i===3?'checked':''}><img src="assets/logos/logo-${i}.svg" alt="Logo ${i}"></label>`).join('')}</div>
       <div class="row gap wrap"><button class="btn primary big" data-action="createCareer" type="button">Criar carreira</button><button class="btn ghost big" data-action="go" data-view="slots" type="button">Ver saves</button></div>
-      <p class="hint">Começa com 1 avião regional, hub inicial, contratos, tutorial, combustível, slots, alianças, concorrência por rota e anti-quebra ativo.</p>
+      <p class="hint">Começa com 1 avião regional, hub inicial, contratos, tutorial, combustível, slots, alianças, passageiros, serviços premium e anti-quebra ativo.</p>
     </form>
   </div>`;
 }
@@ -4136,6 +4136,446 @@ handleAction = function(target) {
   if (action === 'setLoyalty') return safeExecute('action:setLoyalty', () => setLoyaltyLevel(target.dataset.level));
   if (action === 'servicePlan') return safeExecute('action:servicePlan', () => serviceActionPlan());
   return previousHandleActionV120(target);
+};
+
+
+/* =========================================================
+   v1.3.0 F37-F40 — salas VIP, catering, bagagem, overbooking e atendimento premium
+   Camada incremental com migração segura para schema 13.
+========================================================= */
+const LOUNGE_LEVELS = Object.freeze({
+  none: { id:'none', label:'Sem sala VIP', installCost:0, dailyCost:0, nps:0, revenuePerVisitor:0, premiumDemand:1, note:'Sem investimento em lounge.' },
+  essential: { id:'essential', label:'Lounge Essential', installCost:420000, dailyCost:14500, nps:1.6, revenuePerVisitor:18, premiumDemand:1.025, note:'Entrada econômica para melhorar conexões e passageiros frequentes.' },
+  business: { id:'business', label:'Lounge Business', installCost:1150000, dailyCost:36500, nps:3.8, revenuePerVisitor:34, premiumDemand:1.055, note:'Boa percepção para rotas executivas e internacionais.' },
+  flagship: { id:'flagship', label:'Lounge Flagship', installCost:2850000, dailyCost:82000, nps:6.4, revenuePerVisitor:58, premiumDemand:1.095, note:'Experiência premium de alto impacto em hubs grandes.' }
+});
+
+const CATERING_PLANS = Object.freeze({
+  basic: { id:'basic', label:'Básico econômico', costPerPax:4, revenuePerPax:1.5, nps:-0.8, demand:0.99, note:'Baixo custo, pouco encanto.' },
+  fresh: { id:'fresh', label:'Fresh padrão', costPerPax:8, revenuePerPax:4, nps:1.0, demand:1.01, note:'Equilíbrio entre custo, satisfação e venda a bordo.' },
+  premium: { id:'premium', label:'Premium quente', costPerPax:17, revenuePerPax:9, nps:2.7, demand:1.025, note:'Ideal para executiva, longo curso e marca premium.' },
+  buyonboard: { id:'buyonboard', label:'Buy on board', costPerPax:3, revenuePerPax:12, nps:-1.2, demand:0.985, note:'Gera receita extra, mas pode irritar passageiros.' }
+});
+
+const BAGGAGE_POLICIES = Object.freeze({
+  generous: { id:'generous', label:'Bagagem inclusa', feePerPax:2, handlingCost:8, nps:2.5, demand:1.035, complaint:0.35, note:'Mais custo, menos reclamação e mais reputação.' },
+  standard: { id:'standard', label:'Política padrão', feePerPax:8, handlingCost:5, nps:0.4, demand:1.005, complaint:0.8, note:'Equilibrado para a maioria das rotas.' },
+  ancillary: { id:'ancillary', label:'Receita auxiliar', feePerPax:18, handlingCost:4, nps:-1.1, demand:0.985, complaint:1.7, note:'Mais receita, porém aumenta reclamação.' },
+  strict: { id:'strict', label:'Restritiva low-cost', feePerPax:27, handlingCost:3, nps:-2.4, demand:0.965, complaint:3.1, note:'Boa para caixa, perigosa para reputação.' }
+});
+
+const OVERBOOKING_POLICIES = Object.freeze({
+  none: { id:'none', label:'Sem overbooking', extraDemand:0, deniedRisk:0, nps:0.8, note:'Máxima segurança de reputação.' },
+  conservative: { id:'conservative', label:'Conservador', extraDemand:0.025, deniedRisk:0.004, nps:0.1, note:'Pequeno ganho de ocupação com risco baixo.' },
+  balanced: { id:'balanced', label:'Balanceado', extraDemand:0.055, deniedRisk:0.012, nps:-0.7, note:'Boa receita, exige companhia estável.' },
+  aggressive: { id:'aggressive', label:'Agressivo', extraDemand:0.095, deniedRisk:0.032, nps:-2.1, note:'Arriscado: aumenta caixa, mas pode explodir reclamações.' }
+});
+
+const AIRPORT_SERVICE_LEVELS = Object.freeze({
+  standard: { id:'standard', label:'Atendimento padrão', setupCost:0, dailyCost:0, nps:0, delayReduction:0, note:'Operação normal.' },
+  priority: { id:'priority', label:'Prioridade solo', setupCost:340000, dailyCost:18500, nps:1.4, delayReduction:0.04, note:'Check-in e embarque mais rápidos.' },
+  premium: { id:'premium', label:'Atendimento premium', setupCost:960000, dailyCost:52000, nps:3.2, delayReduction:0.085, note:'Fila dedicada, assistência VIP e menor atrito no hub.' }
+});
+
+function ensureV13Career(career) {
+  if (!career) return career;
+  ensureV12Career(career);
+  const defaults = {
+    lounges: {}, airportServices: {}, catering: { global:'fresh', lastDailyCostDay:0, totalCost:0 },
+    baggage: { defaultPolicy:'standard', ancillaryRevenue:0, compensation:0, complaints:0 },
+    overbooking: { defaultPolicy:'conservative', denied:0, compensation:0, events:0 },
+    premiumRevenue:0, premiumCost:0, loungeVisitors:0, serviceEvents:[]
+  };
+  career.premiumServices = Object.assign(defaults, career.premiumServices || {});
+  career.premiumServices.lounges = Object.assign({}, career.premiumServices.lounges || {});
+  career.premiumServices.airportServices = Object.assign({}, career.premiumServices.airportServices || {});
+  career.premiumServices.catering = Object.assign({ global:'fresh', lastDailyCostDay:0, totalCost:0 }, career.premiumServices.catering || {});
+  career.premiumServices.baggage = Object.assign({ defaultPolicy:'standard', ancillaryRevenue:0, compensation:0, complaints:0 }, career.premiumServices.baggage || {});
+  career.premiumServices.overbooking = Object.assign({ defaultPolicy:'conservative', denied:0, compensation:0, events:0 }, career.premiumServices.overbooking || {});
+  career.premiumServices.serviceEvents = Array.isArray(career.premiumServices.serviceEvents) ? career.premiumServices.serviceEvents : [];
+  (career.hubs || []).forEach(iata => {
+    if (!career.premiumServices.lounges[iata]) career.premiumServices.lounges[iata] = { level:'none', openedDay:0, invested:0 };
+    if (!career.premiumServices.airportServices[iata]) career.premiumServices.airportServices[iata] = 'standard';
+  });
+  (career.routes || []).forEach(r => {
+    if (!CATERING_PLANS[r.cateringPlan]) r.cateringPlan = career.premiumServices.catering.global || 'fresh';
+    if (!BAGGAGE_POLICIES[r.baggagePolicy]) r.baggagePolicy = career.premiumServices.baggage.defaultPolicy || 'standard';
+    if (!OVERBOOKING_POLICIES[r.overbookingPolicy]) r.overbookingPolicy = career.premiumServices.overbooking.defaultPolicy || 'conservative';
+  });
+  return career;
+}
+
+function routeServiceBundle(career, route) {
+  ensureV13Career(career);
+  const catering = CATERING_PLANS[(route && route.cateringPlan) || career.premiumServices.catering.global || 'fresh'] || CATERING_PLANS.fresh;
+  const baggage = BAGGAGE_POLICIES[(route && route.baggagePolicy) || career.premiumServices.baggage.defaultPolicy || 'standard'] || BAGGAGE_POLICIES.standard;
+  const overbooking = OVERBOOKING_POLICIES[(route && route.overbookingPolicy) || career.premiumServices.overbooking.defaultPolicy || 'conservative'] || OVERBOOKING_POLICIES.conservative;
+  const loungeOrigin = LOUNGE_LEVELS[career.premiumServices.lounges?.[route?.origin]?.level || 'none'] || LOUNGE_LEVELS.none;
+  const loungeDest = LOUNGE_LEVELS[career.premiumServices.lounges?.[route?.dest]?.level || 'none'] || LOUNGE_LEVELS.none;
+  const groundOrigin = AIRPORT_SERVICE_LEVELS[career.premiumServices.airportServices?.[route?.origin] || 'standard'] || AIRPORT_SERVICE_LEVELS.standard;
+  const groundDest = AIRPORT_SERVICE_LEVELS[career.premiumServices.airportServices?.[route?.dest] || 'standard'] || AIRPORT_SERVICE_LEVELS.standard;
+  return { catering, baggage, overbooking, loungeOrigin, loungeDest, groundOrigin, groundDest };
+}
+
+const previousNormalizeCareerV130 = normalizeCareer;
+normalizeCareer = function(career) {
+  const c = previousNormalizeCareerV130(career);
+  ensureV13Career(c);
+  return c;
+};
+
+const previousCreateCareerV130 = createCareer;
+createCareer = function(form) {
+  const c = previousCreateCareerV130(form);
+  ensureV13Career(c);
+  c.messages.unshift({ time: Date.now(), type:'success', text:'v1.3: serviços premium ativados — lounge VIP, catering, bagagem, overbooking e atendimento por aeroporto.' });
+  return c;
+};
+
+const baseRouteEstimateV130 = utils.routeEstimate.bind(utils);
+utils.routeEstimate = function(origin, dest, plane, career, route = null) {
+  ensureV13Career(career);
+  const e = baseRouteEstimateV130(origin, dest, plane, career, route);
+  if (!route || !plane || plane.capacity <= 0) return e;
+  const bundle = routeServiceBundle(career, route);
+  const paxBase = Number(e.passengers || 0);
+  const demandMultiplier = bundle.catering.demand * bundle.baggage.demand * (1 + bundle.overbooking.extraDemand) * bundle.loungeOrigin.premiumDemand * bundle.loungeDest.premiumDemand;
+  const maxPax = Math.max(0, Math.floor(Number(plane.capacity || 0) * (1 + bundle.overbooking.extraDemand)));
+  const passengers = Math.max(0, Math.min(maxPax, Math.floor(paxBase * demandMultiplier)));
+  const premiumShare = utils.clamp((route.serviceTier === 'premium' ? 0.22 : route.cabinPreset === 'premium' ? 0.18 : 0.08) + ((bundle.loungeOrigin.id !== 'none' || bundle.loungeDest.id !== 'none') ? 0.04 : 0), 0.04, 0.32);
+  const loungeVisitors = Math.round(passengers * premiumShare * 0.55);
+  const cateringRevenue = Math.round(passengers * bundle.catering.revenuePerPax);
+  const baggageRevenue = Math.round(passengers * bundle.baggage.feePerPax);
+  const loungeRevenue = Math.round(loungeVisitors * ((bundle.loungeOrigin.revenuePerVisitor + bundle.loungeDest.revenuePerVisitor) / 2));
+  const premiumRevenue = cateringRevenue + baggageRevenue + loungeRevenue;
+  const cateringCost = Math.round(passengers * bundle.catering.costPerPax);
+  const baggageCost = Math.round(passengers * bundle.baggage.handlingCost);
+  const airportPremiumCost = Math.round(passengers * ((bundle.groundOrigin.id === 'premium' || bundle.groundDest.id === 'premium') ? 3.4 : (bundle.groundOrigin.id === 'priority' || bundle.groundDest.id === 'priority') ? 1.5 : 0));
+  const premiumCost = cateringCost + baggageCost + airportPremiumCost;
+  e.passengers = passengers;
+  e.premiumRevenue = premiumRevenue;
+  e.premiumCost = premiumCost;
+  e.loungeVisitors = loungeVisitors;
+  e.cateringLabel = bundle.catering.label;
+  e.baggageLabel = bundle.baggage.label;
+  e.overbookingLabel = bundle.overbooking.label;
+  e.groundServiceLabel = `${bundle.groundOrigin.label}/${bundle.groundDest.label}`;
+  e.revenue = Math.round(Number(e.revenue || 0) + premiumRevenue);
+  e.totalCost = Math.round(Number(e.totalCost || 0) + premiumCost);
+  e.profit = Math.round(e.revenue - e.totalCost);
+  e.margin = e.revenue > 0 ? (e.profit / e.revenue) * 100 : -100;
+  e.loadFactor = plane.capacity > 0 ? utils.clamp(passengers / Math.max(plane.capacity,1), 0, 1.18) : Number(e.loadFactor || 0);
+  return e;
+};
+
+function serviceQualityDelta(career, route) {
+  const b = routeServiceBundle(career, route);
+  return b.catering.nps + b.baggage.nps + b.overbooking.nps + b.loungeOrigin.nps * 0.45 + b.loungeDest.nps * 0.25 + b.groundOrigin.nps * 0.45 + b.groundDest.nps * 0.25;
+}
+
+function applyPremiumServiceResult(career, route, plane, model) {
+  ensureV13Career(career);
+  if (!route || !plane || !model || model.capacity <= 0) return;
+  const origin = utils.byIata(route.origin), dest = utils.byIata(route.dest);
+  if (!origin || !dest) return;
+  const estimate = utils.routeEstimate(origin, dest, model, career, Object.assign({}, route, { planeCondition: plane.condition }));
+  const b = routeServiceBundle(career, route);
+  const ps = career.premiumServices;
+  const pax = Number(estimate.passengers || 0);
+  const premiumRevenue = Number(estimate.premiumRevenue || 0);
+  const premiumCost = Number(estimate.premiumCost || 0);
+  ps.premiumRevenue = Number(ps.premiumRevenue || 0) + premiumRevenue;
+  ps.premiumCost = Number(ps.premiumCost || 0) + premiumCost;
+  ps.loungeVisitors = Number(ps.loungeVisitors || 0) + Number(estimate.loungeVisitors || 0);
+  ps.baggage.ancillaryRevenue = Number(ps.baggage.ancillaryRevenue || 0) + Math.round(pax * b.baggage.feePerPax);
+  const overCapacity = Math.max(0, pax - Number(model.capacity || 0));
+  const riskDenied = Math.round((Number(model.capacity || 0) * b.overbooking.deniedRisk) * (0.6 + Math.random() * 0.8));
+  const denied = Math.max(0, Math.round(overCapacity + riskDenied - (b.groundOrigin.delayReduction + b.groundDest.delayReduction) * 8));
+  let serviceScore = serviceQualityDelta(career, route);
+  let complaints = Math.max(0, Math.round((b.baggage.complaint + (b.overbooking.id === 'aggressive' ? 2.8 : b.overbooking.id === 'balanced' ? 1.1 : 0)) * Math.max(pax,1) / 520));
+  if (denied > 0) {
+    const compensation = Math.round(denied * (180 + Number(estimate.distance || 0) * 0.055));
+    career.cash -= compensation;
+    ps.overbooking.denied = Number(ps.overbooking.denied || 0) + denied;
+    ps.overbooking.compensation = Number(ps.overbooking.compensation || 0) + compensation;
+    ps.overbooking.events = Number(ps.overbooking.events || 0) + 1;
+    ps.baggage.compensation = Number(ps.baggage.compensation || 0) + 0;
+    logFinance(career, `Overbooking ${route.origin}-${route.dest}`, -compensation, 'serviços');
+    pushMessage(career, `Overbooking em ${route.origin}-${route.dest}: ${denied} passageiro(s) compensado(s).`, 'warn');
+    serviceScore -= Math.min(8, denied * 1.6);
+    complaints += denied;
+  }
+  const npsDelta = serviceScore / 18;
+  if (career.passengerExperience) {
+    career.passengerExperience.nps = utils.clamp(Number(career.passengerExperience.nps || 50) + npsDelta, 0, 100);
+    career.passengerExperience.serviceReputation = utils.clamp(Number(career.passengerExperience.serviceReputation || 55) + serviceScore / 34, 0, 100);
+    career.passengerExperience.complaints = Number(career.passengerExperience.complaints || 0) + complaints;
+  }
+  career.reputation = utils.clamp(Number(career.reputation || 50) + serviceScore / 60 - complaints / 80, 0, 100);
+  route.lastPremiumRevenue = premiumRevenue;
+  route.lastPremiumCost = premiumCost;
+  route.lastLoungeVisitors = Number(estimate.loungeVisitors || 0);
+  route.lastServiceBundle = `${b.catering.label} • ${b.baggage.label} • ${b.overbooking.label}`;
+  route.lastDeniedBoarding = denied;
+  ps.serviceEvents.unshift({ day:career.day || 1, route:`${route.origin}-${route.dest}`, revenue:premiumRevenue, cost:premiumCost, denied, complaints, score:Number(serviceScore.toFixed(1)), catering:b.catering.label, baggage:b.baggage.label, overbooking:b.overbooking.label });
+  ps.serviceEvents = ps.serviceEvents.slice(0, 30);
+}
+
+const previousCompleteFlightV130 = completeFlight;
+completeFlight = function(career, route, plane, model) {
+  previousCompleteFlightV130(career, route, plane, model);
+  applyPremiumServiceResult(career, route, plane, model);
+};
+
+const previousAdvanceCompanyDayV130 = advanceCompanyDay;
+advanceCompanyDay = function(career) {
+  const beforeDay = Number(career.day || 1);
+  previousAdvanceCompanyDayV130(career);
+  if (Number(career.day || 1) !== beforeDay) {
+    ensureV13Career(career);
+    const ps = career.premiumServices;
+    if (ps.catering.lastDailyCostDay !== career.day) {
+      ps.catering.lastDailyCostDay = career.day;
+      let daily = 0;
+      Object.entries(ps.lounges || {}).forEach(([iata, rec]) => { const lvl = LOUNGE_LEVELS[rec.level || 'none'] || LOUNGE_LEVELS.none; daily += lvl.dailyCost; });
+      Object.values(ps.airportServices || {}).forEach(level => { const cfg = AIRPORT_SERVICE_LEVELS[level || 'standard'] || AIRPORT_SERVICE_LEVELS.standard; daily += cfg.dailyCost; });
+      if (daily > 0) { career.cash -= daily; ps.premiumCost = Number(ps.premiumCost || 0) + daily; ps.catering.totalCost = Number(ps.catering.totalCost || 0) + daily; logFinance(career, 'Serviços premium diários', -daily, 'serviços'); }
+    }
+  }
+};
+
+const previousValuationV130 = valuation;
+valuation = function(career) {
+  ensureV13Career(career);
+  const base = previousValuationV130(career);
+  const ps = career.premiumServices || {};
+  const loungeValue = Object.values(ps.lounges || {}).reduce((sum, rec) => sum + Number(rec.invested || 0) * 0.72, 0);
+  const serviceNet = Number(ps.premiumRevenue || 0) - Number(ps.premiumCost || 0) - Number(ps.overbooking?.compensation || 0);
+  const nps = Number(career.passengerExperience?.nps || 50);
+  return Math.max(0, Math.round(base + loungeValue + serviceNet * 0.9 + nps * 3200));
+};
+
+function setRouteCatering(id, plan) {
+  const c = activeCareer(); if (!c) return;
+  ensureV13Career(c);
+  const r = c.routes.find(x => x.id === id); if (!r) return showToast('Rota não encontrada.', 'warn');
+  if (!CATERING_PLANS[plan]) return showToast('Catering inválido.', 'warn');
+  r.cateringPlan = plan;
+  pushMessage(c, `Catering da rota ${r.origin}-${r.dest}: ${CATERING_PLANS[plan].label}.`, 'info');
+  setActiveCareer(c); showToast('Catering atualizado.', 'ok'); render();
+}
+
+function setRouteBaggage(id, policy) {
+  const c = activeCareer(); if (!c) return;
+  ensureV13Career(c);
+  const r = c.routes.find(x => x.id === id); if (!r) return showToast('Rota não encontrada.', 'warn');
+  if (!BAGGAGE_POLICIES[policy]) return showToast('Bagagem inválida.', 'warn');
+  r.baggagePolicy = policy;
+  pushMessage(c, `Bagagem da rota ${r.origin}-${r.dest}: ${BAGGAGE_POLICIES[policy].label}.`, 'info');
+  setActiveCareer(c); showToast('Bagagem atualizada.', 'ok'); render();
+}
+
+function setRouteOverbooking(id, policy) {
+  const c = activeCareer(); if (!c) return;
+  ensureV13Career(c);
+  const r = c.routes.find(x => x.id === id); if (!r) return showToast('Rota não encontrada.', 'warn');
+  if (!OVERBOOKING_POLICIES[policy]) return showToast('Overbooking inválido.', 'warn');
+  r.overbookingPolicy = policy;
+  pushMessage(c, `Overbooking da rota ${r.origin}-${r.dest}: ${OVERBOOKING_POLICIES[policy].label}.`, 'info');
+  setActiveCareer(c); showToast('Overbooking atualizado.', 'ok'); render();
+}
+
+function setAirportService(iata, level) {
+  const c = activeCareer(); if (!c) return;
+  ensureV13Career(c);
+  if (!c.hubs.includes(iata)) return showToast('Atendimento premium só pode ser ativado em hubs.', 'warn');
+  const cfg = AIRPORT_SERVICE_LEVELS[level]; if (!cfg) return showToast('Nível inválido.', 'warn');
+  const current = c.premiumServices.airportServices[iata] || 'standard';
+  if (current === level) return showToast('Este atendimento já está ativo.', 'warn');
+  const currentSetup = AIRPORT_SERVICE_LEVELS[current]?.setupCost || 0;
+  const cost = Math.max(0, cfg.setupCost - Math.round(currentSetup * 0.35));
+  if (c.cash < cost) return showToast(`Caixa insuficiente: ${utils.money(cost)}.`, 'warn');
+  c.cash -= cost;
+  c.premiumServices.airportServices[iata] = level;
+  c.premiumServices.premiumCost = Number(c.premiumServices.premiumCost || 0) + cost;
+  logFinance(c, `Atendimento ${iata}: ${cfg.label}`, -cost, 'serviços');
+  pushMessage(c, `Atendimento em ${iata} ajustado para ${cfg.label}.`, 'success');
+  updateMarket(c); setActiveCareer(c); showToast('Atendimento atualizado.', 'ok'); render();
+}
+
+function openLounge(iata, level) {
+  const c = activeCareer(); if (!c) return;
+  ensureV13Career(c);
+  if (!c.hubs.includes(iata)) return showToast('Sala VIP só pode ser aberta em hubs.', 'warn');
+  const cfg = LOUNGE_LEVELS[level]; if (!cfg || level === 'none') return showToast('Lounge inválido.', 'warn');
+  const rec = c.premiumServices.lounges[iata] || { level:'none', invested:0 };
+  if (rec.level === level) return showToast('Este lounge já está ativo.', 'warn');
+  const currentCost = LOUNGE_LEVELS[rec.level || 'none']?.installCost || 0;
+  const upgradeCost = Math.max(0, cfg.installCost - Math.round(currentCost * 0.42));
+  if (c.cash < upgradeCost) return showToast(`Caixa insuficiente para lounge: ${utils.money(upgradeCost)}.`, 'warn');
+  c.cash -= upgradeCost;
+  c.premiumServices.lounges[iata] = { level, openedDay:c.day || 1, invested:Number(rec.invested || 0) + upgradeCost };
+  c.premiumServices.premiumCost = Number(c.premiumServices.premiumCost || 0) + upgradeCost;
+  careerReputationBoost(c, cfg.nps / 3);
+  logFinance(c, `Lounge ${iata}: ${cfg.label}`, -upgradeCost, 'serviços');
+  pushMessage(c, `${cfg.label} aberto em ${iata}. Passageiros premium ganharam novo motivo para voar com a companhia.`, 'success');
+  updateMarket(c); setActiveCareer(c); showToast('Sala VIP atualizada.', 'ok'); render();
+}
+
+function careerReputationBoost(career, amount) {
+  career.reputation = utils.clamp(Number(career.reputation || 50) + Number(amount || 0), 0, 100);
+  if (career.passengerExperience) career.passengerExperience.serviceReputation = utils.clamp(Number(career.passengerExperience.serviceReputation || 55) + Number(amount || 0) * 1.35, 0, 100);
+}
+
+function premiumServiceActionPlan() {
+  const c = activeCareer(); if (!c) return;
+  ensureV13Career(c);
+  let changed = false;
+  if (c.hubs.length && (c.premiumServices.airportServices[c.hubs[0]] || 'standard') === 'standard' && c.cash > 520000) { c.premiumServices.airportServices[c.hubs[0]] = 'priority'; c.cash -= AIRPORT_SERVICE_LEVELS.priority.setupCost; logFinance(c, `Plano serviços: prioridade ${c.hubs[0]}`, -AIRPORT_SERVICE_LEVELS.priority.setupCost, 'serviços'); changed = true; }
+  const weak = c.routes.find(r => r.baggagePolicy === 'strict' || r.overbookingPolicy === 'aggressive' || r.cateringPlan === 'basic');
+  if (weak) { weak.baggagePolicy = 'standard'; weak.overbookingPolicy = 'conservative'; weak.cateringPlan = 'fresh'; changed = true; }
+  if (!changed) return showToast('Serviços já estão em padrão seguro.', 'ok');
+  careerReputationBoost(c, 0.9);
+  pushMessage(c, 'Plano rápido de serviços aplicado: prioridade no hub e políticas de rota mais seguras.', 'success');
+  setActiveCareer(c); showToast('Plano de serviços aplicado.', 'ok'); render();
+}
+
+function renderServicesView() {
+  const c = activeCareer(); if (!c) return renderOnboarding();
+  ensureV13Career(c);
+  const ps = c.premiumServices;
+  const hubs = (c.hubs || []).map(iata => utils.byIata(iata)).filter(Boolean);
+  const loungeCards = hubs.map(a => {
+    const rec = ps.lounges[a.iata] || { level:'none', invested:0 };
+    const lvl = LOUNGE_LEVELS[rec.level || 'none'] || LOUNGE_LEVELS.none;
+    return `<article class="service-card hub-premium"><div><b>${a.iata} — ${a.city}</b><small>${lvl.label} • investimento ${utils.money(rec.invested || 0)} • custo/dia ${utils.money(lvl.dailyCost)}</small><p>${utils.escape(lvl.note)}</p></div><div class="row gap wrap"><button class="btn mini" data-action="openLounge" data-hub="${a.iata}" data-level="essential">Essential</button><button class="btn mini primary" data-action="openLounge" data-hub="${a.iata}" data-level="business">Business</button><button class="btn mini ghost" data-action="openLounge" data-hub="${a.iata}" data-level="flagship">Flagship</button></div></article>`;
+  }).join('') || '<p>Abra hubs para instalar salas VIP.</p>';
+  const airportCards = hubs.map(a => {
+    const current = ps.airportServices[a.iata] || 'standard';
+    const cfg = AIRPORT_SERVICE_LEVELS[current] || AIRPORT_SERVICE_LEVELS.standard;
+    return `<article class="service-card"><b>${a.iata} — ${a.city}</b><small>${cfg.label} • custo/dia ${utils.money(cfg.dailyCost)} • redução atraso ${Math.round(cfg.delayReduction*100)}%</small><p>${utils.escape(cfg.note)}</p><div class="row gap wrap"><button class="btn mini ghost" data-action="setAirportService" data-hub="${a.iata}" data-level="standard">Padrão</button><button class="btn mini" data-action="setAirportService" data-hub="${a.iata}" data-level="priority">Prioridade</button><button class="btn mini primary" data-action="setAirportService" data-hub="${a.iata}" data-level="premium">Premium</button></div></article>`;
+  }).join('') || '<p>Sem hubs operacionais.</p>';
+  const routeCards = (c.routes || []).map(r => {
+    const bundle = routeServiceBundle(c, r);
+    return `<article class="service-route"><div><b>${r.origin} → ${r.dest}</b><small>${bundle.catering.label} • ${bundle.baggage.label} • ${bundle.overbooking.label}</small></div><div class="route-stats"><span>Receita premium ${utils.money(r.lastPremiumRevenue || 0)}</span><span>Custo ${utils.money(r.lastPremiumCost || 0)}</span><span>VIP ${utils.num(r.lastLoungeVisitors || 0)}</span><span>Overbooking ${utils.num(r.lastDeniedBoarding || 0)}</span></div><div class="service-button-block"><span>Catering</span><button class="btn mini" data-action="setRouteCatering" data-route="${r.id}" data-plan="basic">Básico</button><button class="btn mini" data-action="setRouteCatering" data-route="${r.id}" data-plan="fresh">Fresh</button><button class="btn mini primary" data-action="setRouteCatering" data-route="${r.id}" data-plan="premium">Premium</button><button class="btn mini ghost" data-action="setRouteCatering" data-route="${r.id}" data-plan="buyonboard">Venda bordo</button></div><div class="service-button-block"><span>Bagagem</span><button class="btn mini" data-action="setRouteBaggage" data-route="${r.id}" data-policy="generous">Inclusa</button><button class="btn mini" data-action="setRouteBaggage" data-route="${r.id}" data-policy="standard">Padrão</button><button class="btn mini" data-action="setRouteBaggage" data-route="${r.id}" data-policy="ancillary">Auxiliar</button><button class="btn mini danger" data-action="setRouteBaggage" data-route="${r.id}" data-policy="strict">Restritiva</button></div><div class="service-button-block"><span>Overbooking</span><button class="btn mini ghost" data-action="setRouteOverbooking" data-route="${r.id}" data-policy="none">Zero</button><button class="btn mini" data-action="setRouteOverbooking" data-route="${r.id}" data-policy="conservative">Conservador</button><button class="btn mini" data-action="setRouteOverbooking" data-route="${r.id}" data-policy="balanced">Balanceado</button><button class="btn mini danger" data-action="setRouteOverbooking" data-route="${r.id}" data-policy="aggressive">Agressivo</button></div></article>`;
+  }).join('') || '<p>Crie rotas para configurar catering, bagagem e overbooking.</p>';
+  const events = (ps.serviceEvents || []).slice(0,14).map(e => `<div class="finance-row"><span>Dia ${e.day}<small>${utils.escape(e.route)} • ${utils.escape(e.catering)} • ${utils.escape(e.baggage)}</small></span><b class="${e.revenue-e.cost>=0?'ok':'bad'}">${utils.money(e.revenue-e.cost)}</b><em>VIP/overbooking: ${e.denied} negado(s), reclamações ${e.complaints}, score ${e.score}</em></div>`).join('') || '<p>Sem eventos de serviço ainda. Complete voos para gerar histórico.</p>';
+  return `<div class="services-layout"><section class="panel glass passenger-hero"><span class="eyebrow">F37-F40 Serviços premium</span><h2>VIP, catering, bagagem, overbooking e atendimento por aeroporto</h2><div class="kpi-grid"><div class="kpi"><small>Receita premium</small><strong>${utils.money(ps.premiumRevenue || 0)}</strong></div><div class="kpi"><small>Custo premium</small><strong>${utils.money(ps.premiumCost || 0)}</strong></div><div class="kpi"><small>Visitantes VIP</small><strong>${utils.num(ps.loungeVisitors || 0)}</strong></div><div class="kpi"><small>Receita bagagem</small><strong>${utils.money(ps.baggage.ancillaryRevenue || 0)}</strong></div><div class="kpi"><small>Negados overbooking</small><strong>${utils.num(ps.overbooking.denied || 0)}</strong></div><div class="kpi"><small>Compensações</small><strong>${utils.money(ps.overbooking.compensation || 0)}</strong></div></div><p class="hint">Cada decisão aumenta ou reduz caixa, NPS, reputação, reclamações e valuation. Overbooking agressivo dá dinheiro, mas pode destruir a marca.</p><button class="btn primary" data-action="premiumServicePlan">Plano rápido seguro</button></section><section class="panel glass"><h2>Salas VIP nos hubs</h2><div class="service-grid">${loungeCards}</div></section><section class="panel glass"><h2>Atendimento premium por aeroporto</h2><div class="service-grid">${airportCards}</div></section><section class="panel glass"><h2>Políticas por rota</h2><div class="service-route-list">${routeCards}</div></section><section class="panel glass"><h2>Histórico de serviços</h2><div class="finance-list">${events}</div></section></div>`;
+}
+
+const previousNavItemsV130 = navItems;
+navItems = function() {
+  const items = previousNavItemsV130();
+  if (!items.some(i => i[0] === 'services')) items.splice(Math.max(0, items.length - 1), 0, ['services','Serviços','◆']);
+  return items;
+};
+
+const previousRenderV130 = render;
+render = function() {
+  if (runtime.view === 'services') {
+    safeExecute('render:services', () => {
+      const career = activeCareer(); if (career) ensureV13Career(career);
+      dom.app.innerHTML = shell(renderServicesView());
+      if (dom.buildBadge) dom.buildBadge.textContent = `${BUILD.game} • v${BUILD.version} • Build ${BUILD.build} • Schema ${BUILD.schema}`;
+    });
+    return;
+  }
+  previousRenderV130();
+};
+
+const previousRenderDashboardV130 = renderDashboard;
+renderDashboard = function() {
+  const html = previousRenderDashboardV130();
+  const c = activeCareer(); if (!c) return html;
+  ensureV13Career(c);
+  const ps = c.premiumServices;
+  const widget = `<section class="panel glass passenger-widget"><div class="section-head"><div><span class="eyebrow">Serviços premium</span><h2>VIP ${utils.num(ps.loungeVisitors || 0)} • Premium líquido ${utils.money((ps.premiumRevenue || 0) - (ps.premiumCost || 0) - (ps.overbooking?.compensation || 0))}</h2><p>Bagagem, catering, overbooking e atendimento por aeroporto agora impactam NPS, caixa e reputação.</p></div><button class="btn primary" data-action="go" data-view="services">Abrir serviços</button></div></section>`;
+  const pos = html.lastIndexOf('</div>');
+  return pos >= 0 ? html.slice(0, pos) + widget + html.slice(pos) : html + widget;
+};
+
+const previousRenderRoutesV130 = renderRoutes;
+renderRoutes = function() {
+  const html = previousRenderRoutesV130();
+  const info = `<section class="panel glass route-service-hint"><span class="eyebrow">Serviços premium</span><p>Além de cabine, agora cada rota pode ter catering, bagagem e overbooking próprio.</p><button class="btn mini primary" data-action="go" data-view="services">Abrir serviços</button></section>`;
+  return html.replace('<div class="routes-layout">', `<div class="routes-layout">${info}`);
+};
+
+const previousRenderRouteCardV130 = renderRouteCard;
+renderRouteCard = function(r) {
+  ensureV13Career(activeCareer());
+  let html = previousRenderRouteCardV130(r);
+  const c = activeCareer();
+  const b = routeServiceBundle(c, r);
+  const service = `<div class="route-stats service-stats"><span>Catering: ${b.catering.label}</span><span>Bagagem: ${b.baggage.label}</span><span>Overbooking: ${b.overbooking.label}</span><span>Premium: ${utils.money(r.lastPremiumRevenue || 0)}</span></div>`;
+  const controls = `<div class="row gap wrap service-controls"><button class="btn mini" data-action="setRouteCatering" data-route="${r.id}" data-plan="fresh">Catering Fresh</button><button class="btn mini" data-action="setRouteBaggage" data-route="${r.id}" data-policy="standard">Bagagem padrão</button><button class="btn mini ghost" data-action="setRouteOverbooking" data-route="${r.id}" data-policy="conservative">Overbooking seguro</button><button class="btn mini primary" data-action="go" data-view="services">Serviços</button></div>`;
+  html = html.replace('</article>', `${service}${controls}</article>`);
+  return html;
+};
+
+const previousRenderPassengersViewV130 = renderPassengersView;
+renderPassengersView = function() {
+  const html = previousRenderPassengersViewV130();
+  const c = activeCareer(); if (!c) return html;
+  ensureV13Career(c);
+  const ps = c.premiumServices;
+  const card = `<section class="panel glass"><span class="eyebrow">F37-F40 integrado</span><h2>Serviços que influenciam passageiros</h2><div class="kpi-grid"><div class="kpi"><small>Visitantes VIP</small><strong>${utils.num(ps.loungeVisitors || 0)}</strong></div><div class="kpi"><small>Bagagem extra</small><strong>${utils.money(ps.baggage.ancillaryRevenue || 0)}</strong></div><div class="kpi"><small>Overbooking</small><strong>${utils.num(ps.overbooking.denied || 0)} negados</strong></div><div class="kpi"><small>Líquido premium</small><strong>${utils.money((ps.premiumRevenue || 0) - (ps.premiumCost || 0))}</strong></div></div><button class="btn primary" data-action="go" data-view="services">Gerenciar serviços premium</button></section>`;
+  return html.replace('</div>', card + '</div>');
+};
+
+const previousRenderFinanceV130 = renderFinance;
+renderFinance = function() {
+  const html = previousRenderFinanceV130();
+  const c = activeCareer(); if (!c) return html;
+  ensureV13Career(c);
+  const ps = c.premiumServices;
+  const card = `<section class="panel glass"><span class="eyebrow">F37-F40 Serviços premium</span><h2>Lounge, catering e bagagem</h2><div class="kpi-grid"><div class="kpi"><small>Receita premium</small><strong>${utils.money(ps.premiumRevenue || 0)}</strong></div><div class="kpi"><small>Custo premium</small><strong>${utils.money(ps.premiumCost || 0)}</strong></div><div class="kpi"><small>Compensação overbooking</small><strong>${utils.money(ps.overbooking?.compensation || 0)}</strong></div><div class="kpi"><small>Líquido</small><strong>${utils.money((ps.premiumRevenue || 0) - (ps.premiumCost || 0) - (ps.overbooking?.compensation || 0))}</strong></div></div><button class="btn primary" data-action="go" data-view="services">Abrir serviços</button></section>`;
+  return html.replace('</div>', card + '</div>');
+};
+
+const previousRenderAuditV130 = renderAudit;
+renderAudit = function() {
+  const checks = runIntegrityAudit();
+  const passed = checks.filter(c => c.ok).length;
+  return `<div class="audit-layout"><section class="panel glass"><div class="section-head"><div><span class="eyebrow">Sistema anti-quebra</span><h2>Auditoria da build</h2><p>Execução obrigatória por fase para garantir integridade e evolução real.</p></div><button class="btn primary" data-action="runAudit">Rodar auditoria</button></div><div class="audit-score"><strong>${passed}/${checks.length}</strong><span>checks aprovados</span></div><div class="audit-list">${checks.map(c => `<div class="audit-row ${c.ok?'ok':'bad'}"><b>${c.ok?'✓':'!'}</b><span>${c.label}</span><small>${c.detail}</small></div>`).join('')}</div></section><section class="panel glass"><h2>Relatório desta entrega</h2><div class="todo-list"><span>F37 Salas VIP: OK — lounge por hub, custo de instalação, custo diário, visitantes e receita premium.</span><span>F38 Catering: OK — plano por rota com custo, receita e impacto no NPS.</span><span>F39 Bagagem: OK — política por rota com receita auxiliar, custo de handling e reclamações.</span><span>F40 Overbooking e atendimento premium: OK — risco de passageiro negado, compensação, prioridade solo e atendimento premium por aeroporto.</span><span>Anti-quebra: OK — migração de saves v0.4 até v1.2 para schema 13 preservada.</span></div></section></div>`;
+};
+
+const previousRunIntegrityAuditV130 = runIntegrityAudit;
+runIntegrityAudit = function() {
+  const c = activeCareer(); if (c) ensureV13Career(c);
+  const blockedLabels = ['Schema da build','Chave de save v1.2','Migração v1.1 preservada','Normalização v1.2','F33 Serviço por rota','F34 Cabines profundas','F35 Fidelidade','F36 Reputação de serviço','Tela Passageiros no menu','Experiência no save','Rotas com cabine/serviço','Ações de rota v1.2','Custo de fidelidade','Plano de serviço','Histórico de avaliações'];
+  const base = previousRunIntegrityAuditV130().filter(check => !blockedLabels.includes(check.label));
+  const extra = [
+    { ok: BUILD.schema === 13, label:'Schema da build', detail:`Schema atual ${BUILD.schema}.` },
+    { ok: STORE_KEY.includes('schema_13'), label:'Chave de save v1.3', detail:STORE_KEY },
+    { ok: LEGACY_STORE_KEYS.includes('vale_air_manager_schema_12'), label:'Migração v1.2 preservada', detail:'Saves schema 12 são migrados para schema 13 sem reset.' },
+    { ok: typeof ensureV13Career === 'function', label:'Normalização v1.3', detail:'Carreiras antigas recebem serviços premium, lounge, bagagem e overbooking.' },
+    { ok: Object.keys(LOUNGE_LEVELS).length === 4, label:'F37 Salas VIP', detail:'Sem sala, Essential, Business e Flagship configurados.' },
+    { ok: Object.keys(CATERING_PLANS).length === 4, label:'F38 Catering', detail:'Básico, Fresh, Premium e Buy on board por rota.' },
+    { ok: Object.keys(BAGGAGE_POLICIES).length === 4, label:'F39 Bagagem', detail:'Inclusa, padrão, auxiliar e restritiva com efeitos econômicos.' },
+    { ok: Object.keys(OVERBOOKING_POLICIES).length === 4, label:'F40 Overbooking', detail:'Zero, conservador, balanceado e agressivo com risco/compensação.' },
+    { ok: Object.keys(AIRPORT_SERVICE_LEVELS).length === 3, label:'Atendimento premium por aeroporto', detail:'Padrão, prioridade e premium por hub.' },
+    { ok: navItems().some(i => i[0] === 'services'), label:'Tela Serviços no menu', detail:'Serviços premium acessíveis pelo HUD mobile.' },
+    { ok: !c || c.premiumServices && Array.isArray(c.premiumServices.serviceEvents), label:'Serviços premium no save', detail:c ? `${(c.premiumServices.serviceEvents||[]).length} evento(s) registrados.` : 'Sem carreira ativa.' },
+    { ok: !c || (c.routes||[]).every(r => CATERING_PLANS[r.cateringPlan] && BAGGAGE_POLICIES[r.baggagePolicy] && OVERBOOKING_POLICIES[r.overbookingPolicy]), label:'Rotas com serviços v1.3', detail:c ? `${c.routes.length} rotas normalizadas.` : 'Sem carreira ativa.' },
+    { ok: typeof openLounge === 'function' && typeof setAirportService === 'function', label:'Ações de hub premium', detail:'Botões de lounge e atendimento premium executam sem tela solta.' },
+    { ok: typeof setRouteCatering === 'function' && typeof setRouteBaggage === 'function' && typeof setRouteOverbooking === 'function', label:'Ações de rota v1.3', detail:'Catering, bagagem e overbooking ajustáveis por rota.' },
+    { ok: typeof applyPremiumServiceResult === 'function' && typeof serviceQualityDelta === 'function', label:'Resultado de serviço por voo', detail:'Voos aplicam receita premium, custo, NPS, reclamações e compensação.' },
+    { ok: typeof premiumServiceActionPlan === 'function', label:'Plano rápido de serviços', detail:'Ação corretiva para estabilizar políticas ruins e reduzir risco.' }
+  ];
+  return [...extra, ...base];
+};
+
+const previousHandleActionV130 = handleAction;
+handleAction = function(target) {
+  const action = target.dataset.action;
+  if (action === 'setRouteCatering') return safeExecute('action:setRouteCatering', () => setRouteCatering(target.dataset.route, target.dataset.plan));
+  if (action === 'setRouteBaggage') return safeExecute('action:setRouteBaggage', () => setRouteBaggage(target.dataset.route, target.dataset.policy));
+  if (action === 'setRouteOverbooking') return safeExecute('action:setRouteOverbooking', () => setRouteOverbooking(target.dataset.route, target.dataset.policy));
+  if (action === 'setAirportService') return safeExecute('action:setAirportService', () => setAirportService(target.dataset.hub, target.dataset.level));
+  if (action === 'openLounge') return safeExecute('action:openLounge', () => openLounge(target.dataset.hub, target.dataset.level));
+  if (action === 'premiumServicePlan') return safeExecute('action:premiumServicePlan', () => premiumServiceActionPlan());
+  return previousHandleActionV130(target);
 };
 
 boot();

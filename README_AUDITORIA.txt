@@ -1,17 +1,12 @@
-VALE AIR MANAGER v0.6.0-alpha — Fases F9-F12
-Build: 20260630-1738
-Schema: 6
+VALE AIR MANAGER v1.1.0 — F29-F32
+Build 20260701-1125 — Schema 11
 
-AUDITORIA OBRIGATÓRIA POR FASE
-- Build/data/hora visíveis: OK
-- Sistema anti-quebra: OK
-- Migração de saves v0.4/v0.5 para schema 6: OK
-- Onboarding, slots, mapa, rotas, hubs, contratos e equipe preservados: OK
-- F9 Economia profunda: OK
-- F10 Combustível avançado: OK
-- F11 Preço dinâmico por rota: OK
-- F12 Manutenção por nível: OK
-- Mobile fullscreen: mantido
-- Assets genéricos: mantidos para acelerar a parte bruta
+Auditoria executada: 34/34 checks aprovados.
+Sistema anti-quebra ativo. ZIP completo.
 
-Observação: fase focada em simulação e estabilidade. Assets cinematográficos entram depois, sem bloquear evolução funcional.
+F29 — Regulações por país: licenças, compliance, taxas e bloqueio seguro de rotas sem permissão.
+F30 — Aeroportos congestionados: pressão por slots, atraso, custo e painel operacional.
+F31 — Incidentes operacionais avançados: bird strike, AOG, multas, alfândega, fadiga e slot perdido.
+F32 — Seguro profundo: franquia, cobertura por tipo, cap diário, sinistros e histórico.
+
+Compatibilidade: migra saves de schemas 4,5,6,7,8,9 e 10 para schema 11.

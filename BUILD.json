@@ -1,10 +1,19 @@
 {
   "game": "VALE AIR MANAGER",
-  "version": "0.6.0-alpha",
-  "phase": "F9-F12",
-  "build": "20260630-1738",
-  "schema": 6,
-  "date": "2026-06-30",
+  "version": "1.1.0",
+  "phase": "F29-F32",
+  "build": "20260701-1125",
+  "schema": 11,
+  "date": "2026-07-01",
   "timezone": "America/Sao_Paulo",
-  "summary": "Economia profunda, combustível avançado com hedge e estoque, precificação dinâmica por rota, manutenção por nível, migração de saves v0.4/v0.5 e auditoria anti-quebra."
+  "auditoria": "34/34 checks aprovados",
+  "antiQuebra": true,
+  "zip": "completo",
+  "migration": "v0.4-v1.0 beta para v1.1.0",
+  "features": [
+    "F29 regulações por país",
+    "F30 congestionamento aeroportuário",
+    "F31 incidentes operacionais avançados",
+    "F32 seguro profundo e sinistros"
+  ]
 }

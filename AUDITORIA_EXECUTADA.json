@@ -1,139 +1,27 @@
 {
   "game": "VALE AIR MANAGER",
-  "version": "0.6.0-alpha",
-  "phase": "F9-F12",
-  "build": "20260630-1738",
-  "schema": 6,
-  "executedAt": "2026-06-30T17:38:00-03:00",
-  "score": "25/25",
-  "passed": 25,
-  "total": 25,
-  "checks": [
-    {
-      "label": "Estrutura index.html",
-      "ok": true,
-      "detail": "presente"
-    },
-    {
-      "label": "Estrutura css/style.css",
-      "ok": true,
-      "detail": "presente"
-    },
-    {
-      "label": "Estrutura js/app.js",
-      "ok": true,
-      "detail": "presente"
-    },
-    {
-      "label": "Estrutura manifest.json",
-      "ok": true,
-      "detail": "presente"
-    },
-    {
-      "label": "Estrutura BUILD.json",
-      "ok": true,
-      "detail": "presente"
-    },
-    {
-      "label": "Estrutura service-worker.js",
-      "ok": true,
-      "detail": "presente"
-    },
-    {
-      "label": "Build v0.6.0",
-      "ok": true,
-      "detail": "Versão atualizada no JS e BUILD.json"
-    },
-    {
-      "label": "Build 20260630-1738",
-      "ok": true,
-      "detail": "Build/data/hora visíveis e coerentes"
-    },
-    {
-      "label": "Schema 6",
-      "ok": true,
-      "detail": "Schema atualizado para 6"
-    },
-    {
-      "label": "Migração legacy",
-      "ok": true,
-      "detail": "Migração v0.4/v0.5 preservada"
-    },
-    {
-      "label": "Sistema anti-quebra",
-      "ok": true,
-      "detail": "captura erro, promise e tela de recuperação"
-    },
-    {
-      "label": "Fallback de mapa",
-      "ok": true,
-      "detail": "Leaflet + fallback SVG"
-    },
-    {
-      "label": "F9 Economia profunda",
-      "ok": true,
-      "detail": "margem, seguro, livro e economia por rota"
-    },
-    {
-      "label": "F10 Combustível avançado",
-      "ok": true,
-      "detail": "estoque, hedge, volatilidade e consumo"
-    },
-    {
-      "label": "F11 Precificação dinâmica",
-      "ok": true,
-      "detail": "Popular, Equilibrada e Premium por rota"
-    },
-    {
-      "label": "F12 Manutenção por nível",
-      "ok": true,
-      "detail": "linha rápida, revisão e overhaul"
-    },
-    {
-      "label": "Catálogo aeronaves",
-      "ok": true,
-      "detail": "10 modelos iniciais com dados técnicos"
-    },
-    {
-      "label": "Aeroportos",
-      "ok": true,
-      "detail": "base local de aeroportos preservada"
-    },
-    {
-      "label": "Assets aviões",
-      "ok": true,
-      "detail": "silhuetas genéricas preservadas"
-    },
-    {
-      "label": "Assets avatares",
-      "ok": true,
-      "detail": "avatares CEO preservados"
-    },
-    {
-      "label": "Assets equipe",
-      "ok": true,
-      "detail": "piloto, cabine, mecânico e diretor preservados"
-    },
-    {
-      "label": "CSS mobile",
-      "ok": true,
-      "detail": "responsivo e PWA fullscreen"
-    },
-    {
-      "label": "Service worker cache novo",
-      "ok": true,
-      "detail": "cache versionado corretamente"
-    },
-    {
-      "label": "Sintaxe JS",
-      "ok": true,
-      "detail": "node --check executado sem erro anteriormente"
-    },
-    {
-      "label": "Boot runtime simulado",
-      "ok": true,
-      "detail": "Execução em ambiente Node com DOM stub renderizou onboarding e build badge sem erro."
-    }
+  "version": "1.1.0",
+  "phase": "F29-F32",
+  "build": "20260701-1125",
+  "schema": 11,
+  "status": "APROVADO",
+  "checks_aprovados": 34,
+  "checks_total": 34,
+  "principais_checks": [
+    "Schema 11 e STORE_KEY schema_11",
+    "Migração de saves schema 4-10 preservada",
+    "Boot anti-quebra preservado",
+    "Tela Operações adicionada ao menu",
+    "Regulações por país com licença e compliance",
+    "Bloqueio seguro de rota sem licença",
+    "Congestionamento aeroportuário recalculado por slot/rota/demanda",
+    "Impacto de congestionamento em custo/atraso",
+    "Incidentes avançados abertos e resolvíveis",
+    "Seguro profundo com franquia/cobertura/cap diário",
+    "Dashboard com widget operacional",
+    "Financeiro com detalhe de sinistro",
+    "Auditoria interna atualizada"
   ],
-  "conclusion": "Build aprovada para próxima fase: economia, combustível, preço dinâmico e manutenção evoluídos sem quebrar saves anteriores."
+  "anti_quebra": true,
+  "zip_completo": true
 }

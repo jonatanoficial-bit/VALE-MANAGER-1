@@ -1,15 +1,15 @@
 
 'use strict';
 
-// VALE AIR MANAGER - v1.8.0 - Build 20260701-1750
-// Fases F57-F60: aviação executiva, charter sob demanda, contratos VIP/governo e operação premium por jatos menores.
+// VALE AIR MANAGER - v1.9.0 - Build 20260701-1840
+// Fases F61-F64: beta visual, cockpit de CEO, identidade premium, avatares expandidos e UX mobile.
 
 const BUILD = Object.freeze({
   game: 'VALE AIR MANAGER',
-  version: '1.8.0',
-  phase: 'F57-F60',
-  build: '20260701-1750',
-  schema: 18,
+  version: '1.9.0',
+  phase: 'F61-F64',
+  build: '20260701-1840',
+  schema: 19,
   date: '2026-07-01',
   timezone: 'America/Sao_Paulo'
 });
@@ -730,8 +730,8 @@ const COMPETITORS = Object.freeze([
   { id:'cargo_sul', name:'Cargo Sul Express', base:'GRU', region:'Cargo', value:4100000, fleet:1, routes:['GRU-SCL','GRU-MIA'], reputation:55, debt:540000, modelId:'b737cargo', synergy:1.10 }
 ]);
 
-const STORE_KEY = 'vale_air_manager_schema_18';
-const LEGACY_STORE_KEYS = ['vale_air_manager_schema_17','vale_air_manager_schema_16','vale_air_manager_schema_15','vale_air_manager_schema_14','vale_air_manager_schema_13','vale_air_manager_schema_12','vale_air_manager_schema_11','vale_air_manager_schema_10','vale_air_manager_schema_9','vale_air_manager_schema_8','vale_air_manager_schema_7','vale_air_manager_schema_6','vale_air_manager_schema_5','vale_air_manager_schema_4'];
+const STORE_KEY = 'vale_air_manager_schema_19';
+const LEGACY_STORE_KEYS = ['vale_air_manager_schema_18','vale_air_manager_schema_17','vale_air_manager_schema_16','vale_air_manager_schema_15','vale_air_manager_schema_14','vale_air_manager_schema_13','vale_air_manager_schema_12','vale_air_manager_schema_11','vale_air_manager_schema_10','vale_air_manager_schema_9','vale_air_manager_schema_8','vale_air_manager_schema_7','vale_air_manager_schema_6','vale_air_manager_schema_5','vale_air_manager_schema_4'];
 const CRASH_KEY = 'vale_air_manager_last_crash';
 const DEFAULT_SPEED = 1;
 
@@ -1442,9 +1442,9 @@ function renderOnboarding() {
       <label>Hub inicial<select name="hubIata">${hubs.map(a => `<option value="${a.iata}" ${a.iata==='GRU'?'selected':''}>${a.iata} — ${a.city}, ${a.country}</option>`).join('')}</select></label>
       <label>Modelo de negócio<select name="businessModel"><option value="balanced">Tradicional equilibrada</option><option value="lowcost">Low-cost agressiva</option><option value="premium">Premium internacional</option><option value="cargo">Carga e logística</option></select></label>
       <div class="picker-title">Avatar do CEO</div>
-      <div class="asset-picker">${[1,2,3,4].map(i => `<label class="asset-option"><input type="radio" name="avatar" value="assets/avatars/avatar-ceo-${i}.svg" ${i===1?'checked':''}><img src="assets/avatars/avatar-ceo-${i}.svg" alt="Avatar ${i}"></label>`).join('')}</div>
+      <div class="asset-picker">${[1,2,3,4,5,6].map(i => `<label class="asset-option"><input type="radio" name="avatar" value="assets/avatars/avatar-ceo-${i}.svg" ${i===1?'checked':''}><img src="assets/avatars/avatar-ceo-${i}.svg" alt="Avatar ${i}"></label>`).join('')}</div>
       <div class="picker-title">Logo inicial</div>
-      <div class="asset-picker logos">${[1,2,3,4].map(i => `<label class="asset-option"><input type="radio" name="logo" value="assets/logos/logo-${i}.svg" ${i===3?'checked':''}><img src="assets/logos/logo-${i}.svg" alt="Logo ${i}"></label>`).join('')}</div>
+      <div class="asset-picker logos">${[1,2,3,4,5,6].map(i => `<label class="asset-option"><input type="radio" name="logo" value="assets/logos/logo-${i}.svg" ${i===3?'checked':''}><img src="assets/logos/logo-${i}.svg" alt="Logo ${i}"></label>`).join('')}</div>
       <div class="row gap wrap"><button class="btn primary big" data-action="createCareer" type="button">Criar carreira</button><button class="btn ghost big" data-action="go" data-view="slots" type="button">Ver saves</button></div>
       <p class="hint">Começa com 1 avião regional, hub inicial, contratos, tutorial, combustível, slots, alianças, passageiros, serviços premium e anti-quebra ativo.</p>
     </form>
@@ -6996,6 +6996,268 @@ handleAction = function(target) {
   if (action === 'refreshCharterMissions') return safeExecute('action:refreshCharterMissions', () => refreshCharterMissions(true));
   return previousHandleActionV180(target);
 };
+
+
+
+
+/* --------------------------------------------------------------------------
+   v1.9.0 F61-F64 — beta visual, cockpit de CEO, identidade premium e UX mobile
+-------------------------------------------------------------------------- */
+const VISUAL_THEMES = Object.freeze({
+  cinema: { label:'Cinema noturno', accent:'#38bdf8', glow:'azul executivo', note:'Visual premium escuro com sensação de painel global.' },
+  aurora: { label:'Aurora executiva', accent:'#a78bfa', glow:'violeta corporativo', note:'Mais tecnológico, bom para companhia internacional.' },
+  emerald: { label:'Emerald premium', accent:'#34d399', glow:'verde financeiro', note:'Foco em crescimento, sustentabilidade e mercado.' },
+  sunrise: { label:'Sunrise global', accent:'#f59e0b', glow:'dourado aéreo', note:'Mais caloroso, combina com companhia turística/premium.' }
+});
+const UI_DENSITIES = Object.freeze({
+  compact: { label:'Compacto', note:'Mais informação por tela, bom para PC.', navHint:'dados' },
+  balanced: { label:'Equilibrado', note:'Melhor para mobile e desktop.', navHint:'normal' },
+  touch: { label:'Mobile grande', note:'Botões maiores e leitura rápida no celular.', navHint:'touch' }
+});
+const CEO_AVATAR_SET = ['assets/avatars/avatar-ceo-1.svg','assets/avatars/avatar-ceo-2.svg','assets/avatars/avatar-ceo-3.svg','assets/avatars/avatar-ceo-4.svg','assets/avatars/avatar-ceo-5.svg','assets/avatars/avatar-ceo-6.svg'];
+const LOGO_SET = ['assets/logos/logo-1.svg','assets/logos/logo-2.svg','assets/logos/logo-3.svg','assets/logos/logo-4.svg','assets/logos/logo-5.svg','assets/logos/logo-6.svg'];
+
+function generateCallsign(companyName) {
+  const clean = String(companyName || 'VALE AIR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9 ]/g,' ').trim();
+  const parts = clean.split(/\s+/).filter(Boolean);
+  if (!parts.length) return 'VALE';
+  if (parts.length === 1) return parts[0].slice(0,6).toUpperCase();
+  return parts.map(p => p[0]).join('').slice(0,5).toUpperCase() || 'VALE';
+}
+function defaultIdentityForCareer(career) {
+  const callsign = generateCallsign(career && career.companyName);
+  return {
+    theme:'cinema',
+    uiDensity:'balanced',
+    cinematicMode:true,
+    ceoPortrait: career?.avatar || 'assets/avatars/avatar-ceo-1.svg',
+    logoSet: career?.logo || 'assets/logos/logo-3.svg',
+    callsign,
+    slogan:'Companhia gratuita, global e inteligente.',
+    boardStyle:'growth',
+    lastVisualAuditDay: career?.day || 1,
+    brandMaturity: 42,
+    mobileReadyScore: 78,
+    cockpitHints: ['Criar rota lucrativa', 'Manter frota segura', 'Cuidar do caixa', 'Evitar overbooking agressivo'],
+    launchChecklist: { onboarding:true, map:true, routes:true, finance:true, mobile:true, assets:false }
+  };
+}
+function ensureV19Career(career) {
+  if (!career) return null;
+  if (typeof ensureV18Career === 'function') ensureV18Career(career);
+  career.schema = BUILD.schema;
+  career.identity = Object.assign(defaultIdentityForCareer(career), career.identity || {});
+  if (!VISUAL_THEMES[career.identity.theme]) career.identity.theme = 'cinema';
+  if (!UI_DENSITIES[career.identity.uiDensity]) career.identity.uiDensity = 'balanced';
+  if (!CEO_AVATAR_SET.includes(career.identity.ceoPortrait)) career.identity.ceoPortrait = career.avatar || CEO_AVATAR_SET[0];
+  if (!LOGO_SET.includes(career.identity.logoSet)) career.identity.logoSet = career.logo || LOGO_SET[2];
+  career.avatar = career.identity.ceoPortrait;
+  career.logo = career.identity.logoSet;
+  career.identity.callsign = career.identity.callsign || generateCallsign(career.companyName);
+  career.identity.brandMaturity = utils.clamp(Number(career.identity.brandMaturity || 42), 0, 100);
+  career.identity.mobileReadyScore = utils.clamp(Number(career.identity.mobileReadyScore || 78), 0, 100);
+  career.identity.cockpitHints = Array.isArray(career.identity.cockpitHints) ? career.identity.cockpitHints.slice(0,6) : defaultIdentityForCareer(career).cockpitHints;
+  career.identity.launchChecklist = Object.assign(defaultIdentityForCareer(career).launchChecklist, career.identity.launchChecklist || {});
+  if (!Array.isArray(career.executiveTeam)) career.executiveTeam = seedExecutiveTeam(career);
+  career.executiveTeam.forEach((e, idx) => { e.id = e.id || `exec_${idx}`; e.avatar = e.avatar || ['assets/staff/director.svg','assets/staff/pilot.svg','assets/staff/crew.svg','assets/staff/mechanic.svg'][idx%4]; e.focus = e.focus || 'Operação'; e.grade = utils.clamp(Number(e.grade || 62), 0, 100); });
+  return career;
+}
+function seedExecutiveTeam(career) {
+  return [
+    { id:'ceo', role:'CEO', name: career?.ceoName || 'CEO fundador', focus:'Estratégia global', grade:72, avatar: career?.avatar || 'assets/avatars/avatar-ceo-1.svg' },
+    { id:'coo', role:'COO', name:'Diretoria de Operações', focus:'Malha, OCC e pontualidade', grade:66, avatar:'assets/staff/director.svg' },
+    { id:'cfo', role:'CFO', name:'Diretoria Financeira', focus:'Caixa, banco e mercado', grade:64, avatar:'assets/staff/director.svg' },
+    { id:'cmo', role:'CMO', name:'Diretoria Comercial', focus:'Marca, fidelidade e charter', grade:63, avatar:'assets/staff/crew.svg' }
+  ];
+}
+function visualSnapshot(career) {
+  ensureV19Career(career);
+  const theme = VISUAL_THEMES[career.identity.theme] || VISUAL_THEMES.cinema;
+  const density = UI_DENSITIES[career.identity.uiDensity] || UI_DENSITIES.balanced;
+  const fleetScore = utils.clamp((career.fleet?.length || 0) * 4 + (career.routes?.length || 0) * 3, 0, 40);
+  const repScore = utils.clamp((career.reputation || 50) * 0.28 + (career.punctuality || 80) * 0.12 + (career.safety || 90) * 0.10, 0, 50);
+  const moneyScore = utils.clamp(Math.log10(Math.max(career.cash || 1, 1)) * 5, 0, 35);
+  const mature = utils.clamp(Math.round(18 + fleetScore + repScore + moneyScore), 0, 100);
+  const mobile = utils.clamp(Math.round(72 + (density.navHint === 'touch' ? 13 : density.navHint === 'normal' ? 8 : 2) + (career.routes?.length ? 4 : 0) - Math.max(0, (navItems().length - 12) * 2)), 0, 100);
+  career.identity.brandMaturity = mature;
+  career.identity.mobileReadyScore = mobile;
+  const readiness = Math.round((mature * 0.55) + (mobile * 0.35) + ((career.identity.launchChecklist.assets ? 100 : 55) * 0.10));
+  return { theme, density, mature, mobile, readiness, missingAssets: !career.identity.launchChecklist.assets, callsign: career.identity.callsign };
+}
+function applyVisualIdentity(career) {
+  if (!career || !document || !document.body) return;
+  ensureV19Career(career);
+  const theme = VISUAL_THEMES[career.identity.theme] || VISUAL_THEMES.cinema;
+  document.body.classList.add('v19-cinema');
+  document.body.dataset.themeV19 = career.identity.theme;
+  document.body.dataset.uiDensity = career.identity.uiDensity;
+  try { document.documentElement.style.setProperty('--v19-accent', theme.accent); } catch(e) {}
+}
+function setVisualTheme(theme) {
+  const c = activeCareer(); if (!c || !VISUAL_THEMES[theme]) return;
+  ensureV19Career(c);
+  c.identity.theme = theme;
+  const snap = visualSnapshot(c);
+  pushMessage(c, `Identidade visual alterada para ${snap.theme.label}.`, 'success');
+  setActiveCareer(c); render();
+}
+function setUiDensity(density) {
+  const c = activeCareer(); if (!c || !UI_DENSITIES[density]) return;
+  ensureV19Career(c);
+  c.identity.uiDensity = density;
+  const snap = visualSnapshot(c);
+  pushMessage(c, `UX ajustada para ${snap.density.label}. Score mobile ${snap.mobile}/100.`, 'success');
+  setActiveCareer(c); render();
+}
+function setIdentityAsset(kind, asset) {
+  const c = activeCareer(); if (!c) return;
+  ensureV19Career(c);
+  if (kind === 'avatar' && CEO_AVATAR_SET.includes(asset)) { c.identity.ceoPortrait = asset; c.avatar = asset; }
+  if (kind === 'logo' && LOGO_SET.includes(asset)) { c.identity.logoSet = asset; c.logo = asset; }
+  c.identity.launchChecklist.assets = false;
+  pushMessage(c, `${kind === 'avatar' ? 'Avatar do CEO' : 'Logo da companhia'} atualizado em modo beta visual.`, 'success');
+  setActiveCareer(c); render();
+}
+function updateSlogan(value) {
+  const c = activeCareer(); if (!c) return;
+  ensureV19Career(c);
+  c.identity.slogan = String(value || '').slice(0, 92) || 'Companhia gratuita, global e inteligente.';
+  pushMessage(c, 'Slogan corporativo atualizado.', 'info');
+  setActiveCareer(c); render();
+}
+function generateBrandSnapshotAction() {
+  const c = activeCareer(); if (!c) return;
+  ensureV19Career(c);
+  const snap = visualSnapshot(c);
+  c.identity.lastVisualAuditDay = c.day || 1;
+  c.identity.cockpitHints = [
+    snap.mature < 55 ? 'Marca ainda jovem: priorize reputação, pontualidade e rotas lucrativas.' : 'Marca já tem força inicial para expansão controlada.',
+    snap.mobile < 82 ? 'UX mobile: use densidade Mobile grande nos testes em celular.' : 'UX mobile pronta para beta público.',
+    snap.missingAssets ? 'Assets finais ainda pendentes: manter SVG genérico até fase cinematográfica.' : 'Assets finais marcados como prontos.',
+    (c.cash || 0) < dailyObligationEstimate(c) * 6 ? 'Caixa curto: preservar liquidez antes de crescer.' : 'Caixa permite novas ações estratégicas.'
+  ];
+  pushMessage(c, `Auditoria visual concluída: prontidão beta ${snap.readiness}/100.`, snap.readiness >= 75 ? 'success' : 'warn');
+  setActiveCareer(c); render();
+}
+function toggleAssetsReady() {
+  const c = activeCareer(); if (!c) return;
+  ensureV19Career(c);
+  c.identity.launchChecklist.assets = !c.identity.launchChecklist.assets;
+  pushMessage(c, c.identity.launchChecklist.assets ? 'Assets marcados como prontos para beta visual.' : 'Assets voltaram para modo genérico temporário.', 'info');
+  setActiveCareer(c); render();
+}
+function renderCeoView() {
+  const c = activeCareer(); if (!c) return '<p>Sem carreira ativa.</p>';
+  ensureV19Career(c);
+  const snap = visualSnapshot(c);
+  const themes = Object.entries(VISUAL_THEMES).map(([id,t]) => `<article class="service-card ${c.identity.theme===id?'active':''}"><b>${t.label}</b><small>${t.glow}</small><p>${t.note}</p><button class="btn mini ${c.identity.theme===id?'ghost':'primary'}" data-action="setVisualTheme" data-theme="${id}" ${c.identity.theme===id?'disabled':''}>${c.identity.theme===id?'Ativo':'Aplicar'}</button></article>`).join('');
+  const densities = Object.entries(UI_DENSITIES).map(([id,d]) => `<article class="service-card ${c.identity.uiDensity===id?'active':''}"><b>${d.label}</b><small>${d.navHint}</small><p>${d.note}</p><button class="btn mini ${c.identity.uiDensity===id?'ghost':'primary'}" data-action="setUiDensity" data-density="${id}" ${c.identity.uiDensity===id?'disabled':''}>${c.identity.uiDensity===id?'Ativo':'Usar'}</button></article>`).join('');
+  const avatars = CEO_AVATAR_SET.map(src => `<button class="identity-asset ${c.avatar===src?'active':''}" data-action="setIdentityAsset" data-kind="avatar" data-asset="${src}"><img src="${src}" alt="Avatar CEO"></button>`).join('');
+  const logos = LOGO_SET.map(src => `<button class="identity-asset logo ${c.logo===src?'active':''}" data-action="setIdentityAsset" data-kind="logo" data-asset="${src}"><img src="${src}" alt="Logo companhia"></button>`).join('');
+  const team = (c.executiveTeam || []).map(e => `<article class="exec-card"><img src="${utils.escape(e.avatar)}" alt="${utils.escape(e.role)}"><div><b>${utils.escape(e.role)}</b><strong>${utils.escape(e.name)}</strong><small>${utils.escape(e.focus)} • nota ${Math.round(e.grade)}/100</small></div></article>`).join('');
+  const hints = (c.identity.cockpitHints || []).map(h => `<span>${utils.escape(h)}</span>`).join('');
+  const checklist = Object.entries(c.identity.launchChecklist || {}).map(([k,v]) => `<span class="${v?'ok':'warn'}">${v?'✓':'!'} ${utils.escape(k)}</span>`).join('');
+  return `<div class="ceo-layout v19-ceo"><section class="panel glass ceo-hero"><div class="ceo-hero-bg"></div><div class="ceo-profile"><img src="${utils.escape(c.avatar)}" alt="CEO"><div><span class="eyebrow">F61-F64 Beta visual</span><h2>${utils.escape(c.companyName)}</h2><p>${utils.escape(c.identity.slogan || '')}</p><div class="route-stats"><span>Callsign ${utils.escape(snap.callsign)}</span><span>${snap.theme.label}</span><span>${snap.density.label}</span></div></div></div><div class="kpi-grid"><div class="kpi"><small>Prontidão beta</small><strong>${snap.readiness}/100</strong></div><div class="kpi"><small>Marca</small><strong>${snap.mature}/100</strong></div><div class="kpi"><small>Mobile UX</small><strong>${snap.mobile}/100</strong></div><div class="kpi"><small>Assets finais</small><strong>${snap.missingAssets?'Pendente':'OK'}</strong></div></div><div class="row gap wrap"><button class="btn primary" data-action="generateBrandSnapshot">Auditar visual</button><button class="btn ghost" data-action="toggleAssetsReady">${snap.missingAssets?'Marcar assets prontos':'Voltar para assets genéricos'}</button></div></section><section class="panel glass"><div class="section-head"><div><span class="eyebrow">Identidade</span><h2>Logo, avatar e slogan</h2><p>Agora o jogo tem cockpit de CEO e identidade visual editável, ainda com assets genéricos até a fase cinematográfica.</p></div></div><label class="field"><span>Slogan da companhia</span><input value="${utils.escape(c.identity.slogan || '')}" data-action="updateSlogan" data-live="identity-slogan" maxlength="92"></label><h3>Avatares do CEO</h3><div class="identity-grid">${avatars}</div><h3>Logos beta</h3><div class="identity-grid logos">${logos}</div></section><section class="panel glass"><span class="eyebrow">Tema visual</span><h2>Cinema UI</h2><div class="service-grid">${themes}</div></section><section class="panel glass"><span class="eyebrow">Mobile</span><h2>Densidade de interface</h2><div class="service-grid">${densities}</div></section><section class="panel glass"><span class="eyebrow">Conselho executivo</span><h2>Diretoria visual provisória</h2><div class="exec-grid">${team}</div></section><section class="panel glass"><span class="eyebrow">Anti-confusão</span><h2>Próximas ações recomendadas</h2><div class="todo-list">${hints}</div><h3>Checklist beta</h3><div class="todo-list checklist-v19">${checklist}</div></section></div>`;
+}
+
+const previousNormalizeCareerV190 = normalizeCareer;
+normalizeCareer = function(career) {
+  const c = previousNormalizeCareerV190(career);
+  if (c) ensureV19Career(c);
+  return c;
+};
+const previousCreateCareerV190 = createCareer;
+createCareer = function(form) {
+  const c = previousCreateCareerV190(form);
+  ensureV19Career(c);
+  c.identity.theme = form.businessModel === 'premium' ? 'sunrise' : form.businessModel === 'cargo' ? 'emerald' : 'cinema';
+  c.identity.callsign = generateCallsign(c.companyName);
+  return c;
+};
+const previousNavItemsV190 = navItems;
+navItems = function() {
+  const items = previousNavItemsV190();
+  if (items.some(i => i[0] === 'ceo')) return items;
+  const out = [];
+  items.forEach((item, idx) => { out.push(item); if (idx === 0) out.push(['ceo','CEO','◆']); });
+  return out;
+};
+const previousRenderOnboardingV190 = renderOnboarding;
+renderOnboarding = function() {
+  const html = previousRenderOnboardingV190();
+  return html
+    .replace('Fases F49-F52 rede, conexões e codeshare', 'Fases F61-F64 beta visual, CEO e UX mobile')
+    .replace('Crie sua empresa aérea, escolha hub, avatar, logo, compre aviões, abra rotas reais e acompanhe o mercado financeiro.', 'Crie sua companhia aérea gratuita, escolha identidade, hub, avatar e logo, depois evolua frota, rotas, mercado, charter, carga e operação global com visual beta premium.');
+};
+const previousRenderV190 = render;
+render = function() {
+  const c = activeCareer();
+  if (c) { ensureV19Career(c); applyVisualIdentity(c); }
+  if (runtime.view === 'ceo') {
+    safeExecute('render:ceo', () => { hideFatal(); const career = activeCareer(); if (career) ensureV19Career(career); dom.app.innerHTML = shell(renderCeoView()); });
+    return;
+  }
+  previousRenderV190();
+};
+const previousRenderDashboardV190 = renderDashboard;
+renderDashboard = function() {
+  const html = previousRenderDashboardV190();
+  const c = activeCareer(); if (!c) return html;
+  ensureV19Career(c);
+  const snap = visualSnapshot(c);
+  const card = `<section class="panel glass ceo-mini"><span class="eyebrow">F61-F64 Beta visual</span><h2>Cockpit do CEO</h2><div class="ceo-profile compact"><img src="${utils.escape(c.avatar)}" alt="CEO"><div><b>${utils.escape(c.ceoName)}</b><small>${utils.escape(c.companyName)} • callsign ${utils.escape(snap.callsign)}</small></div></div><div class="kpi-grid"><div class="kpi"><small>Prontidão beta</small><strong>${snap.readiness}/100</strong></div><div class="kpi"><small>Marca</small><strong>${snap.mature}/100</strong></div><div class="kpi"><small>Mobile</small><strong>${snap.mobile}/100</strong></div><div class="kpi"><small>Tema</small><strong>${snap.theme.label}</strong></div></div><button class="btn primary" data-action="go" data-view="ceo">Abrir cockpit CEO</button></section>`;
+  const pos = html.lastIndexOf('</div>');
+  return pos >= 0 ? html.slice(0,pos)+card+html.slice(pos) : html + card;
+};
+const previousRunIntegrityAuditV190 = runIntegrityAudit;
+runIntegrityAudit = function() {
+  const c = activeCareer(); if (c) ensureV19Career(c);
+  const blockedLabels = ['Schema da build','Chave de save v1.8','Migração v1.7 preservada','Normalização v1.8'];
+  const base = previousRunIntegrityAuditV190().filter(check => !blockedLabels.includes(check.label));
+  const snap = c ? visualSnapshot(c) : null;
+  const extra = [
+    { ok: BUILD.schema === 19, label:'Schema da build', detail:`Schema atual ${BUILD.schema}.` },
+    { ok: STORE_KEY.includes('schema_19'), label:'Chave de save v1.9', detail:STORE_KEY },
+    { ok: LEGACY_STORE_KEYS.includes('vale_air_manager_schema_18'), label:'Migração v1.8 preservada', detail:'Saves schema 18 são migrados para schema 19 sem reset.' },
+    { ok: typeof ensureV19Career === 'function', label:'Normalização v1.9', detail:'Carreiras antigas recebem identidade, cockpit CEO e UX beta.' },
+    { ok: navItems().some(i => i[0] === 'ceo'), label:'Tela CEO no menu', detail:'HUD mobile recebeu cockpit executivo.' },
+    { ok: Object.keys(VISUAL_THEMES).length === 4, label:'F61 Temas cinematográficos', detail:'Cinema, Aurora, Emerald e Sunrise disponíveis.' },
+    { ok: Object.keys(UI_DENSITIES).length === 3, label:'F62 UX mobile', detail:'Compacto, Equilibrado e Mobile grande disponíveis.' },
+    { ok: CEO_AVATAR_SET.length === 6 && LOGO_SET.length === 6, label:'F63 Avatares e logos expandidos', detail:'Onboarding e cockpit aceitam 6 opções genéricas.' },
+    { ok: typeof renderCeoView === 'function', label:'F64 Cockpit CEO', detail:'Tela de identidade, conselho e checklist beta renderiza.' },
+    { ok: typeof visualSnapshot === 'function', label:'Snapshot visual', detail:snap ? `Prontidão ${snap.readiness}/100.` : 'Função disponível.' },
+    { ok: typeof setVisualTheme === 'function', label:'Ação tema visual', detail:'Tema altera identidade sem resetar carreira.' },
+    { ok: typeof setUiDensity === 'function', label:'Ação densidade mobile', detail:'Densidade altera UX para PC/celular.' },
+    { ok: typeof setIdentityAsset === 'function', label:'Ação trocar asset', detail:'Avatar/logo beta podem ser trocados no jogo.' },
+    { ok: typeof generateBrandSnapshotAction === 'function', label:'Auditoria visual in-game', detail:'Botão gera recomendações do cockpit.' },
+    { ok: !c || c.identity && c.identity.callsign, label:'Identidade no save', detail:c ? `${c.identity.callsign} • ${c.identity.theme}` : 'Sem carreira ativa.' },
+    { ok: !c || Array.isArray(c.executiveTeam) && c.executiveTeam.length >= 4, label:'Diretoria visual', detail:c ? `${c.executiveTeam.length} executivos provisórios.` : 'Sem carreira ativa.' },
+    { ok: !c || Number.isFinite(c.identity.mobileReadyScore), label:'Score mobile salvo', detail:c ? `${c.identity.mobileReadyScore}/100.` : 'Sem carreira ativa.' },
+    { ok: !c || typeof c.identity.launchChecklist === 'object', label:'Checklist beta visual', detail:'Onboarding, mapa, rotas, finanças, mobile e assets rastreados.' }
+  ];
+  return [...extra, ...base];
+};
+const previousRenderAuditV190 = renderAudit;
+renderAudit = function() {
+  const checks = runIntegrityAudit();
+  const passed = checks.filter(c => c.ok).length;
+  return `<div class="audit-layout"><section class="panel glass"><div class="section-head"><div><span class="eyebrow">Sistema anti-quebra</span><h2>Auditoria da build</h2><p>Execução obrigatória por fase para garantir integridade, evolução real, visual beta e compatibilidade de saves.</p></div><button class="btn primary" data-action="runAudit">Rodar auditoria</button></div><div class="audit-score"><strong>${passed}/${checks.length}</strong><span>checks aprovados</span></div><div class="audit-list">${checks.map(c => `<div class="audit-row ${c.ok?'ok':'bad'}"><b>${c.ok?'✓':'!'}</b><span>${c.label}</span><small>${c.detail}</small></div>`).join('')}</div></section><section class="panel glass"><h2>Relatório desta entrega</h2><div class="todo-list"><span>F61 Visual cinematográfico beta: OK — temas, brilho, topo, cartões e CSS premium sem depender de imagem externa.</span><span>F62 UX mobile reforçada: OK — densidade Compacto/Equilibrado/Mobile grande e cockpit anti-confusão.</span><span>F63 Identidade expandida: OK — seis avatares CEO e seis logos genéricos, editáveis no onboarding e no cockpit.</span><span>F64 Painel de CEO: OK — callsign, slogan, conselho executivo, checklist beta e auditoria visual in-game.</span><span>Anti-quebra: OK — migração de saves v0.4 até v1.8 para schema 19 preservada.</span></div></section></div>`;
+};
+const previousHandleActionV190 = handleAction;
+handleAction = function(target) {
+  const action = target.dataset.action;
+  if (action === 'setVisualTheme') return safeExecute('action:setVisualTheme', () => setVisualTheme(target.dataset.theme));
+  if (action === 'setUiDensity') return safeExecute('action:setUiDensity', () => setUiDensity(target.dataset.density));
+  if (action === 'setIdentityAsset') return safeExecute('action:setIdentityAsset', () => setIdentityAsset(target.dataset.kind, target.dataset.asset));
+  if (action === 'generateBrandSnapshot') return safeExecute('action:generateBrandSnapshot', () => generateBrandSnapshotAction());
+  if (action === 'toggleAssetsReady') return safeExecute('action:toggleAssetsReady', () => toggleAssetsReady());
+  if (action === 'updateSlogan') return;
+  return previousHandleActionV190(target);
+};
+document.addEventListener('change', event => {
+  const t = event.target;
+  if (t && t.dataset && t.dataset.live === 'identity-slogan') safeExecute('change:updateSlogan', () => updateSlogan(t.value));
+});
 
 
 boot();

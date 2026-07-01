@@ -1,19 +1,19 @@
 {
   "game": "VALE AIR MANAGER",
-  "version": "1.8.0",
-  "phase": "F57-F60",
-  "build": "20260701-1750",
-  "schema": 18,
+  "version": "1.9.0",
+  "phase": "F61-F64",
+  "build": "20260701-1840",
+  "schema": 19,
   "date": "2026-07-01",
   "timezone": "America/Sao_Paulo",
-  "auditoria": "98/98 checks aprovados",
+  "auditoria": "112/112 checks aprovados",
   "antiQuebra": true,
   "zip": "completo",
-  "migration": "v0.4-v1.7 para v1.8.0",
+  "migration": "v0.4-v1.8 para v1.9.0",
   "features": [
-    "F57 aviação executiva com pool charter, jatos executivos genéricos e standby operacional",
-    "F58 voos sob demanda com contratos aceitos, execução por alcance/capacidade/condição e receita imediata",
-    "F59 contratos VIP/governo com reputação mínima, prazo, multa, protocolo e prestígio",
-    "F60 operação premium por jatos menores com VIP handling, terminal privativo, NPS executivo e impacto em valuation"
+    "F61 visual cinematográfico beta com temas Cinema, Aurora, Emerald e Sunrise",
+    "F62 UX mobile reforçada com densidade Compacto, Equilibrado e Mobile grande",
+    "F63 identidade expandida com seis avatares CEO e seis logos genéricos editáveis",
+    "F64 cockpit do CEO com callsign, slogan, diretoria visual, checklist beta e auditoria visual in-game"
   ]
 }

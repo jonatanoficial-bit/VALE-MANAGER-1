@@ -1,3 +1,1 @@
-VALE AIR MANAGER v1.8.0 - F57-F60
-Auditoria obrigatória: 98/98 checks aprovados.
-Anti-quebra ativo. ZIP completo. Migração v0.4 até v1.7 preservada para schema 18.
+VALE AIR MANAGER v1.9.0 F61-F64 - auditoria obrigatória executada. Node check, runtime smoke e ZIP test aprovados. Anti-quebra ativo.
